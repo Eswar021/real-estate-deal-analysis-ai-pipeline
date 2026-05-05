@@ -1,0 +1,162 @@
+"""
+compare_noi.py — NOI Verification Step 3
+
+Reads the actual NOI (from extract_actual_noi) and computed NOI (from compute_noi),
+compares them month by month, and produces a verification report.
+
+A file PASSES if the difference between actual and computed NOI is within
+the tolerance threshold (default: $1.00 or 0.1% of actual NOI, whichever is larger).
+
+A large difference means something was mis-mapped, double-counted, or
+not mapped at all — that file needs closer human review.
+
+Pipeline position:
+  extract_actual_noi.py → noi_verification/actual_noi/
+  compute_noi.py        → noi_verification/computed_noi/
+  compare_noi.py        ← this script  →  noi_verification/comparison/
+
+Input:  output_docs/noi_verification/actual_noi/<filename>.json
+        output_docs/noi_verification/computed_noi/<filename>.json
+Output: output_docs/noi_verification/comparison/<filename>.json
+"""
+
+import json
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(PROJECT_ROOT))
+
+from config.paths import ACTUAL_NOI_DIR, COMPUTED_NOI_DIR, NOI_COMPARISON_DIR
+
+# Tolerance: flag if difference exceeds $1 OR 0.1% of actual NOI (whichever is larger)
+TOLERANCE_DOLLARS = 1.0
+TOLERANCE_PERCENT = 0.001
+
+
+def is_within_tolerance(actual, computed):
+    diff = abs(actual - computed)
+    threshold = max(TOLERANCE_DOLLARS, abs(actual) * TOLERANCE_PERCENT)
+    return diff <= threshold, diff, threshold
+
+
+def compare(actual_data, computed_data):
+    """
+    Compare actual vs computed NOI for a single file.
+    Returns a comparison report dict.
+    """
+    file_name = actual_data["file"]
+    column_headers = actual_data.get("column_headers", [])
+
+    # ── Actual NOI ────────────────────────────────────────────────────────────
+    if not actual_data.get("noi_found"):
+        return {
+            "file": file_name,
+            "overall_pass": False,
+            "error": actual_data.get("error", "Actual NOI not found"),
+            "months": [],
+        }
+
+    actual_values   = actual_data["noi_row"]["values"]
+    computed_values = computed_data["computed_noi_by_month"]
+    n = min(len(column_headers), len(actual_values), len(computed_values))
+
+    months = []
+    any_fail = False
+
+    for i in range(n):
+        actual_val   = actual_values[i]   if isinstance(actual_values[i],   (int, float)) else 0.0
+        computed_val = computed_values[i] if isinstance(computed_values[i], (int, float)) else 0.0
+
+        within, diff, threshold = is_within_tolerance(actual_val, computed_val)
+        if not within:
+            any_fail = True
+
+        months.append({
+            "month":    column_headers[i] if i < len(column_headers) else f"Col {i+1}",
+            "actual":   round(actual_val, 2),
+            "computed": round(computed_val, 2),
+            "diff":     round(computed_val - actual_val, 2),
+            "abs_diff": round(diff, 2),
+            "match":    within,
+        })
+
+    # ── Annual totals (last column) ───────────────────────────────────────────
+    actual_total   = actual_data["noi_row"]["total"]
+    computed_total = computed_data["computed_total_noi"]
+    total_within, total_diff, total_threshold = is_within_tolerance(
+        actual_total or 0, computed_total or 0
+    )
+
+    return {
+        "file":             file_name,
+        "format":           actual_data.get("format"),
+        "overall_pass":     not any_fail and total_within,
+        "actual_noi_row":   actual_data["noi_row"]["description"],
+        "total_actual_noi":   round(actual_total or 0, 2),
+        "total_computed_noi": round(computed_total or 0, 2),
+        "total_diff":         round((computed_total or 0) - (actual_total or 0), 2),
+        "total_abs_diff":     round(total_diff, 2),
+        "total_match":        total_within,
+        "tolerance_used":     round(total_threshold, 2),
+        "unclassified_count": len(computed_data.get("unclassified_rows", [])),
+        "skipped_count":      len(computed_data.get("skipped_rows", [])),
+        "months":             months,
+    }
+
+
+if __name__ == "__main__":
+    actual_files = sorted(ACTUAL_NOI_DIR.glob("*.json"))
+
+    if not actual_files:
+        print(f"No files in {ACTUAL_NOI_DIR}")
+        print("Run extract_actual_noi.py first.")
+        sys.exit(0)
+
+    print(f"Found {len(actual_files)} file(s)\n")
+
+    pass_count = 0
+    fail_count = 0
+
+    for actual_path in actual_files:
+        computed_path = COMPUTED_NOI_DIR / actual_path.name
+
+        if not computed_path.exists():
+            print(f"  ⚠ No computed NOI file for {actual_path.name} — run compute_noi.py first")
+            continue
+
+        with open(actual_path) as f:
+            actual_data = json.load(f)
+        with open(computed_path) as f:
+            computed_data = json.load(f)
+
+        result = compare(actual_data, computed_data)
+
+        out_path = NOI_COMPARISON_DIR / actual_path.name
+        with open(out_path, "w") as f:
+            json.dump(result, f, indent=2)
+
+        status = "✅ PASS" if result["overall_pass"] else "❌ FAIL"
+        print(f"  {status}  {result['file']}")
+        print(f"         Actual NOI:    ${result['total_actual_noi']:>15,.2f}")
+        print(f"         Computed NOI:  ${result['total_computed_noi']:>15,.2f}")
+        print(f"         Difference:    ${result['total_abs_diff']:>15,.2f}")
+
+        if result.get("unclassified_count", 0) > 0:
+            print(f"         ⚠ {result['unclassified_count']} unclassified rows excluded from computation")
+
+        if not result["overall_pass"]:
+            fail_count += 1
+            failing_months = [m for m in result["months"] if not m["match"]]
+            if failing_months:
+                print(f"         Months with mismatch ({len(failing_months)}):")
+                for m in failing_months:
+                    print(f"           {m['month']:<12}  actual=${m['actual']:>12,.2f}  "
+                          f"computed=${m['computed']:>12,.2f}  diff=${m['diff']:>10,.2f}")
+        else:
+            pass_count += 1
+        print()
+
+    print("=" * 55)
+    print(f"  PASSED: {pass_count}   FAILED: {fail_count}   TOTAL: {pass_count + fail_count}")
+    print(f"  Saved comparison files → {NOI_COMPARISON_DIR}")

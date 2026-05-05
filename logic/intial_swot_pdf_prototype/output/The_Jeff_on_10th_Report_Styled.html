@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Property Intelligence Report — The Jeff on 10th</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0a1628;
+  --navy-light: #132038;
+  --navy-mid: #1a2d4a;
+  --gold: #c9a84c;
+  --gold-light: #e8d48b;
+  --gold-dim: rgba(201,168,76,0.15);
+  --green: #34d399;
+  --green-bg: rgba(52,211,153,0.08);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.08);
+  --orange: #fb923c;
+  --orange-bg: rgba(251,146,60,0.08);
+  --slate: #94a3b8;
+  --slate-light: #cbd5e1;
+  --white: #f8fafc;
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --border: rgba(148,163,184,0.12);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',system-ui,sans-serif; background:var(--navy); color:var(--text); font-size:10px; line-height:1.5; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.page { width:8.5in; min-height:11in; padding:0.45in 0.5in; page-break-after:always; position:relative; background:var(--navy); }
+@media print { .page { padding:0.4in 0.45in; } body { margin:0; } }
+
+/* ── Top Bar ── */
+.top-bar { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:18px; }
+.top-bar .brand { font-size:9px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.top-bar .meta { font-size:8px; color:var(--slate); letter-spacing:1px; text-transform:uppercase; }
+
+/* ── Section Headers ── */
+.section-tag { display:inline-block; font-size:8px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; padding:3px 0; border-bottom:2px solid var(--gold); }
+.section-title { font-size:14px; font-weight:800; color:var(--white); margin-bottom:12px; letter-spacing:0.5px; }
+.page-label { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:600; background:var(--gold-dim); padding:5px 12px; display:inline-block; margin-bottom:14px; border-left:3px solid var(--gold); }
+
+/* ── Cards ── */
+.card-row { display:grid; gap:10px; margin-bottom:16px; }
+.card-row.c4 { grid-template-columns:repeat(4,1fr); }
+.card-row.c3 { grid-template-columns:repeat(3,1fr); }
+.card-row.c2 { grid-template-columns:repeat(2,1fr); }
+.card { background:var(--navy-light); border:1px solid var(--border); border-radius:6px; padding:12px 14px; }
+.card .card-label { font-size:8px; letter-spacing:2px; text-transform:uppercase; color:var(--slate); font-weight:600; margin-bottom:4px; }
+.card .card-value { font-size:20px; font-weight:800; color:var(--white); line-height:1.2; }
+.card .card-value.gold { color:var(--gold); }
+.card .card-value.green { color:var(--green); }
+.card .card-value.red { color:var(--red); }
+.card .card-sub { font-size:9px; color:var(--slate); margin-top:3px; }
+
+/* ── Tables ── */
+table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+th { background:var(--navy-mid); color:var(--gold); font-size:8px; letter-spacing:2px; text-transform:uppercase; font-weight:700; padding:8px 10px; text-align:left; border-bottom:2px solid var(--gold-dim); }
+td { padding:7px 10px; font-size:10px; color:var(--text); border-bottom:1px solid var(--border); vertical-align:top; }
+tr:last-child td { border-bottom:none; }
+
+/* ── Alerts ── */
+.alert { padding:10px 14px; border-radius:5px; font-size:10px; margin-bottom:14px; display:flex; align-items:flex-start; gap:8px; }
+.alert.red { background:var(--red-bg); border-left:3px solid var(--red); color:var(--red); }
+.alert.orange { background:var(--orange-bg); border-left:3px solid var(--orange); color:var(--orange); }
+.alert.green { background:var(--green-bg); border-left:3px solid var(--green); color:var(--green); }
+.alert .alert-icon { font-size:14px; flex-shrink:0; }
+
+/* ── Verdict Box ── */
+.verdict-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+.verdict-box { background:linear-gradient(135deg, var(--navy-light) 0%, var(--navy-mid) 100%); border:1px solid var(--gold-dim); border-radius:8px; padding:18px 20px; position:relative; overflow:hidden; }
+.verdict-box::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; background:var(--gold); }
+.verdict-box .vb-label { font-size:8px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.verdict-box .vb-value { font-size:22px; font-weight:900; letter-spacing:1px; line-height:1.2; }
+.verdict-box .vb-sub { font-size:9px; color:var(--slate); margin-top:6px; font-style:italic; }
+
+/* ── Narrative Block ── */
+.narrative { background:var(--navy-light); border:1px solid var(--border); border-radius:6px; padding:14px 16px; margin-bottom:16px; font-size:10.5px; line-height:1.7; color:var(--slate-light); text-align:justify; }
+
+/* ── Reason Cards ── */
+.reason { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+.reason:last-child { border-bottom:none; }
+.reason .r-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; flex-shrink:0; }
+.reason .r-num.support { background:var(--green-bg); color:var(--green); border:1px solid rgba(52,211,153,0.3); }
+.reason .r-num.risk { background:var(--red-bg); color:var(--red); border:1px solid rgba(248,113,113,0.3); }
+.reason .r-body { flex:1; }
+.reason .r-title { font-weight:700; font-size:10.5px; color:var(--white); margin-bottom:2px; }
+.reason .r-detail { font-size:9.5px; color:var(--slate); }
+
+/* ── Score Bar ── */
+.score-bar-wrap { display:flex; align-items:center; gap:8px; margin-bottom:3px; }
+.score-bar { flex:1; height:6px; background:var(--navy-mid); border-radius:3px; overflow:hidden; }
+.score-bar .fill { height:100%; border-radius:3px; }
+.score-bar .fill.pos { background:linear-gradient(90deg,var(--green),#6ee7b7); }
+.score-bar .fill.neg { background:linear-gradient(90deg,var(--red),#fca5a5); }
+.score-label { font-size:9px; color:var(--slate); min-width:55px; }
+.score-val { font-size:10px; font-weight:700; min-width:30px; text-align:right; }
+
+/* ── Checklist ── */
+.checklist { list-style:none; }
+.checklist li { padding:5px 0; font-size:10px; display:flex; align-items:flex-start; gap:6px; }
+.checklist li::before { content:'☐'; color:var(--gold); font-size:12px; flex-shrink:0; }
+.checklist.must li::before { content:'⬤'; color:var(--red); font-size:8px; margin-top:3px; }
+.checklist.should li::before { content:'◉'; color:var(--orange); font-size:8px; margin-top:3px; }
+.checklist.monitor li::before { content:'○'; color:var(--slate); font-size:8px; margin-top:3px; }
+
+/* ── Footer ── */
+.footer { position:absolute; bottom:0.3in; left:0.5in; right:0.5in; display:flex; justify-content:space-between; font-size:7.5px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; border-top:1px solid var(--border); padding-top:6px; }
+
+/* ── Pill ── */
+.pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:8px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.pill.green { background:var(--green-bg); color:var(--green); border:1px solid rgba(52,211,153,0.3); }
+.pill.red { background:var(--red-bg); color:var(--red); border:1px solid rgba(248,113,113,0.3); }
+.pill.orange { background:var(--orange-bg); color:var(--orange); border:1px solid rgba(251,146,60,0.3); }
+.pill.gold { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(201,168,76,0.3); }
+.pill.slate { background:rgba(148,163,184,0.1); color:var(--slate); border:1px solid rgba(148,163,184,0.2); }
+
+/* Grid helpers */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.mb { margin-bottom:14px; }
+.mt { margin-top:14px; }
+
+/* Flag row */
+.flag-row { background:var(--navy-light); border:1px solid var(--border); border-radius:6px; padding:12px 14px; margin-bottom:10px; }
+.flag-row .flag-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.flag-row .flag-name { font-weight:700; font-size:11px; color:var(--white); }
+.flag-row .flag-detail { font-size:9.5px; color:var(--slate); line-height:1.5; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ PAGE 1 ═══════════ -->
+<div class="page">
+  <div class="top-bar">
+    <div class="brand">Oakdale AI</div>
+    <div class="meta">Property Intelligence Report &nbsp;·&nbsp; Confidential &nbsp;·&nbsp; April 9, 2026</div>
+  </div>
+
+  <div class="page-label">Page 1 · Investment Decision Snapshot</div>
+
+  <!-- Deal Header Cards -->
+  <div class="card-row c4">
+    <div class="card"><div class="card-label">Property</div><div class="card-value" style="font-size:14px;">The Jeff on 10th</div><div class="card-sub">3500 Ellingsworth Dairy Dr</div></div>
+    <div class="card"><div class="card-label">Location</div><div class="card-value" style="font-size:14px;">Jeffersonville, IN</div><div class="card-sub">Clark County · 47130</div></div>
+    <div class="card"><div class="card-label">Units / Vintage</div><div class="card-value" style="font-size:14px;">190 · 2022</div><div class="card-sub">Broker: Northmarq</div></div>
+    <div class="card"><div class="card-label">Asking Price/Unit</div><div class="card-value gold" style="font-size:14px;">$238,800</div><div class="card-sub">~$45.4M implied total</div></div>
+  </div>
+
+  <div class="alert red"><span class="alert-icon">⚠</span> <strong>MISSING TIER 1:</strong>&nbsp; Transit Score · Crime Score · Location Score &nbsp;|&nbsp; Missing Tier 2: Market Scale &nbsp;|&nbsp; Rubric completeness: ~75%</div>
+
+  <!-- Verdict -->
+  <div class="section-tag">Investment Verdict</div>
+  <div class="verdict-row">
+    <div class="verdict-box"><div class="vb-label">Verdict</div><div class="vb-value red">CONDITIONAL NO-GO</div><div class="vb-sub">Blocking: Backfill Transit Score, Crime Score, Location Score (Tier 1)</div></div>
+    <div class="verdict-box"><div class="vb-label">Thesis</div><div class="vb-value gold">Pending Location Data</div><div class="vb-sub">HYPOTHESIS — Tier 1 variables incomplete</div></div>
+  </div>
+
+  <!-- Investment Perspective -->
+  <div class="section-tag">Investment Perspective</div>
+  <div class="narrative">The Jeff on 10th is a 2022-vintage opportunity with a total property score of 31, but moving forward is blocked by missing critical location data. The strongest positive signal is the high local demand, reflected in a Heatmap Score of 189.0 (+4 rubric). The most significant concern is the presence of undesirable retail within 0.38 miles (−2 rubric), as well as a low population density of 10,599 persons/sq mi (−2 rubric). The investment cannot achieve a full Go verdict until Transit Score, Crime Score, and Location Score are acquired.</div>
+
+  <!-- Top Reasons -->
+  <div class="g2">
+    <div>
+      <div class="section-tag">Top 3 Supporting Reasons</div>
+      <div class="reason"><div class="r-num support">1</div><div class="r-body"><div class="r-title">Strong Demand <span class="pill green">+4</span></div><div class="r-detail">Heatmap Score 189.0 — high baseline demand supports leasing velocity.</div></div></div>
+      <div class="reason"><div class="r-num support">2</div><div class="r-body"><div class="r-title">2022 Vintage <span class="pill green">+3</span></div><div class="r-detail">Tier 1 — no near-term capex, competitive vs older submarket stock.</div></div></div>
+      <div class="reason"><div class="r-num support">3</div><div class="r-body"><div class="r-title">Median Income $78,780 <span class="pill green">+3</span></div><div class="r-detail">Supportive income profile at census-tract level.</div></div></div>
+    </div>
+    <div>
+      <div class="section-tag">Top 3 Risk Reasons</div>
+      <div class="reason"><div class="r-num risk">1</div><div class="r-body"><div class="r-title">Undesirable Retail <span class="pill red">−2</span></div><div class="r-detail">0.38 miles — weakens walkability and lifestyle appeal.</div></div></div>
+      <div class="reason"><div class="r-num risk">2</div><div class="r-body"><div class="r-title">Low Pop. Density <span class="pill red">−2</span></div><div class="r-detail">10,599 p/sq mi — may constrain renter pool depth.</div></div></div>
+      <div class="reason"><div class="r-num risk">3</div><div class="r-body"><div class="r-title">Incomplete Tier 1 Data <span class="pill red">MISSING</span></div><div class="r-detail">Transit, Crime, Location Scores absent — blocks full Go.</div></div></div>
+    </div>
+  </div>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 1</div></div>
+</div>
+
+<!-- ═══════════ PAGE 2 ═══════════ -->
+<div class="page">
+  <div class="top-bar"><div class="brand">Oakdale AI</div><div class="meta">The Jeff on 10th · Property Intelligence Report</div></div>
+  <div class="page-label">Page 2 · Score Dashboard & Property Evidence</div>
+
+  <!-- Score Dashboard -->
+  <div class="card-row c4" style="margin-bottom:6px;">
+    <div class="card" style="border-color:var(--gold-dim); text-align:center;"><div class="card-label">Oakdale Score</div><div class="card-value gold" style="font-size:32px;">31</div><div class="card-sub">~75% complete (5 missing)</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Building Attributes</div><div class="card-value green">+5</div><div class="card-sub">Missing: Market Scale</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Location & Walkability</div><div class="card-value green">+10</div><div class="card-sub">Missing: Transit Score</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Demographics & Demand</div><div class="card-value green">+8</div><div class="card-sub">Data complete</div></div>
+  </div>
+  <div class="card-row c2" style="margin-bottom:16px;">
+    <div class="card" style="text-align:center;"><div class="card-label">Sound Score</div><div class="card-value green">+3</div><div class="card-sub">Raw: 78 (low-noise suburban)</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Operational Sentiment</div><div class="card-value" style="color:var(--slate);">N/A</div><div class="card-sub">Data absent from payload</div></div>
+  </div>
+
+  <!-- Positive Score Drivers -->
+  <div class="section-tag">Positive Score Drivers</div>
+  <table>
+    <tr><th>Variable</th><th>Raw Value</th><th>Rubric</th></tr>
+    <tr><td>Heatmap Score</td><td>189.0</td><td><span class="pill green">+4</span></td></tr>
+    <tr><td>Property Vintage</td><td>2022</td><td><span class="pill green">+3</span></td></tr>
+    <tr><td>Median Income</td><td>$78,780</td><td><span class="pill green">+3</span></td></tr>
+    <tr><td>Modified Heatmap</td><td>145.0</td><td><span class="pill green">+3</span></td></tr>
+    <tr><td>Sound Score</td><td>78</td><td><span class="pill green">+3</span></td></tr>
+    <tr><td>Dist. Starbucks</td><td>0.33 mi</td><td><span class="pill green">+3</span></td></tr>
+    <tr><td>Walk Score</td><td>33</td><td><span class="pill green">+2</span></td></tr>
+    <tr><td>Unit Size</td><td>190 units</td><td><span class="pill green">+2</span></td></tr>
+    <tr><td>Deal Size</td><td>$238,800/unit</td><td><span class="pill green">+2</span></td></tr>
+    <tr><td>Nat. Grocer</td><td>0.18 mi</td><td><span class="pill green">+2</span></td></tr>
+    <tr><td>Nat. Cluster</td><td>0.25 mi</td><td><span class="pill green">+2</span></td></tr>
+    <tr><td>Justice Map Surr.</td><td>68,087</td><td><span class="pill green">+2</span></td></tr>
+  </table>
+
+  <!-- Structural Constraints -->
+  <div class="section-tag">Structural Constraints</div>
+  <table>
+    <tr><th>Variable</th><th>Raw Value</th><th>Rubric</th></tr>
+    <tr><td>Undesirable Retail</td><td>0.38 mi</td><td><span class="pill red">−2</span></td></tr>
+    <tr><td>Population Density</td><td>10,599 p/sq mi</td><td><span class="pill red">−2</span></td></tr>
+    <tr><td>Apartment Size (1BR)</td><td>664–714 sq ft</td><td><span class="pill red">−1</span></td></tr>
+  </table>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 2</div></div>
+</div>
+
+<!-- ═══════════ PAGE 3 ═══════════ -->
+<div class="page">
+  <div class="top-bar"><div class="brand">Oakdale AI</div><div class="meta">The Jeff on 10th · Property Intelligence Report</div></div>
+  <div class="page-label">Page 3 · Property Product & Amenity Overview</div>
+
+  <div class="g2">
+    <div>
+      <div class="section-tag">Asset Product Profile</div>
+      <table>
+        <tr><th>Attribute</th><th>Value</th></tr>
+        <tr><td>Year Built</td><td><strong>2022</strong></td></tr>
+        <tr><td>Total Units</td><td><strong>190</strong></td></tr>
+        <tr><td>Unit Mix</td><td>1x1 (664–714 sf), 2x2 (1,138 sf)</td></tr>
+        <tr><td>Asking Price/Unit</td><td>$238,800</td></tr>
+        <tr><td>Implied Total Price</td><td>$45,372,000 <span class="pill gold">derived</span></td></tr>
+        <tr><td>Ceiling Height</td><td>Unconfirmed (likely ≤8 ft)</td></tr>
+        <tr><td>Apartment Size</td><td>Medium <span class="pill slate">helper</span></td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="section-tag">Amenity Matrix</div>
+      <table>
+        <tr><th>Feature</th><th>Status</th><th>Confidence</th></tr>
+        <tr><td>Swimming Pool</td><td><span class="pill green">Yes</span></td><td>High</td></tr>
+        <tr><td>Fitness Center</td><td><span class="pill green">Yes</span></td><td>High</td></tr>
+        <tr><td>Washer/Dryer</td><td><span class="pill green">Yes</span></td><td>High</td></tr>
+        <tr><td>2nd Bath (2BR+)</td><td><span class="pill green">Yes</span></td><td>High</td></tr>
+        <tr><td>Patio</td><td><span class="pill gold">Yes</span></td><td>Low (scrape)</td></tr>
+        <tr><td>Balcony</td><td><span class="pill gold">Yes</span></td><td>Low (scrape)</td></tr>
+        <tr><td>Yard</td><td><span class="pill gold">Yes</span></td><td>Low (scrape)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Location -->
+  <div class="section-tag">Location, Access & Demand Context</div>
+  <div class="g2">
+    <div>
+      <table>
+        <tr><th colspan="3">Walkability & Transit</th></tr>
+        <tr><td>Walk Score</td><td>33</td><td><span class="pill green">+2</span></td></tr>
+        <tr><td>Transit Score</td><td style="color:var(--red);">MISSING</td><td><span class="pill red">Tier 1</span></td></tr>
+        <tr><td>Bike Score</td><td>27</td><td><span class="pill green">+1</span></td></tr>
+        <tr><td>Sound Score</td><td>78</td><td><span class="pill green">+3</span></td></tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr><th colspan="3">Retail Adjacency</th></tr>
+        <tr><td>Starbucks</td><td>0.33 mi</td><td><span class="pill green">+3</span></td></tr>
+        <tr><td>Nat. Cluster</td><td>0.25 mi</td><td><span class="pill green">+2</span></td></tr>
+        <tr><td>Nat. Grocer</td><td>0.18 mi</td><td><span class="pill green">+2</span></td></tr>
+        <tr><td>Undesirable</td><td>0.38 mi</td><td><span class="pill red">−2</span></td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="g2">
+    <div>
+      <table>
+        <tr><th colspan="3">Demographic Profile (Tract 50603)</th></tr>
+        <tr><td>Median Income</td><td>$78,780</td><td><span class="pill green">+3</span></td></tr>
+        <tr><td>Population</td><td>2,066</td><td>—</td></tr>
+        <tr><td>Pop. Density</td><td>10,599 p/sq mi</td><td><span class="pill red">−2</span></td></tr>
+        <tr><td>Heatmap Score</td><td>189.0</td><td><span class="pill green">+4</span></td></tr>
+        <tr><td>Mod. Heatmap</td><td>145.0</td><td><span class="pill green">+3</span></td></tr>
+        <tr><td>Justice Map Surr.</td><td>68,087</td><td><span class="pill green">+2</span></td></tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr><th colspan="2">School Quality</th></tr>
+        <tr><td>Composite Score</td><td>1.67 / 5.0 (rubric: 0)</td></tr>
+        <tr><td>W E Wilson Elem.</td><td>1.0 mi · Average</td></tr>
+        <tr><td>River Valley Mid.</td><td>1.4 mi · Average</td></tr>
+        <tr><td>Jeffersonville High</td><td>1.1 mi · Below Average</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-tag">Location Demand Read</div>
+  <div class="narrative">The Jeff on 10th sits in a mixed-signal location within Jeffersonville, IN. Median income of $78,780 and a Heatmap Score of 189.0 (+4) reflect strong local demand, while robust retail adjacency — a national grocer at 0.18 mi and Starbucks at 0.33 mi — supports day-to-day livability despite a car-dependent Walk Score of 33. However, the site is constrained by low population density (10,599 p/sq mi, −2) and undesirable retail at 0.38 mi (−2). Critically, Transit Score, Crime Score, and Location Score remain missing — these Tier 1 gaps prevent a definitive location assessment.</div>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 3</div></div>
+</div>
+
+<!-- ═══════════ PAGE 4 ═══════════ -->
+<div class="page">
+  <div class="top-bar"><div class="brand">Oakdale AI</div><div class="meta">The Jeff on 10th · Property Intelligence Report</div></div>
+  <div class="page-label">Page 4 · Resident Sentiment & Physical Condition</div>
+
+  <div class="section-tag">Sentiment Overview</div>
+  <div class="card-row c4">
+    <div class="card" style="text-align:center;"><div class="card-label">Operational Rating</div><div class="card-value" style="color:var(--slate);">N/A</div><div class="card-sub">out of 5.0</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Review Sentiment</div><div class="card-value" style="color:var(--slate);">N/A</div><div class="card-sub">Not available</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Review Corpus</div><div class="card-value" style="color:var(--slate);">N/A</div><div class="card-sub">reviews considered</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Analysis Date</div><div class="card-value" style="color:var(--slate);">N/A</div><div class="card-sub">corpus snapshot</div></div>
+  </div>
+
+  <div class="alert orange"><span class="alert-icon">ℹ</span> <span>No sentiment data is available for this property. Operating themes, review corpus, and operational ratings are absent from the current payload. This section requires data acquisition before evaluation.</span></div>
+
+  <div class="section-tag">Physical Condition & Product Read</div>
+  <div class="narrative">The Jeff on 10th was constructed in 2022, strongly indicating a physically current product requiring minimal near-term capital expenditure. The asset offers a comprehensive standard amenity package: swimming pool, fitness center, in-unit washer/dryers, and second bathrooms for 2BR+ units. The unit mix centers on functionally competitive medium-sized apartments (1BR: 664–714 sf; 2BR: 1,138 sf), though ceiling heights remain unconfirmed. Overall, the property presents a likely-current product posture pending routine physical verification.</div>
+
+  <!-- Mixed / Neutral -->
+  <div class="section-tag">Mixed Factors & Neutral Signals</div>
+  <table>
+    <tr><th>Variable</th><th>Raw Value</th><th>Rubric</th><th>Status</th></tr>
+    <tr><td>Bike Score</td><td>27</td><td><span class="pill green">+1</span></td><td>Positive but low impact</td></tr>
+    <tr><td>School Score</td><td>1.67</td><td><span class="pill slate">0</span></td><td>Neutral</td></tr>
+    <tr><td>Ceiling Height</td><td>Unknown</td><td><span class="pill slate">0</span></td><td>Unresolved</td></tr>
+    <tr><td>Market Scale</td><td style="color:var(--red);">MISSING</td><td>—</td><td><span class="pill orange">Tier 2 gap</span></td></tr>
+    <tr><td>Transit Score</td><td style="color:var(--red);">MISSING</td><td>—</td><td><span class="pill red">Tier 1 block</span></td></tr>
+    <tr><td>Crime Score</td><td style="color:var(--red);">MISSING</td><td>—</td><td><span class="pill red">Tier 1 block</span></td></tr>
+    <tr><td>Location Score</td><td style="color:var(--red);">MISSING</td><td>—</td><td><span class="pill red">Tier 1 block</span></td></tr>
+    <tr><td>Apartment Size</td><td>Medium</td><td><span class="pill red">−1</span></td><td><span class="pill slate">helper</span></td></tr>
+  </table>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 4</div></div>
+</div>
+
+<!-- ═══════════ PAGE 5 ═══════════ -->
+<div class="page">
+  <div class="top-bar"><div class="brand">Oakdale AI</div><div class="meta">The Jeff on 10th · Property Intelligence Report</div></div>
+  <div class="page-label">Page 5 · Risk Register & Decision Gates</div>
+
+  <!-- Deal-Breaker -->
+  <div class="section-tag">Deal-Breaker Flags</div>
+  <div class="flag-row" style="border-color:rgba(248,113,113,0.3);">
+    <div class="flag-header"><div class="flag-name">⚠ Missing Critical Data (Tier 1)</div><span class="pill red">BLOCKING</span></div>
+    <div class="flag-detail">Transit Score, Crime Score, and Location Score are missing. These Tier 1 fields must be acquired before the property can receive a full underwriting evaluation. Their absence results in a Conditional No-Go verdict.</div>
+  </div>
+
+  <!-- Notable Flags -->
+  <div class="section-tag">Notable Flags</div>
+  <div class="flag-row">
+    <div class="flag-header"><div class="flag-name">Undesirable Retail Proximity</div><span class="pill orange">Structural</span></div>
+    <div class="flag-detail">Located 0.38 miles away (rubric: −2). <strong>Open Question:</strong> Does this proximity materially limit tenant quality? <strong>→ Action:</strong> Inspect site map and assess direct visibility from property units.</div>
+  </div>
+  <div class="flag-row">
+    <div class="flag-header"><div class="flag-name">Shallow Tenant Pool</div><span class="pill orange">Demographic</span></div>
+    <div class="flag-detail">Population density is 10,599 p/sq mi (rubric: −2). <strong>Open Question:</strong> Will shallow local base limit leasing momentum? <strong>→ Action:</strong> Pull comparable property absorption velocities within 5-mile radius.</div>
+  </div>
+
+  <!-- Monitor Flags -->
+  <div class="section-tag">Monitor Flags</div>
+  <div class="flag-row" style="border-color:var(--border);">
+    <div class="flag-header"><div class="flag-name">Missing Market Scale</div><span class="pill slate">Tier 2</span></div>
+    <div class="flag-detail">No market scale data available. Affects submarket liquidity assessment but is not verdict-blocking.</div>
+  </div>
+  <div class="flag-row" style="border-color:var(--border);">
+    <div class="flag-header"><div class="flag-name">Neutral School Rating</div><span class="pill slate">Tier 3</span></div>
+    <div class="flag-detail">Composite 1.67/5.0 (rubric: 0). Below-average high school rating may limit family-renter retention.</div>
+  </div>
+
+  <!-- Contradictions -->
+  <div class="section-tag">Signal Contradictions</div>
+  <div class="flag-row" style="border-left:3px solid var(--gold);">
+    <div class="flag-header"><div class="flag-name">Heatmap (189) vs. Low Density (10,599)</div><span class="pill gold">Conflict</span></div>
+    <div class="flag-detail">A Heatmap score of 189 typically correlates with dense urban locations, yet population density is low. This suggests concentrated, high-velocity demand from a thin population base — unusual and worth verifying the heatmap sourcing methodology.</div>
+  </div>
+  <div class="flag-row" style="border-left:3px solid var(--gold);">
+    <div class="flag-header"><div class="flag-name">Composite Score (31) on Incomplete Tier 1</div><span class="pill gold">Conflict</span></div>
+    <div class="flag-detail">Score of 31 is built on 3 missing Tier 1 variables. True composite could range 25–45 depending on those inputs. Treat 31 as directional only — do not use for pipeline ranking against complete-data properties.</div>
+  </div>
+
+  <!-- Decision Gate Checklist -->
+  <div class="section-tag">Decision Gate Checklist</div>
+  <div class="g2">
+    <div>
+      <div style="font-size:9px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">Must Have Before Underwriting</div>
+      <ul class="checklist must">
+        <li>Acquire Transit Score from Walk Score API</li>
+        <li>Acquire Crime Score from data vendor</li>
+        <li>Acquire Location Score from internal model</li>
+        <li>Validate physical condition (ceiling height)</li>
+      </ul>
+    </div>
+    <div>
+      <div style="font-size:9px; font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">Should Have / Can Monitor</div>
+      <ul class="checklist should">
+        <li>Pull Market Scale data for submarket liquidity</li>
+        <li>Inspect undesirable retail visibility from site</li>
+        <li>Pull comparable absorption velocities</li>
+      </ul>
+      <ul class="checklist monitor" style="margin-top:8px;">
+        <li>Track school quality trends for family retention</li>
+        <li>Monitor local supply pipeline for new competition</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 5</div></div>
+</div>
+
+<!-- ═══════════ PAGE 6 ═══════════ -->
+<div class="page">
+  <div class="top-bar"><div class="brand">Oakdale AI</div><div class="meta">The Jeff on 10th · Property Intelligence Report</div></div>
+  <div class="page-label">Page 6 · Investment Thesis & Go-Forward Logic</div>
+
+  <div class="section-tag">Thesis Classification</div>
+  <div class="verdict-row">
+    <div class="verdict-box"><div class="vb-label">Investment Thesis</div><div class="vb-value gold">Core-Plus / Stabilized Hold</div><div class="vb-sub">HYPOTHESIS — Tier 1 variables incomplete</div></div>
+    <div class="verdict-box"><div class="vb-label">Primary Driver</div><div class="vb-value" style="font-size:18px; color:var(--white);">Structural</div><div class="vb-sub">2022 vintage, no capex narrative, cash-yield stability focus</div></div>
+  </div>
+
+  <div class="section-tag">Supporting Rationale</div>
+  <div class="narrative">The 2022 vintage (Tier 1, rubric: +3) paired with a comprehensive amenity package positions this asset as physically current — the defining characteristic of a Core-Plus / Stabilized Hold rather than a value-creation story. No systemic capex signals are present, and structural constraints (population density −2, undesirable retail −2) constrain the long-term rent-growth ceiling, making the structural investment driver cash-yield stability rather than rent upside. Without sentiment data, the thesis rests entirely on structural positioning pending Tier 1 backfill.</div>
+
+  <div class="section-tag">Primary Underwriting Assumption</div>
+  <div class="card" style="border-left:3px solid var(--gold); margin-bottom:16px;">
+    <div class="card-label">Key Assumption</div>
+    <div style="font-size:12px; font-weight:700; color:var(--white); margin-bottom:6px;">In-place occupancy and current rent roll as baseline</div>
+    <div style="font-size:10px; color:var(--slate); line-height:1.6;">The thesis holds if current occupancy and in-place rents are sustained through stabilized operations. Underwriting must confirm: (1) current occupancy rate, (2) in-place rents, (3) rent-to-market spread, and (4) renewal rate trajectory. These inputs are not yet available and must be obtained from the seller.</div>
+  </div>
+
+  <div class="section-tag">Alternative Archetypes Ruled Out</div>
+  <table>
+    <tr><th>Archetype</th><th>Ruling</th><th>Reason</th></tr>
+    <tr><td>Rent-to-Market</td><td><span class="pill red">Ruled Out</span></td><td>Structural constraints (density −2, retail −2, Walk Score 33) do not support a rent premium thesis.</td></tr>
+    <tr><td>Value-Add Capex</td><td><span class="pill red">Ruled Out</span></td><td>2022 vintage eliminates capex gap narrative. No renovation needed for a 4-year-old asset.</td></tr>
+    <tr><td>Operational Turnaround</td><td><span class="pill red">Ruled Out</span></td><td>No evidence of operational distress. Asset appears well-managed (sentiment data absent but no negative structural signals).</td></tr>
+  </table>
+
+  <div class="section-tag">Thesis Confidence</div>
+  <div class="alert orange"><span class="alert-icon">◉</span> <strong>Confidence: HYPOTHESIS</strong> — Three Tier 1 variables (Transit Score, Crime Score, Location Score) are missing. The current thesis is a directional working view only. True composite score could range 25–45. Thesis cannot be promoted to Low/Medium confidence until all Tier 1 inputs are backfilled.</div>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 6</div></div>
+</div>
+
+<!-- ═══════════ PAGE 7 ═══════════ -->
+<div class="page">
+  <div class="top-bar"><div class="brand">Oakdale AI</div><div class="meta">The Jeff on 10th · Property Intelligence Report</div></div>
+  <div class="page-label">Page 7 · Data Quality & Variable Log</div>
+
+  <div class="section-tag">Data Reliability Summary</div>
+  <div class="card-row c4">
+    <div class="card" style="text-align:center;"><div class="card-label">Score Completeness</div><div class="card-value gold">~75%</div><div class="card-sub">5 variables missing</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Missing Tier 1</div><div class="card-value red">3</div><div class="card-sub">Transit · Crime · Location</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Missing Tier 2</div><div class="card-value orange">1</div><div class="card-sub">Market Scale</div></div>
+    <div class="card" style="text-align:center;"><div class="card-label">Data Reliability</div><div class="card-value" style="color:var(--orange);">Low</div><div class="card-sub">Tier 1 gaps present</div></div>
+  </div>
+
+  <div class="section-tag">Core Variable Log</div>
+  <table style="font-size:9px;">
+    <tr><th>Variable</th><th>Tier</th><th>Raw Value</th><th>Rubric</th><th>Notes</th></tr>
+    <tr><td>Vintage</td><td>1</td><td>2022</td><td><span class="pill green">+3</span></td><td>Present. 2020s band.</td></tr>
+    <tr><td>Unit Count</td><td>2</td><td>190</td><td><span class="pill green">+2</span></td><td>150–199 band.</td></tr>
+    <tr><td>Deal Size</td><td>2</td><td>$238,800/unit</td><td><span class="pill green">+2</span></td><td>~$45.4M total.</td></tr>
+    <tr><td>Market Scale</td><td>2</td><td style="color:var(--red);">MISSING</td><td>—</td><td>⚠ Missing Tier 2</td></tr>
+    <tr><td>Ceiling Height</td><td>3</td><td>Unknown</td><td><span class="pill slate">0</span></td><td>Scored 0 — under 9 ft assumed.</td></tr>
+    <tr><td>Swimming Pool</td><td>3</td><td>Yes</td><td><span class="pill green">+1</span></td><td>Present.</td></tr>
+    <tr><td>Fitness Center</td><td>3</td><td>Yes</td><td><span class="pill green">+1</span></td><td>Present.</td></tr>
+    <tr><td>2nd Bath (2BR+)</td><td>3</td><td>Yes</td><td><span class="pill green">+1</span></td><td>Present.</td></tr>
+    <tr><td>Washer/Dryer</td><td>3</td><td>Yes</td><td><span class="pill green">+1</span></td><td>Present.</td></tr>
+    <tr><td>Apartment Size</td><td>2</td><td>664–714 sf</td><td><span class="pill red">−1</span></td><td>601–699 band.</td></tr>
+    <tr><td>Walk Score</td><td>2</td><td>33</td><td><span class="pill green">+2</span></td><td>20–39 band.</td></tr>
+    <tr><td>Transit Score</td><td>1</td><td style="color:var(--red);">MISSING</td><td>—</td><td>⚠ Missing Tier 1. Blocks Go.</td></tr>
+    <tr><td>Bike Score</td><td>3</td><td>27</td><td><span class="pill green">+1</span></td><td>Max TBD.</td></tr>
+    <tr><td>Sound Score</td><td>2</td><td>78</td><td><span class="pill green">+3</span></td><td>60–100 band.</td></tr>
+    <tr><td>School Score</td><td>2</td><td>1.67</td><td><span class="pill slate">0</span></td><td>1.0–1.99 band.</td></tr>
+    <tr><td>Dist. Starbucks</td><td>3</td><td>0.33 mi</td><td><span class="pill green">+3</span></td><td>&lt;1 mile band.</td></tr>
+    <tr><td>Undesirable Retail</td><td>2</td><td>0.38 mi</td><td><span class="pill red">−2</span></td><td>Highest-penalty band.</td></tr>
+    <tr><td>Nat. Cluster</td><td>3</td><td>0.25 mi</td><td><span class="pill green">+2</span></td><td>Present in range.</td></tr>
+    <tr><td>Nat. Grocer</td><td>3</td><td>0.18 mi</td><td><span class="pill green">+2</span></td><td>Present in range.</td></tr>
+    <tr><td>Median Income</td><td>1</td><td>$78,780</td><td><span class="pill green">+3</span></td><td>$75K–$100K range.</td></tr>
+    <tr><td>Heatmap</td><td>2</td><td>189</td><td><span class="pill green">+4</span></td><td>Top band.</td></tr>
+    <tr><td>Mod. Heatmap</td><td>2</td><td>145</td><td><span class="pill green">+3</span></td><td>Moderate-high band.</td></tr>
+    <tr><td>Crime Score</td><td>1</td><td style="color:var(--red);">MISSING</td><td>—</td><td>⚠ Missing Tier 1. Blocks Go.</td></tr>
+    <tr><td>Location Score</td><td>1</td><td style="color:var(--red);">MISSING</td><td>—</td><td>⚠ Missing Tier 1. Blocks Go.</td></tr>
+    <tr><td>Pop. Density</td><td>2</td><td>10,599</td><td><span class="pill red">−2</span></td><td>Max structural penalty.</td></tr>
+    <tr><td>Justice Map Surr.</td><td>2</td><td>68,087</td><td><span class="pill green">+2</span></td><td>Surrounding income index.</td></tr>
+  </table>
+
+  <div class="section-tag">Traceability</div>
+  <div class="narrative" style="font-size:9px;">This report was generated from listing data pulled March 8, 2026 (Broker: Northmarq). Email trace: <span style="word-break:break-all; color:var(--text-dim);">LV4PR13MB7444…@namprd13.prod.outlook.com</span>. Relaxed fields: Market Scale. Sentiment data was not available for this property at report generation time. Rebuild limitation: missing Tier 1 fields prevent complete scoring — the composite of 31 is directional only.</div>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 7</div></div>
+</div>
+
+<!-- ═══════════ PAGE 8 ═══════════ -->
+<div class="page">
+  <div class="top-bar"><div class="brand">Oakdale AI</div><div class="meta">The Jeff on 10th · Property Intelligence Report</div></div>
+  <div class="page-label">Page 8 · Underwriting Readiness & Action Plan</div>
+
+  <div class="section-tag">Go-Forward Readiness</div>
+  <div class="card" style="border-left:3px solid var(--orange); margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div><div class="card-label">Readiness Status</div><div style="font-size:18px; font-weight:800; color:var(--orange);">CONDITIONALLY READY</div></div>
+      <span class="pill orange" style="font-size:10px;">3 blocking dependencies</span>
+    </div>
+    <div style="margin-top:8px; font-size:10px; color:var(--slate); line-height:1.6;">The property shows structural merit (2022 vintage, strong demand signals) but cannot enter full underwriting until three Tier 1 inputs — Transit Score, Crime Score, and Location Score — are backfilled. Upon acquisition of these variables, the composite score may shift materially (est. range 25–45), which could alter both the verdict and the thesis classification.</div>
+  </div>
+
+  <div class="section-tag">Critical Data Requests</div>
+  <table>
+    <tr><th>Request</th><th>From</th><th>Why Needed</th></tr>
+    <tr><td>Transit Score backfill</td><td>Walk Score API / Internal data team</td><td>Tier 1 gap — blocks Go verdict</td></tr>
+    <tr><td>Crime Score pull</td><td>Third-party data vendor</td><td>Tier 1 gap — most critical missing variable</td></tr>
+    <tr><td>Location Score calculation</td><td>Internal data team</td><td>Tier 1 gap — may materially shift thesis</td></tr>
+    <tr><td>Market Scale data</td><td>Internal data team</td><td>Tier 2 gap — submarket liquidity context</td></tr>
+    <tr><td>Rent roll & occupancy snapshot</td><td>Broker / Seller</td><td>Validates Core-Plus thesis assumption</td></tr>
+  </table>
+
+  <div class="section-tag">Kill Criteria & Strengthening Conditions</div>
+  <div class="g2">
+    <div>
+      <div style="font-size:9px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">Kill Conditions</div>
+      <ul class="checklist must">
+        <li>Crime Score returns in highest-penalty band</li>
+        <li>Transit Score below 10 confirms isolated micro-location</li>
+        <li>Location Score triggers structural No-Go threshold</li>
+        <li>Physical inspection reveals undisclosed deferred maintenance</li>
+      </ul>
+    </div>
+    <div>
+      <div style="font-size:9px; font-weight:700; color:var(--green); text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">Strengthening Conditions</div>
+      <ul class="checklist monitor">
+        <li>Crime Score returns neutral or positive — lifts confidence</li>
+        <li>Transit Score ≥ 25 and Location Score ≥ 0 — enables Go</li>
+        <li>Occupancy ≥ 93% with stable renewal trajectory</li>
+        <li>Rent roll confirms no soft concessions</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-tag">Recommended Next 7-Day Plan</div>
+  <div class="g2" style="gap:10px;">
+    <div class="card" style="border-top:2px solid var(--red);">
+      <div style="font-size:9px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Days 1–2</div>
+      <ul class="checklist must" style="font-size:9.5px;">
+        <li>Submit Transit Score API request</li>
+        <li>Initiate Crime Score data vendor pull</li>
+        <li>Request rent roll and occupancy from broker</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:2px solid var(--orange);">
+      <div style="font-size:9px; font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Days 3–5</div>
+      <ul class="checklist should" style="font-size:9.5px;">
+        <li>Generate Location Score from internal model</li>
+        <li>Pull comparable absorption data (5-mi radius)</li>
+        <li>Verify undesirable retail type and direct visibility</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="border-top:2px solid var(--green); margin-top:10px;">
+    <div style="font-size:9px; font-weight:700; color:var(--green); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Days 6–7</div>
+    <ul class="checklist monitor" style="font-size:9.5px;">
+      <li>Re-score composite with backfilled Tier 1 data</li>
+      <li>Update verdict and thesis classification</li>
+      <li>Prepare underwriting handoff package if Go conditions are met</li>
+    </ul>
+  </div>
+
+  <div class="footer"><div>Oakdale AI · Internal Use Only · Confidential</div><div>Page 8</div></div>
+</div>
+
+</body>
+</html>

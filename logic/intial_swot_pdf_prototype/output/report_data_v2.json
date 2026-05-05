@@ -1,0 +1,1060 @@
+{
+  "page_1": {
+    "deal_header": {
+      "property_name": "The Jeff on 10th",
+      "full_address": "3500 Ellingsworth Dairy Dr, Jeffersonville, IN 47130",
+      "submarket_label": "Jeffersonville, IN",
+      "broker": "Northmarq",
+      "total_units": 190,
+      "year_built": 2022.0,
+      "asking_price_per_unit": "$238,800",
+      "implied_total_price": "$45,372,000",
+      "report_date": "April 09, 2026",
+      "data_sources_summary": "Listing data (2026-03-08), Census: Clark County"
+    },
+    "decision_snapshot": {
+      "verdict_label": "Conditional No-Go",
+      "thesis_label": "Core-Plus / Stabilized Hold",
+      "confidence_label": "Hypothesis",
+      "blocking_conditions": [
+        "Transit Score is missing (Tier 1)",
+        "Crime Score is missing (Tier 1)",
+        "Location Score is missing (Tier 1)"
+      ],
+      "must_be_true_to_proceed": [
+        "Transit Score must be acquired and scored",
+        "Crime Score must be acquired and scored",
+        "Location Score must be acquired and scored"
+      ]
+    },
+    "investment_perspective": {
+      "paragraph": "The Jeff on 10th is a 2022.0-vintage, 190-unit asset in Jeffersonville, IN carrying a raw Oakdale rubric score of 31, with vintage scoring +3.0 (Tier 1) \u2014 the single most favorable structural variable in the model, positioning the asset competitively against older submarket stock with no near-term capex risk. The primary demand signal is a Heatmap Score of 189.0 (rubric: +4.0), supported by a median household income of $78,780 (rubric: +3). The primary structural constraints are population density at census tract level (10,600 persons per square mile, rubric: -2.0, Tier 2) and undesirable retail proximity (0.38 miles, rubric: -2). This is a Conditional No-Go: 3 Tier 1 variables (Transit Score, Crime Score, Location Score) are absent, blocking a final verdict until those inputs are backfilled."
+    },
+    "top_reasons_and_risks": {
+      "top_supporting_reasons": [
+        {
+          "title": "Vintage",
+          "fact_line": "2022.0 (rubric: +3.0)",
+          "why_it_matters": "Vintage screens favorably versus surrounding stock and supports product relevance. 2022 construction eliminates near-term capex risk.",
+          "rubric_score": 3.0,
+          "raw_value": 2022.0,
+          "tier": 1
+        },
+        {
+          "title": "Median Income",
+          "fact_line": "78780 (rubric: +3)",
+          "why_it_matters": "Median household income of $78,780 provides a supportive demand backdrop.",
+          "rubric_score": 3,
+          "raw_value": 78780,
+          "tier": 1
+        },
+        {
+          "title": "Heatmap Score",
+          "fact_line": "189.0 (rubric: +4.0)",
+          "why_it_matters": "Heatmap performance indicates relative leasing support against an otherwise mixed market profile.",
+          "rubric_score": 4.0,
+          "raw_value": 189.0,
+          "tier": 2
+        }
+      ],
+      "top_risk_reasons": [
+        {
+          "title": "Undesirable Retail",
+          "fact_line": "0.38 (rubric: -2)",
+          "why_it_matters": "Surrounding retail adjacency weakens everyday walkability and lifestyle appeal. Fixed micro-location characteristic.",
+          "rubric_score": -2,
+          "raw_value": 0.38,
+          "tier": 2
+        },
+        {
+          "title": "Population Density",
+          "fact_line": "10599.5 (rubric: -2.0)",
+          "why_it_matters": "Lower density may constrain renter pool depth, absorption resilience, and exit liquidity.",
+          "rubric_score": -2.0,
+          "raw_value": 10599.5,
+          "tier": 2
+        },
+        {
+          "title": "Apartment Size",
+          "fact_line": "Medium (rubric: -1.0)",
+          "why_it_matters": "Smaller unit sizes at the 1BR level (664\u2013714 sq ft) fall in the 601\u2013699 sq ft rubric band.",
+          "rubric_score": -1.0,
+          "raw_value": "Medium",
+          "tier": 2
+        }
+      ]
+    },
+    "score_dashboard": {
+      "composite_score": 31,
+      "dimension_scores": {
+        "building_attributes": 10.0,
+        "location_walkability": 11.0,
+        "demographics_demand": 10.0
+      },
+      "sentiment_panel": {
+        "operational_rating": "Not available",
+        "review_corpus_count": "Not available",
+        "sentiment_analysis_date": "Not available"
+      },
+      "missing_data_summary": {
+        "missing_score_fields": [
+          "Market Scale",
+          "Apartment Size",
+          "Transit Score",
+          "Crime Score",
+          "Location Score"
+        ],
+        "score_completeness_percent": 81
+      }
+    }
+  },
+  "page_2": {
+    "property_product_overview": {
+      "year_built": 2022.0,
+      "total_units": 190,
+      "asking_price_per_unit": "$238,800",
+      "implied_total_price": "$45,372,000",
+      "unit_mix_raw": "1 Bed 1 Bath - 664-714 sq ft; 2 Bed 2 Bath - 1,138 sq ft",
+      "apartment_size_helper_label": "Medium",
+      "ceiling_height_raw": "Not available - likely 8 ft or under",
+      "parsed_1br_sqft_basis": "664\u2013714 sq ft (parsed from Unit Types & Square Footage)"
+    },
+    "amenity_matrix": {
+      "high_confidence_features": [
+        {
+          "feature": "Swimming Pool",
+          "status": "Yes"
+        },
+        {
+          "feature": "Fitness Center",
+          "status": "Yes"
+        },
+        {
+          "feature": "2nd Bath (2+ BR)",
+          "status": "Yes"
+        },
+        {
+          "feature": "Washer/Dryer",
+          "status": "Yes"
+        }
+      ],
+      "low_confidence_features": [
+        {
+          "feature": "Patio",
+          "status": "Yes",
+          "confidence_note": "Scrape-dependent; may be unreliable"
+        },
+        {
+          "feature": "Balcony",
+          "status": "Yes",
+          "confidence_note": "Scrape-dependent; may be unreliable"
+        },
+        {
+          "feature": "Yard",
+          "status": "Yes",
+          "confidence_note": "Scrape-dependent; may be unreliable"
+        }
+      ]
+    },
+    "positive_score_drivers": {
+      "cards": [
+        {
+          "variable_name": "Vintage",
+          "raw_value": 2022.0,
+          "rubric_score": 3.0,
+          "fact_line": "Vintage screens favorably versus surrounding stock and supports product relevance. 2022 construction eliminates near-term capex risk."
+        },
+        {
+          "variable_name": "Median Income",
+          "raw_value": 78780,
+          "rubric_score": 3,
+          "fact_line": "Median household income of $78,780 provides a supportive demand backdrop."
+        },
+        {
+          "variable_name": "Heatmap Score",
+          "raw_value": 189.0,
+          "rubric_score": 4.0,
+          "fact_line": "Heatmap performance indicates relative leasing support against an otherwise mixed market profile."
+        },
+        {
+          "variable_name": "Sound Score",
+          "raw_value": 78,
+          "rubric_score": 3,
+          "fact_line": "Environmental sound conditions appear supportive. Score of 78 falls in the 60\u2013100 band, indicating a low-noise suburban setting."
+        },
+        {
+          "variable_name": "Walk Score",
+          "raw_value": 33,
+          "rubric_score": 2,
+          "fact_line": "Car-dependent location but national retail anchors partially offset."
+        },
+        {
+          "variable_name": "Unit Count",
+          "raw_value": 190,
+          "rubric_score": 2,
+          "fact_line": "190 units in the 150\u2013199 band."
+        },
+        {
+          "variable_name": "Deal Size",
+          "raw_value": "$238,800",
+          "rubric_score": 2.0,
+          "fact_line": "~$45.4M implied total in the $30M\u2013$49.9M band."
+        },
+        {
+          "variable_name": "Dist. Starbucks",
+          "raw_value": 0.33,
+          "rubric_score": 3,
+          "fact_line": "Daily-needs convenience appears supportive for renter livability. Starbucks at 0.33 miles places the asset in the highest proximity band."
+        },
+        {
+          "variable_name": "Nat. Grocer",
+          "raw_value": 0.18,
+          "rubric_score": 2,
+          "fact_line": "National grocery anchor at 0.18 miles supports a livability narrative despite low Walk Score."
+        },
+        {
+          "variable_name": "Nat. Cluster",
+          "raw_value": 0.25,
+          "rubric_score": 2,
+          "fact_line": "National retail cluster at 0.25 miles."
+        }
+      ]
+    },
+    "structural_constraints": {
+      "cards": [
+        {
+          "variable_name": "Undesirable Retail",
+          "raw_value": 0.38,
+          "rubric_score": -2,
+          "fact_line": "Surrounding retail adjacency weakens everyday walkability and lifestyle appeal. Fixed micro-location characteristic."
+        },
+        {
+          "variable_name": "Population Density",
+          "raw_value": 10599.5,
+          "rubric_score": -2.0,
+          "fact_line": "Lower density may constrain renter pool depth, absorption resilience, and exit liquidity."
+        },
+        {
+          "variable_name": "Apartment Size",
+          "raw_value": "Medium",
+          "rubric_score": -1.0,
+          "fact_line": "Smaller unit sizes at the 1BR level (664\u2013714 sq ft) fall in the 601\u2013699 sq ft rubric band."
+        }
+      ]
+    },
+    "mixed_factors_and_neutral_signals": {
+      "mixed_factors": [
+        {
+          "variable_name": "School Score",
+          "raw_value": 1.67,
+          "rubric_score": 0.0,
+          "status": "neutral",
+          "note": "Scored 0 \u2014 within neutral band."
+        },
+        {
+          "variable_name": "Ceiling Height",
+          "raw_value": "Not available - likely 8 ft or under",
+          "rubric_score": 0,
+          "status": "neutral",
+          "note": "Scored 0 \u2014 within neutral band."
+        },
+        {
+          "variable_name": "Bike Score",
+          "raw_value": 27,
+          "rubric_score": 1,
+          "status": "pending_rubric",
+          "note": "Raw field exists; rubric not finalized."
+        },
+        {
+          "variable_name": "Transit Score",
+          "raw_value": null,
+          "rubric_score": null,
+          "status": "missing",
+          "note": "Missing Tier 1 \u2014 blocks Go verdict."
+        },
+        {
+          "variable_name": "Crime Score",
+          "raw_value": null,
+          "rubric_score": null,
+          "status": "missing",
+          "note": "Missing Tier 1 \u2014 blocks Go verdict."
+        },
+        {
+          "variable_name": "Location Score",
+          "raw_value": null,
+          "rubric_score": null,
+          "status": "missing",
+          "note": "Missing Tier 1 \u2014 blocks Go verdict."
+        },
+        {
+          "variable_name": "Market Scale",
+          "raw_value": null,
+          "rubric_score": null,
+          "status": "missing",
+          "note": "Missing Tier 2."
+        },
+        {
+          "variable_name": "Apartment Size",
+          "raw_value": null,
+          "rubric_score": null,
+          "status": "missing",
+          "note": "Missing Tier 2."
+        },
+        {
+          "variable_name": "Apartment Size",
+          "raw_value": "Medium",
+          "rubric_score": -1.0,
+          "status": "helper_field",
+          "note": "Helper label; scoring basis is 1BR sqft from Unit Types & Square Footage."
+        }
+      ]
+    },
+    "physical_condition_and_product_read": {
+      "paragraph": "The Jeff on 10th was constructed in 2022.0, strongly indicating a physically current product that likely requires minimal near-term capital expenditure. The asset offers a comprehensive standard amenity package \u2014 swimming pool (Yes), fitness center (Yes), in-unit washer/dryers (Yes), and second bathrooms for 2BR+ units (Yes). The unit mix centers on medium-sized apartments (1BR: 664\u2013714 sf; 2BR: 1,138 sf from '1 Bed 1 Bath - 664-714 sq ft; 2 Bed 2 Bath - 1,138 sq ft'), though ceiling height remains unconfirmed ('Not available - likely 8 ft or under'). No sentiment data is available to corroborate or challenge this structural read.",
+      "capex_signal_label": "Likely current but verify"
+    }
+  },
+  "page_3": {
+    "geographic_context": {
+      "location_label": "Jeffersonville, IN 47130",
+      "census_tract": 50603,
+      "county": "Clark County",
+      "state": "Indiana",
+      "fips_summary": {
+        "state_code": 18,
+        "county_code": 19,
+        "tract_code": 50603,
+        "block_code": 180190506033000
+      },
+      "location_missing_fields": [
+        "Transit Score",
+        "Crime Score",
+        "Location Score"
+      ]
+    },
+    "mobility_and_environment": {
+      "mobility_metrics": [
+        {
+          "metric": "Walk Score",
+          "raw_value": 33,
+          "rubric_score": 2,
+          "status_note": ""
+        },
+        {
+          "metric": "Transit Score",
+          "raw_value": "Not available",
+          "rubric_score": null,
+          "status_note": "MISSING \u2014 decision-critical"
+        },
+        {
+          "metric": "Bike Score",
+          "raw_value": 27,
+          "rubric_score": 1,
+          "status_note": ""
+        },
+        {
+          "metric": "Sound Score",
+          "raw_value": 78,
+          "rubric_score": 3,
+          "status_note": ""
+        }
+      ]
+    },
+    "retail_access_and_adjacency": {
+      "retail_metrics": [
+        {
+          "metric": "Dist. Starbucks",
+          "raw_value": 0.33,
+          "unit": "miles",
+          "rubric_score": 3,
+          "fact_line": "0.33 miles"
+        },
+        {
+          "metric": "Undesirable Retail",
+          "raw_value": 0.38,
+          "unit": "miles",
+          "rubric_score": -2,
+          "fact_line": "0.38 miles"
+        },
+        {
+          "metric": "Nat. Cluster",
+          "raw_value": 0.25,
+          "unit": "miles",
+          "rubric_score": 2,
+          "fact_line": "0.25 miles"
+        },
+        {
+          "metric": "Nat. Grocer",
+          "raw_value": 0.18,
+          "unit": "miles",
+          "rubric_score": 2,
+          "fact_line": "0.18 miles"
+        }
+      ]
+    },
+    "school_context": {
+      "school_summary": {
+        "composite_score": 1.67,
+        "rubric_score": 0.0
+      },
+      "schools": [
+        {
+          "school_name": "W E Wilson Elementary",
+          "level_codes": "p",
+          "rating_label": "Average",
+          "distance_miles": 1.0
+        },
+        {
+          "school_name": "River Valley Middle School",
+          "level_codes": "m",
+          "rating_label": "Average",
+          "distance_miles": 1.4
+        },
+        {
+          "school_name": "Jeffersonville High School",
+          "level_codes": "h",
+          "rating_label": "Below average",
+          "distance_miles": 1.1
+        }
+      ]
+    },
+    "demographic_demand_table": {
+      "table_rows": [
+        {
+          "metric": "Census Tract",
+          "raw_value": 50603,
+          "rubric_score": null,
+          "note": "Geography identifier"
+        },
+        {
+          "metric": "Justice Map Income Range",
+          "raw_value": "75,001 - 99,999",
+          "rubric_score": null,
+          "note": null
+        },
+        {
+          "metric": "Median Income",
+          "raw_value": "$78,780",
+          "rubric_score": 3,
+          "note": null
+        },
+        {
+          "metric": "Population",
+          "raw_value": 2066.0,
+          "rubric_score": null,
+          "note": null
+        },
+        {
+          "metric": "Population Density",
+          "raw_value": "10,599.5 p/sq mi",
+          "rubric_score": -2.0,
+          "note": null
+        },
+        {
+          "metric": "Justice Map Surrounding",
+          "raw_value": "$68,087",
+          "rubric_score": 2,
+          "note": "Surrounding area income index"
+        },
+        {
+          "metric": "Heatmap Score",
+          "raw_value": 189.0,
+          "rubric_score": 4.0,
+          "note": null
+        },
+        {
+          "metric": "Modified Heatmap Score",
+          "raw_value": 145.0,
+          "rubric_score": 3.0,
+          "note": null
+        }
+      ]
+    },
+    "location_demand_read": {
+      "paragraph": "The Jeff on 10th sits in a mixed-signal location within Jeffersonville, IN. Median income of $78,780 (rubric: +3) and a Heatmap Score of 189.0 (rubric: +4.0) reflect strong local demand, while robust retail adjacency \u2014 a national grocer at 0.18 miles (rubric: +2) and Starbucks at 0.33 miles (rubric: +3) \u2014 supports day-to-day livability despite a car-dependent Walk Score of 33 (rubric: +2). However, the site is constrained by low population density (10,600 p/sq mi, rubric: -2.0) and undesirable retail at 0.38 miles (rubric: -2). Critically, Transit Score, Crime Score, Location Score remain missing \u2014 these Tier 1 gaps prevent a definitive location assessment and must be resolved before underwriting.",
+      "location_support_label": "Mixed",
+      "data_gap_note": "Missing: Transit Score, Crime Score, Location Score"
+    }
+  },
+  "page_4": {
+    "sentiment_overview_cards": {
+      "cards": [
+        {
+          "card_name": "Operational Rating",
+          "value": "Not available",
+          "subtext": "out of 5.0"
+        },
+        {
+          "card_name": "Review Sentiment",
+          "value": "Not available",
+          "subtext": "Not available"
+        },
+        {
+          "card_name": "Review Corpus",
+          "value": "Not available",
+          "subtext": "reviews considered"
+        },
+        {
+          "card_name": "Analysis Date",
+          "value": "Not available",
+          "subtext": "corpus snapshot"
+        }
+      ]
+    },
+    "positive_themes": {
+      "themes": []
+    },
+    "negative_themes": {
+      "themes": []
+    },
+    "operating_health_by_category": {
+      "management_staff": {
+        "signal_label": "Evidence limited",
+        "paragraph": "No sentiment data is available. Management quality cannot be assessed."
+      },
+      "location_experience": {
+        "signal_label": "Evidence limited",
+        "paragraph": "No sentiment data is available. Location experience cannot be assessed from reviews."
+      },
+      "building_condition_maintenance": {
+        "signal_label": "Evidence limited",
+        "paragraph": "No sentiment data is available. Building condition signals cannot be assessed from reviews."
+      }
+    },
+    "notable_patterns_and_threshold_signals": {
+      "pattern_bullets": [
+        "No sentiment data available \u2014 all pattern detection requires data acquisition."
+      ]
+    },
+    "operating_health_read": {
+      "paragraph": "Current operating sentiment for The Jeff on 10th cannot be determined based on the available data. Metrics including operational rating, sentiment analysis date, and review corpus counts are entirely absent from the property payload. Consequently, there is no evidence to evaluate whether management stability or building condition generates significant operating patterns. This area remains unverified and requires data acquisition to perform adequate operational diligence.",
+      "operating_health_label": "Not available"
+    }
+  },
+  "page_5": {
+    "deal_breaker_flags": {
+      "deal_breaker_status": "Active deal-breaker flags present",
+      "flags": [
+        {
+          "flag_name": "Missing Critical Data: Transit Score, Crime Score, Location Score",
+          "basis_type": "missing_critical_data",
+          "evidence": "Tier 1 variables Transit Score, Crime Score, Location Score are absent from payload. Missing Score Fields: 'Market Scale, Apartment Size, Transit Score, Crime Score, Location Score'.",
+          "why_it_blocks": "Tier 1 variables are required for a complete screening assessment. Their absence prevents a full Go verdict.",
+          "resolution_path": "Acquire all missing Tier 1 inputs from respective data sources and re-score."
+        }
+      ]
+    },
+    "notable_flags": {
+      "flags": [
+        {
+          "flag_name": "Undesirable Retail Proximity",
+          "tier_or_category": "Tier 2",
+          "evidence": "Distance: 0.38 miles, rubric: -2. Fixed micro-location constraint.",
+          "open_question": "Does this proximity materially limit tenant quality or lease-up merchandising appeal?",
+          "next_step": "Inspect site map and assess direct visibility/noise/traffic impact from property units."
+        },
+        {
+          "flag_name": "Low Population Density",
+          "tier_or_category": "Tier 2",
+          "evidence": "Pop density: 10,600 p/sq mi, rubric: -2.0.",
+          "open_question": "Will shallow local tenant base limit leasing momentum or exit liquidity?",
+          "next_step": "Pull comparable property absorption velocities and verify stabilization history within 5-mile radius."
+        },
+        {
+          "flag_name": "1BR Size Constraint",
+          "tier_or_category": "Structural",
+          "evidence": "1BR at 664 sq ft scores -1.0 (601\u2013699 band). Structural cap on pricing power.",
+          "open_question": "How does this compare to competing 1BR inventory in the 3-mile radius?",
+          "next_step": "Pull competing 1BR unit sizes from CoStar or Apartments.com for 3-mile radius."
+        },
+        {
+          "flag_name": "Transit Score \u2014 Missing Tier 1",
+          "tier_or_category": "Tier 1",
+          "evidence": "Transit Score is absent from payload.",
+          "open_question": "What is the actual Transit Score for this location?",
+          "next_step": "Request Transit Score from data vendor or internal model."
+        },
+        {
+          "flag_name": "Crime Score \u2014 Missing Tier 1",
+          "tier_or_category": "Tier 1",
+          "evidence": "Crime Score is absent from payload.",
+          "open_question": "What is the actual Crime Score for this location?",
+          "next_step": "Request Crime Score from data vendor or internal model."
+        },
+        {
+          "flag_name": "Location Score \u2014 Missing Tier 1",
+          "tier_or_category": "Tier 1",
+          "evidence": "Location Score is absent from payload.",
+          "open_question": "What is the actual Location Score for this location?",
+          "next_step": "Request Location Score from data vendor or internal model."
+        }
+      ]
+    },
+    "monitor_flags": {
+      "flags": [
+        {
+          "flag_name": "School Score \u2014 Average to Below-Average",
+          "evidence": "Composite 1.67/5.0 (rubric: 0.0). Below-average high school. Not primary concern for likely renter profile.",
+          "why_monitor_only": "Not verdict-blocking; relevant primarily for family-renter retention."
+        },
+        {
+          "flag_name": "Market Scale \u2014 Missing Tier 2",
+          "evidence": "No market scale data available.",
+          "why_monitor_only": "Affects submarket liquidity assessment but does not block verdict."
+        }
+      ]
+    },
+    "signal_contradictions": {
+      "contradictions": [
+        {
+          "signal_a": "Heatmap Score: 189.0 (rubric: +4.0)",
+          "signal_b": "Population Density: 10,600 p/sq mi (rubric: -2.0)",
+          "conflict_implication": "High heatmap typically correlates with dense locations; low density here suggests concentrated, high-velocity local demand from a thin population base.",
+          "resolution_path": "Verify heatmap sourcing methodology and confirm whether demand is driven by local employment anchors rather than population mass."
+        },
+        {
+          "signal_a": "Composite score of 31 presented as screening basis",
+          "signal_b": "3 Tier 1 variables missing (Transit Score, Crime Score, Location Score)",
+          "conflict_implication": "A composite built on 3 missing Tier 1 variables is not analytically equivalent to a complete-data score. True composite could range 25\u201345 depending on those inputs.",
+          "resolution_path": "Treat score of 31 as a directional estimate. Do not use for pipeline ranking against properties with complete Tier 1 data until backfill is complete."
+        }
+      ]
+    },
+    "known_unknowns_and_data_gaps": {
+      "tier_1_missing": [
+        "Transit Score",
+        "Crime Score",
+        "Location Score"
+      ],
+      "tier_2_missing": [
+        "Market Scale",
+        "Apartment Size"
+      ],
+      "transformation_dependent": [
+        "Deal Size ($) \u2014 confirm if raw value is per-unit or total",
+        "Apartment Size \u2014 helper label vs actual 1BR sqft scoring basis"
+      ],
+      "rubric_reconciliation_needed": [
+        "Heatmap Score \u2014 raw values exceed supplied rubric table bands",
+        "Undesirable Retail \u2014 Phase7 penalty may differ from supplied rubric table"
+      ]
+    },
+    "decision_gate_checklist": {
+      "must_have_before_underwriting": [
+        "Acquire Transit Score",
+        "Acquire Crime Score",
+        "Acquire Location Score",
+        "Validate physical condition via ceiling height confirmation"
+      ],
+      "should_have_before_underwriting": [
+        "Pull Market Scale data for submarket liquidity",
+        "Inspect undesirable retail type and direct visibility from site",
+        "Pull comparable absorption velocities within 5-mile radius"
+      ],
+      "can_monitor_later": [
+        "Track school quality trends for family-renter retention",
+        "Monitor local supply pipeline for new competition"
+      ]
+    }
+  },
+  "page_6": {
+    "thesis_classification": {
+      "thesis_label": "Core-Plus / Stabilized Hold",
+      "thesis_hypothesis_suffix": "HYPOTHESIS",
+      "primary_driver_type": "Structural"
+    },
+    "supporting_rationale": {
+      "paragraph": "The 2022.0 vintage (Tier 1, rubric: +3.0) paired with a comprehensive amenity package positions this asset as physically current \u2014 the defining characteristic of a Core-Plus / Stabilized Hold rather than a value-creation story. Structural constraints (population density 10,600 p/sq mi, rubric: -2.0; undesirable retail 0.38 mi, rubric: -2) constrain the long-term rent-growth ceiling, making the structural investment driver cash-yield stability rather than rent upside. Without sentiment data, the thesis rests entirely on structural positioning pending Tier 1 backfill."
+    },
+    "primary_underwriting_assumption": {
+      "assumption_title": "In-place occupancy and current rent roll as baseline",
+      "assumption_statement": "The thesis holds if current occupancy and in-place rents are sustained through stabilized operations. Underwriting must confirm: (1) current occupancy rate, (2) in-place rents, (3) rent-to-market spread, and (4) renewal rate trajectory. These inputs are not available in the current data payload and must be obtained from the seller.",
+      "must_confirm_inputs": [
+        "Current occupancy rate",
+        "In-place rent roll",
+        "Rent-to-market spread",
+        "Renewal rate trajectory"
+      ]
+    },
+    "alternative_archetypes_ruled_out": {
+      "archetypes": [
+        {
+          "archetype_name": "Rent-to-Market",
+          "status": "Ruled Out",
+          "reason": "Structural constraints (density -2.0, retail -2, Walk Score 33) do not support a rent premium thesis. Location quality insufficient to justify modeling a meaningful market rent gap."
+        },
+        {
+          "archetype_name": "Value-Add Capex",
+          "status": "Ruled Out",
+          "reason": "2022.0 vintage eliminates the capex gap narrative. No renovation program required for a 4.0-year-old asset with full amenities."
+        },
+        {
+          "archetype_name": "Operational Turnaround",
+          "status": "Ruled Out",
+          "reason": "No evidence of operational distress in structural data. No sentiment data available to identify management issues."
+        }
+      ]
+    },
+    "thesis_confidence_and_dependency_note": {
+      "confidence_label": "Hypothesis",
+      "dependency_note": "Three Tier 1 variables (Transit Score, Crime Score, Location Score) are missing. The current thesis is a directional working view only. True composite score could range 25\u201345. Thesis cannot be promoted to Low/Medium confidence until all Tier 1 inputs are backfilled.",
+      "critical_dependencies": [
+        "Acquire Transit Score",
+        "Acquire Crime Score",
+        "Acquire Location Score",
+        "Obtain rent roll and occupancy data from seller"
+      ]
+    }
+  },
+  "page_7": {
+    "data_reliability_summary": {
+      "summary_cards": [
+        {
+          "label": "Score Completeness",
+          "value": 81,
+          "subtext": "19/24 variables scored"
+        },
+        {
+          "label": "Missing Tier 1",
+          "value": 3,
+          "subtext": "Transit Score, Crime Score, Location Score"
+        },
+        {
+          "label": "Missing Tier 2",
+          "value": 2,
+          "subtext": "Market Scale, Apartment Size"
+        },
+        {
+          "label": "Data Reliability",
+          "value": "Low",
+          "subtext": "Tier 1 gaps present"
+        }
+      ]
+    },
+    "core_variable_log": {
+      "rows": [
+        {
+          "variable_display_name": "Vintage",
+          "tier": 1,
+          "raw_value": 2022.0,
+          "rubric_score": 3.0,
+          "max_score": 3,
+          "data_source": "apartments_com_scrape",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Unit Count",
+          "tier": 2,
+          "raw_value": 190,
+          "rubric_score": 2,
+          "max_score": 3,
+          "data_source": "apartments_com_scrape",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Deal Size",
+          "tier": 2,
+          "raw_value": "$238,800",
+          "rubric_score": 2.0,
+          "max_score": 2,
+          "data_source": "email_or_broker_material",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Market Scale",
+          "tier": 2,
+          "raw_value": null,
+          "rubric_score": null,
+          "max_score": 3,
+          "data_source": "internal_portfolio_context",
+          "notes_or_missing_flag": "\u26a0 MISSING Tier 2."
+        },
+        {
+          "variable_display_name": "Ceiling Height",
+          "tier": 3,
+          "raw_value": "Not available - likely 8 ft or under",
+          "rubric_score": 0,
+          "max_score": 2,
+          "data_source": "apartments_com_scrape",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Swimming Pool",
+          "tier": 3,
+          "raw_value": "Yes",
+          "rubric_score": 1,
+          "max_score": 1,
+          "data_source": "apartments_com_scrape",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Fitness Center",
+          "tier": 3,
+          "raw_value": "Yes",
+          "rubric_score": 1,
+          "max_score": 1,
+          "data_source": "apartments_com_scrape",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "2nd Bath (2+ BR)",
+          "tier": 3,
+          "raw_value": "Yes",
+          "rubric_score": 1,
+          "max_score": 1,
+          "data_source": "apartments_com_scrape",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Washer/Dryer",
+          "tier": 3,
+          "raw_value": "Yes",
+          "rubric_score": 1,
+          "max_score": 1,
+          "data_source": "apartments_com_scrape",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Apartment Size",
+          "tier": 2,
+          "raw_value": "Medium",
+          "rubric_score": -1.0,
+          "max_score": 3,
+          "data_source": "derived_or_listing_helper",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Walk Score",
+          "tier": 2,
+          "raw_value": 33,
+          "rubric_score": 2,
+          "max_score": 5,
+          "data_source": "walkability_data_provider",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Transit Score",
+          "tier": 1,
+          "raw_value": null,
+          "rubric_score": null,
+          "max_score": 5,
+          "data_source": "walkability_data_provider",
+          "notes_or_missing_flag": "\u26a0 MISSING Tier 1. Blocks Go verdict."
+        },
+        {
+          "variable_display_name": "Bike Score",
+          "tier": 3,
+          "raw_value": 27,
+          "rubric_score": 1,
+          "max_score": null,
+          "data_source": "walkability_data_provider",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Sound Score",
+          "tier": 2,
+          "raw_value": 78,
+          "rubric_score": 3,
+          "max_score": 3,
+          "data_source": "soundscore_provider",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "School Score",
+          "tier": 2,
+          "raw_value": 1.67,
+          "rubric_score": 0.0,
+          "max_score": 2,
+          "data_source": "greatschools_api",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Dist. Starbucks",
+          "tier": 3,
+          "raw_value": 0.33,
+          "rubric_score": 3,
+          "max_score": 3,
+          "data_source": "google_places_or_mapping_api",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Undesirable Retail",
+          "tier": 2,
+          "raw_value": 0.38,
+          "rubric_score": -2,
+          "max_score": 3,
+          "data_source": "google_places_or_mapping_api",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Nat. Cluster",
+          "tier": 3,
+          "raw_value": 0.25,
+          "rubric_score": 2,
+          "max_score": 3,
+          "data_source": "google_places_or_mapping_api",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Nat. Grocer",
+          "tier": 3,
+          "raw_value": 0.18,
+          "rubric_score": 2,
+          "max_score": 3,
+          "data_source": "google_places_or_mapping_api",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Median Income",
+          "tier": 1,
+          "raw_value": 78780,
+          "rubric_score": 3,
+          "max_score": 5,
+          "data_source": "us_census_or_justice_map",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Heatmap Score",
+          "tier": 2,
+          "raw_value": 189.0,
+          "rubric_score": 4.0,
+          "max_score": 4,
+          "data_source": "internal_heatmap_model",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Modified Heatmap Score",
+          "tier": 2,
+          "raw_value": 145.0,
+          "rubric_score": 3.0,
+          "max_score": 3,
+          "data_source": "internal_heatmap_model",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Population Density",
+          "tier": 2,
+          "raw_value": 10599.5,
+          "rubric_score": -2.0,
+          "max_score": null,
+          "data_source": "us_census",
+          "notes_or_missing_flag": ""
+        },
+        {
+          "variable_display_name": "Justice Map Surrounding",
+          "tier": 3,
+          "raw_value": 68087,
+          "rubric_score": 2,
+          "max_score": null,
+          "data_source": "justice_map",
+          "notes_or_missing_flag": ""
+        }
+      ]
+    },
+    "sentiment_data_log": {
+      "sentiment_summary": {
+        "platform": "Not available",
+        "total_reviews_collected": "Not available",
+        "qualifying_reviews_analyzed": "Not available",
+        "excluded_reviews_count": "Not available",
+        "analysis_date": "Not available",
+        "operational_rating": "Not available",
+        "review_sentiment_direction": "Not available",
+        "review_stability": "Not available"
+      },
+      "theme_groups": {
+        "established_patterns": [],
+        "tentative_signals": []
+      }
+    },
+    "traceability_and_rebuild_metadata": {
+      "traceability_note": "This report was generated from listing data inserted on 2026-03-08 via Northmarq broker submission. Email trace: LV4PR13MB74443B67D094FDA7C0E6ED218D7AA@L... Relaxed fields: Market Scale. Sentiment data was not available at report generation.",
+      "rebuild_limitations": [
+        "Missing Tier 1 fields prevent complete scoring \u2014 composite of 31 is directional only",
+        "No sentiment data limits operational assessment",
+        "Apartment Size scoring basis requires confirmation of 1BR sqft parsing logic"
+      ]
+    }
+  },
+  "page_8": {
+    "go_forward_readiness_status": {
+      "readiness_label": "Conditionally ready",
+      "summary_statement": "The property shows structural merit (2022.0 vintage, strong demand signals with Heatmap 189.0) but cannot enter full underwriting until 3 Tier 1 inputs \u2014 Transit Score, Crime Score, Location Score \u2014 are backfilled. Upon acquisition, composite score may shift materially (est. range 25\u201345), potentially altering both verdict and thesis.",
+      "blocking_dependencies": [
+        "Acquire Transit Score",
+        "Acquire Crime Score",
+        "Acquire Location Score"
+      ],
+      "nonblocking_dependencies": [
+        "Market Scale data for submarket liquidity",
+        "Rent roll and occupancy from seller",
+        "Physical verification of ceiling height"
+      ]
+    },
+    "critical_data_requests": {
+      "requests": [
+        {
+          "request_name": "Transit Score backfill",
+          "requested_from": "Walk Score API / Internal data team",
+          "why_needed": "Tier 1 gap \u2014 blocks Go verdict",
+          "report_link": "Pages 1, 3, 5"
+        },
+        {
+          "request_name": "Crime Score pull",
+          "requested_from": "Third-party data vendor",
+          "why_needed": "Tier 1 gap \u2014 most critical missing variable",
+          "report_link": "Pages 1, 5"
+        },
+        {
+          "request_name": "Location Score calculation",
+          "requested_from": "Internal data team",
+          "why_needed": "Tier 1 gap \u2014 may materially shift thesis",
+          "report_link": "Pages 1, 5, 6"
+        },
+        {
+          "request_name": "Market Scale data",
+          "requested_from": "Internal data team",
+          "why_needed": "Tier 2 gap \u2014 submarket liquidity",
+          "report_link": "Page 5"
+        },
+        {
+          "request_name": "Rent roll & occupancy",
+          "requested_from": "Broker / Seller",
+          "why_needed": "Validates Core-Plus thesis assumption",
+          "report_link": "Page 6"
+        }
+      ]
+    },
+    "kill_criteria_and_flip_conditions": {
+      "kill_conditions": [
+        "Crime Score returns in highest-penalty band, indicating material safety concern",
+        "Transit Score below 10 confirms isolated micro-location with no public transit access",
+        "Location Score triggers structural No-Go threshold",
+        "Physical inspection reveals undisclosed deferred maintenance or structural deficiency"
+      ],
+      "strengthening_conditions": [
+        "Crime Score returns neutral or positive \u2014 materially lifts confidence and may enable Go",
+        "Transit Score \u2265 25 and Location Score \u2265 0 \u2014 enables reclassification from Hypothesis",
+        "Occupancy confirmed \u2265 93% with stable renewal trajectory",
+        "Rent roll confirms no soft concessions"
+      ]
+    },
+    "recommended_next_7_day_plan": {
+      "days_1_to_2": [
+        "Submit Transit Score API request to Walk Score provider",
+        "Initiate Crime Score data vendor pull",
+        "Request rent roll, occupancy snapshot, and operating summary from Northmarq"
+      ],
+      "days_3_to_5": [
+        "Generate Location Score from internal model once Crime/Transit available",
+        "Pull comparable absorption data for 5-mile radius",
+        "Verify undesirable retail type and assess direct visibility from property"
+      ],
+      "days_6_to_7": [
+        "Re-score composite with backfilled Tier 1 data",
+        "Update verdict and thesis classification",
+        "Prepare underwriting handoff package if Go conditions are met"
+      ]
+    }
+  }
+}

@@ -1,0 +1,437 @@
+{
+  "schema_version": "pir_property_payload_v1",
+  "property_id": "the_jeff_on_10th__3500_ellingsworth_dairy_dr__jeffersonville_in_47130",
+  "report_context": {
+    "report_type": "property_intelligence_report",
+    "report_focus": "should_this_property_advance_to_financial_underwriting",
+    "data_inserted_timestamp": "2026-03-08T15:41:27",
+    "analysis_date": null,
+    "report_date": null
+  },
+  "source_trace": {
+    "email": {
+      "broker_name": "Northmarq",
+      "email_16_digit_code": "rfc822msgid:<LV4PR13MB74443B67D094FDA7C0E6ED218D7AA@LV4PR13MB7444.namprd13.prod.outlook.com>",
+      "gmail_message_id": "LV4PR13MB74443B67D094FDA7C0E6ED218D7AA@LV4PR13MB7444.namprd13.prod.outlook.com"
+    },
+    "listing_data": {
+      "source_name": null,
+      "source_pull_timestamp": "2026-03-08T15:41:27"
+    },
+    "location_data": {
+      "source_name": null
+    },
+    "demographic_data": {
+      "source_name": "census_justice_map"
+    },
+    "sentiment_data": {
+      "source_name": null,
+      "available": false
+    }
+  },
+  "identity": {
+    "broker_name": "Northmarq",
+    "property_name": "The Jeff on 10th",
+    "address_line_1": "3500 Ellingsworth Dairy Dr",
+    "city": "Jeffersonville",
+    "state": "IN",
+    "zip_code": 47130,
+    "full_address": "3500 Ellingsworth Dairy Dr, Jeffersonville, IN 47130"
+  },
+  "building": {
+    "year_built": 2022,
+    "unit_count_total": 190,
+    "pricing": {
+      "asking_price_per_unit_display": "$238,800",
+      "asking_price_per_unit_usd": 238800,
+      "implied_total_price_usd": 45372000
+    },
+    "market_scale": {
+      "raw_value": null,
+      "units_in_market": null
+    },
+    "ceiling_height": {
+      "raw_text": "Not available - likely 8 ft or under",
+      "is_confirmed": false,
+      "inferred_band": "<=8_ft"
+    },
+    "amenities": {
+      "swimming_pool": true,
+      "fitness_center": true,
+      "patio": true,
+      "balcony": true,
+      "yard": true,
+      "second_bath_for_2br_plus": true,
+      "washer_dryer": true
+    },
+    "unit_mix": {
+      "raw_text": "1 Bed 1 Bath - 664-714 sq ft; 2 Bed 2 Bath - 1,138 sq ft",
+      "parsed_layouts": [
+        {
+          "bedrooms": 1,
+          "bathrooms": 1,
+          "sqft_min": 664,
+          "sqft_max": 714
+        },
+        {
+          "bedrooms": 2,
+          "bathrooms": 2,
+          "sqft_min": 1138,
+          "sqft_max": 1138
+        }
+      ]
+    },
+    "apartment_size": {
+      "label": "Medium"
+    }
+  },
+  "location": {
+    "scores": {
+      "walk_score": 33,
+      "transit_score": null,
+      "bike_score": 27,
+      "sound_score": 78,
+      "great_schools_composite_score": 1.67
+    },
+    "retail_proximity_miles": {
+      "starbucks": 0.33,
+      "undesirable_retail": 0.38,
+      "national_cluster": 0.25,
+      "national_grocer": 0.18
+    },
+    "schools": {
+      "great_schools_raw_text": "W E Wilson Elementary (public - , Level-Codes: p,e, Rating: Average, 1.0 miles) | River Valley Middle School (public - , Level-Codes: m, Rating: Average, 1.4 miles) | Jeffersonville High School (public - , Level-Codes: h, Rating: Below average, 1.1 miles)",
+      "parsed": [
+        {
+          "school_name": "W E Wilson Elementary",
+          "level_codes": ["p", "e"],
+          "rating_label": "Average",
+          "distance_miles": 1.0
+        },
+        {
+          "school_name": "River Valley Middle School",
+          "level_codes": ["m"],
+          "rating_label": "Average",
+          "distance_miles": 1.4
+        },
+        {
+          "school_name": "Jeffersonville High School",
+          "level_codes": ["h"],
+          "rating_label": "Below average",
+          "distance_miles": 1.1
+        }
+      ]
+    }
+  },
+  "demographics": {
+    "census": {
+      "block": 3000,
+      "block_group": 3,
+      "tract": 50603,
+      "county": "Clark County",
+      "state": "Indiana",
+      "fips_state_code": 18,
+      "fips_county_code": 19,
+      "fips_tract_code": 50603,
+      "fips_block_code": 180190506033000
+    },
+    "justice_map_income_range": {
+      "raw_label": "75,001 - 99,999",
+      "min_usd": 75001,
+      "max_usd": 99999
+    },
+    "median_household_income_usd": 78780,
+    "population_total": 2066,
+    "population_density_per_sq_mile": 10599.5,
+    "justice_map_surroundings_income_usd": 68087,
+    "heatmap_score_raw": 189,
+    "modified_heatmap_score_raw": 145
+  },
+  "scoring": {
+    "total_property_score": 31,
+    "relaxed_fields_used": [
+      "Market Scale"
+    ],
+    "missing_score_fields_declared": [
+      "Market Scale",
+      "Apartment Size",
+      "Transit Score",
+      "Crime Score",
+      "Location Score"
+    ],
+    "variable_log": {
+      "vintage": {
+        "display_name": "Vintage",
+        "tier": 1,
+        "raw_value": 2022,
+        "rubric_score": 3
+      },
+      "unit_count": {
+        "display_name": "Unit Count",
+        "tier": 2,
+        "raw_value": 190,
+        "rubric_score": 2
+      },
+      "deal_size": {
+        "display_name": "Deal Size",
+        "tier": 2,
+        "raw_value": "$238,800",
+        "raw_value_numeric": 238800,
+        "rubric_score": 2
+      },
+      "market_scale": {
+        "display_name": "Market Scale",
+        "tier": 2,
+        "raw_value": null,
+        "rubric_score": null
+      },
+      "ceiling_height": {
+        "display_name": "Ceiling Height",
+        "tier": 3,
+        "raw_value": "Not available - likely 8 ft or under",
+        "rubric_score": 0
+      },
+      "swimming_pool": {
+        "display_name": "Swimming Pool",
+        "tier": 3,
+        "raw_value": "Yes",
+        "rubric_score": 1
+      },
+      "fitness_center": {
+        "display_name": "Fitness Center",
+        "tier": 3,
+        "raw_value": "Yes",
+        "rubric_score": 1
+      },
+      "second_bath_for_2br_plus": {
+        "display_name": "2nd Bath for 2+ Bedroom Units",
+        "tier": 3,
+        "raw_value": "Yes",
+        "rubric_score": 1
+      },
+      "apartment_size": {
+        "display_name": "Apartment Size",
+        "tier": 2,
+        "raw_value": "Medium",
+        "rubric_score": -1
+      },
+      "washer_dryer": {
+        "display_name": "Washer/Dryer",
+        "tier": 3,
+        "raw_value": "Yes",
+        "rubric_score": 1
+      },
+      "walk_score": {
+        "display_name": "Walk Score",
+        "tier": 2,
+        "raw_value": 33,
+        "rubric_score": 2
+      },
+      "transit_score": {
+        "display_name": "Transit Score",
+        "tier": 1,
+        "raw_value": null,
+        "rubric_score": null
+      },
+      "bike_score": {
+        "display_name": "Bike Score",
+        "tier": 3,
+        "raw_value": 27,
+        "rubric_score": 1
+      },
+      "sound_score": {
+        "display_name": "Sound Score",
+        "tier": 2,
+        "raw_value": 78,
+        "rubric_score": 3
+      },
+      "school_score": {
+        "display_name": "School Score",
+        "tier": 2,
+        "raw_value": 1.67,
+        "rubric_score": 0
+      },
+      "dist_starbucks": {
+        "display_name": "Dist. Starbucks",
+        "tier": 3,
+        "raw_value": 0.33,
+        "rubric_score": 3
+      },
+      "undesirable_retail": {
+        "display_name": "Undesirable Retail",
+        "tier": 2,
+        "raw_value": 0.38,
+        "rubric_score": -2
+      },
+      "national_cluster": {
+        "display_name": "National Cluster",
+        "tier": 3,
+        "raw_value": 0.25,
+        "rubric_score": 2
+      },
+      "national_grocer": {
+        "display_name": "National Grocer",
+        "tier": 3,
+        "raw_value": 0.18,
+        "rubric_score": 2
+      },
+      "median_household_income": {
+        "display_name": "Median Household Income",
+        "tier": 1,
+        "raw_value": 78780,
+        "rubric_score": 3
+      },
+      "heatmap_score": {
+        "display_name": "Heatmap Score",
+        "tier": 2,
+        "raw_value": 189,
+        "rubric_score": 4
+      },
+      "modified_heatmap_score": {
+        "display_name": "Modified Heatmap Score",
+        "tier": 2,
+        "raw_value": 145,
+        "rubric_score": 3
+      },
+      "crime_score": {
+        "display_name": "Crime Score",
+        "tier": 1,
+        "raw_value": null,
+        "rubric_score": null
+      },
+      "location_score": {
+        "display_name": "Location Score",
+        "tier": 1,
+        "raw_value": null,
+        "rubric_score": null
+      },
+      "population_density": {
+        "display_name": "Population Density",
+        "tier": 2,
+        "raw_value": 10599.5,
+        "rubric_score": -2
+      },
+      "justice_map_surroundings": {
+        "display_name": "Justice Map Surroundings",
+        "tier": 3,
+        "raw_value": 68087,
+        "rubric_score": 2
+      }
+    },
+    "missing_by_tier": {
+      "tier_1": [
+        "Transit Score",
+        "Crime Score",
+        "Location Score"
+      ],
+      "tier_2": [
+        "Market Scale"
+      ],
+      "tier_3": []
+    }
+  },
+  "sentiment": {
+    "available": false,
+    "operational_rating": null,
+    "sentiment_direction": null,
+    "review_corpus_count": null,
+    "themes": []
+  },
+  "quality_flags": [
+    {
+      "flag_type": "field_semantics",
+      "field": "Unit Size",
+      "issue": "Raw column label suggests apartment size, but value 190 is actually total unit count."
+    },
+    {
+      "flag_type": "score_consistency",
+      "field": "Apartment Size",
+      "issue": "Missing Score Fields lists Apartment Size as missing, but raw value and rubric score are both present."
+    },
+    {
+      "flag_type": "mixed_raw_and_inference",
+      "field": "Ceiling Height",
+      "issue": "Raw field combines missingness with likely inferred band."
+    }
+  ],
+  "raw_record": {
+    "broker_name": "Northmarq",
+    "property_name": "The Jeff on 10th",
+    "address": "3500 Ellingsworth Dairy Dr",
+    "city": "Jeffersonville",
+    "state": "IN",
+    "zip": 47130,
+    "Property Vintage": 2022.0,
+    "Unit Size": 190,
+    "Deal Size ($)": "$238,800",
+    "Market Scale": null,
+    "Ceiling Height": "Not available - likely 8 ft or under",
+    "Swimming Pool": "Yes",
+    "Fitness Center": "Yes",
+    "Unit Types & Square Footage": "1 Bed 1 Bath - 664-714 sq ft; 2 Bed 2 Bath - 1,138 sq ft",
+    "Patio": "Yes",
+    "Balcony": "Yes",
+    "Yard": "Yes",
+    "2nd Bath for 2+ Bedroom Units": "Yes",
+    "Washer/Dryer": "Yes",
+    "Apartment Size": "Medium",
+    "Walk Score": 33,
+    "Transit Score": null,
+    "Bike Score": 27,
+    "Sound Score": 78,
+    "Great Schools Rating (Score)": 1.67,
+    "Retail - Starbucks": 0.33,
+    "Undesirable Retail": 0.38,
+    "Retail - National Cluster": 0.25,
+    "Retail - National Grocer": 0.18,
+    "Census Block": 3000,
+    "Census Block Group": 3,
+    "Census Tract": 50603,
+    "Census County": "Clark County",
+    "Census State": "Indiana",
+    "FIPS State Code": 18,
+    "FIPS County Code": 19,
+    "FIPS Tract Code": 50603,
+    "FIPS Block Code": 180190506033000,
+    "Justice Map - Income Range": "75,001 - 99,999",
+    "Median Income": 78780,
+    "Population": 2066.0,
+    "Population Density": 10599.5,
+    "Justice Map - Surrounding": 68087,
+    "Heatmap Score": 189.0,
+    "Modified Heatmap Score": 145.0,
+    "Data Inserted Timestamp": "2026-03-08 15:41:27",
+    "Great Schools Data": "W E Wilson Elementary (public - , Level-Codes: p,e, Rating: Average, 1.0 miles) | River Valley Middle School (public - , Level-Codes: m, Rating: Average, 1.4 miles) | Jeffersonville High School (public - , Level-Codes: h, Rating: Below average, 1.1 miles)",
+    "email_16_digit_code": "rfc822msgid:<LV4PR13MB74443B67D094FDA7C0E6ED218D7AA@LV4PR13MB7444.namprd13.prod.outlook.com>",
+    "gmail_message_id": "LV4PR13MB74443B67D094FDA7C0E6ED218D7AA@LV4PR13MB7444.namprd13.prod.outlook.com>",
+    "Relaxed Fields Used": "Market Scale",
+    "Rubric - Vintage": 3.0,
+    "Rubric - Unit Size": 2,
+    "Rubric - Deal Size": 2.0,
+    "Rubric - Market Scale": null,
+    "Rubric - Ceiling Height": 0,
+    "Rubric - Swimming Pool": 1,
+    "Rubric - Fitness Center": 1,
+    "Rubric - 2nd Bath": 1,
+    "Rubric - Apartment Size": -1.0,
+    "Rubric - Washer Dryer": 1,
+    "Rubric - Walk Score": 2,
+    "Rubric - Transit Score": null,
+    "Rubric - Bike Score": 1,
+    "Rubric - Sound Score": 3,
+    "Rubric - School Score": 0.0,
+    "Rubric - Dist Starbucks": 3,
+    "Rubric - Undesirable Retail": -2,
+    "Rubric - Nat Cluster": 2,
+    "Rubric - Nat Grocer": 2,
+    "Rubric - Median Income": 3,
+    "Rubric - Heatmap": 4.0,
+    "Rubric - Mod Heatmap": 3.0,
+    "Rubric - Crime Score": null,
+    "Rubric - Location Score": null,
+    "Rubric - Population Density": -2.0,
+    "Rubric - Justice Map Surroundings": 2,
+    "Total Property Score": 31,
+    "Missing Score Fields": "Market Scale, Apartment Size, Transit Score, Crime Score, Location Score"
+  }
+}

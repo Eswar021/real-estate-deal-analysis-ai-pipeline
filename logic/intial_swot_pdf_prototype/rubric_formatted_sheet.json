@@ -1,0 +1,447 @@
+[
+    {
+        "Column Name":"Vintage",
+        "Value":"2020-2029 (2020s)",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"2010-2019 (2010s)",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"2000-2009 (2000s)",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"1990-1999 (1990s)",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"1980-1989 (1980s)",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"1970-1979 (1970s)",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"1960-1969 (1960s)",
+        "Score":-2.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"1950-1959 (1950s)",
+        "Score":-3.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"1940-1949 (1940s)",
+        "Score":-3.0
+    },
+    {
+        "Column Name":"Vintage",
+        "Value":"Before 1940",
+        "Score":-4.0
+    },
+    {
+        "Column Name":"Unit Size",
+        "Value":"300+",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Unit Size",
+        "Value":"250-299",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Unit Size",
+        "Value":"200-249",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Unit Size",
+        "Value":"150-199",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Unit Size",
+        "Value":"100-149",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Unit Size",
+        "Value":"50-99",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Unit Size",
+        "Value":"<50",
+        "Score":-2.0
+    },
+    {
+        "Column Name":"Deal Size ($)",
+        "Value":"$50M+",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Deal Size ($)",
+        "Value":"$30M-$49.9M",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Deal Size ($)",
+        "Value":"$15M-$29.9M",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Deal Size ($)",
+        "Value":"$5M-$14.9M",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Deal Size ($)",
+        "Value":"<$5M",
+        "Score":-2.0
+    },
+    {
+        "Column Name":"Market Scale",
+        "Value":"1000+",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Market Scale",
+        "Value":"500-999",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Market Scale",
+        "Value":"250-499",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Market Scale",
+        "Value":"<250",
+        "Score":0.0
+    },
+    {
+        "Column Name":"Market Scale",
+        "Value":"New Market",
+        "Score":0.0
+    },
+    {
+        "Column Name":"Ceiling Height",
+        "Value":"High Ceiling \/ 9ft+",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Ceiling Height",
+        "Value":"Under 9ft",
+        "Score":0.0
+    },
+    {
+        "Column Name":"Ceiling Height",
+        "Value":"Not available",
+        "Score":0.0
+    },
+    {
+        "Column Name":"Swimming Pool",
+        "Value":"Yes",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Swimming Pool",
+        "Value":"No",
+        "Score":0.0
+    },
+    {
+        "Column Name":"Fitness Center",
+        "Value":"Yes",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Fitness Center",
+        "Value":"No",
+        "Score":0.0
+    },
+    {
+        "Column Name":"2nd Bath (2+ BR)",
+        "Value":"Yes",
+        "Score":1.0
+    },
+    {
+        "Column Name":"2nd Bath (2+ BR)",
+        "Value":"No",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Apartment Size (1BR sqft)",
+        "Value":">1100 sqft",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Apartment Size (1BR sqft)",
+        "Value":"900-1100 sqft",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Apartment Size (1BR sqft)",
+        "Value":"700-899 sqft",
+        "Score":0.0
+    },
+    {
+        "Column Name":"Apartment Size (1BR sqft)",
+        "Value":"601-699 sqft",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Apartment Size (1BR sqft)",
+        "Value":"<600 sqft",
+        "Score":-2.0
+    },
+    {
+        "Column Name":"Washer\/Dryer",
+        "Value":"Yes",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Washer\/Dryer",
+        "Value":"No",
+        "Score":0.0
+    },
+    {
+        "Column Name":"Walk Score",
+        "Value":"80-100",
+        "Score":5.0
+    },
+    {
+        "Column Name":"Walk Score",
+        "Value":"70-79",
+        "Score":4.0
+    },
+    {
+        "Column Name":"Walk Score",
+        "Value":"40-69",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Walk Score",
+        "Value":"20-39",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Walk Score",
+        "Value":"0-19",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Transit Score",
+        "Value":"80-100",
+        "Score":5.0
+    },
+    {
+        "Column Name":"Transit Score",
+        "Value":"70-79",
+        "Score":4.0
+    },
+    {
+        "Column Name":"Transit Score",
+        "Value":"40-69",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Transit Score",
+        "Value":"20-39",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Transit Score",
+        "Value":"0-19",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Bike Score",
+        "Value":"To be added later",
+        "Score":null
+    },
+    {
+        "Column Name":"Sound Score",
+        "Value":"60-100",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Sound Score",
+        "Value":"30-59",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Sound Score",
+        "Value":"1-29",
+        "Score":1.0
+    },
+    {
+        "Column Name":"School Score",
+        "Value":">=2.0",
+        "Score":2.0
+    },
+    {
+        "Column Name":"School Score",
+        "Value":"1.0-1.99",
+        "Score":0.0
+    },
+    {
+        "Column Name":"School Score",
+        "Value":"<1.0",
+        "Score":-2.0
+    },
+    {
+        "Column Name":"Dist. Starbucks",
+        "Value":"<1 mile",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Dist. Starbucks",
+        "Value":"1-2 miles",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Dist. Starbucks",
+        "Value":"2-4 miles",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Dist. Starbucks",
+        "Value":">=4 miles",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Undesirable Retail",
+        "Value":"<1 mile",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Undesirable Retail",
+        "Value":"1-2 miles",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Undesirable Retail",
+        "Value":"2-4 miles",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Undesirable Retail",
+        "Value":">=4 miles",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Nat. Cluster",
+        "Value":"<1 mile",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Nat. Cluster",
+        "Value":"1-2 miles",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Nat. Cluster",
+        "Value":"2-4 miles",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Nat. Cluster",
+        "Value":">=4 miles",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Nat. Grocer",
+        "Value":"<1 mile",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Nat. Grocer",
+        "Value":"1-2 miles",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Nat. Grocer",
+        "Value":"2-4 miles",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Nat. Grocer",
+        "Value":">=4 miles",
+        "Score":-1.0
+    },
+    {
+        "Column Name":"Median Income",
+        "Value":">=93,000",
+        "Score":5.0
+    },
+    {
+        "Column Name":"Median Income",
+        "Value":"75,000-92,999",
+        "Score":4.0
+    },
+    {
+        "Column Name":"Median Income",
+        "Value":"55,000-74,999",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Median Income",
+        "Value":"35,000-54,999",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Median Income",
+        "Value":"<35,000",
+        "Score":-3.0
+    },
+    {
+        "Column Name":"Heatmap Score",
+        "Value":"70-100 (High)",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Heatmap Score",
+        "Value":"40-69 (Medium)",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Heatmap Score",
+        "Value":"0-39 (Low)",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Mod. Heatmap Score",
+        "Value":"70-100 (High)",
+        "Score":3.0
+    },
+    {
+        "Column Name":"Mod. Heatmap Score",
+        "Value":"40-69 (Medium)",
+        "Score":2.0
+    },
+    {
+        "Column Name":"Mod. Heatmap Score",
+        "Value":"0-39 (Low)",
+        "Score":1.0
+    },
+    {
+        "Column Name":"Crime Score",
+        "Value":"To be added later",
+        "Score":null
+    },
+    {
+        "Column Name":"Location Score",
+        "Value":"To be added later",
+        "Score":null
+    }
+]

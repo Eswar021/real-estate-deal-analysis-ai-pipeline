@@ -1,0 +1,28 @@
+# API keys — never commit
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Node.js — restore with: cd logic/intial_swot_pdf_prototype/scripts && npm install
+node_modules/
+
+# Input data — Excel files are large and likely proprietary
+data/
+
+# Generated outputs — reproducible by running the pipeline
+output_docs/
+
+# Archive — old/experimental code, not needed
+archive/
+
+# Docs — meeting recordings and client-sent files (large, not source code)
+Docs/
+
+# Claude Code local data
+.claude/

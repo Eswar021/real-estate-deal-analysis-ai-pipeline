@@ -1,0 +1,2921 @@
+{
+  "page_1": {
+    "page_title": "Investment Decision Snapshot",
+    "page_goal": "Answer whether the property should move forward to underwriting, using visible supporting facts and a small amount of evidence-grounded narrative.",
+    "design_rule": "Page 1 should be readable in under 60 seconds by a decision-maker.",
+    "layout_order": [
+      "deal_header",
+      "decision_snapshot",
+      "investment_perspective",
+      "top_reasons_and_risks",
+      "score_dashboard"
+    ],
+    "sections": {
+      "deal_header": {
+        "section_type": "direct_render",
+        "llm_required": false,
+        "purpose": "Identify the property and show the key factual metadata only. No interpretation.",
+        "raw_keys_required": [
+          "property_name",
+          "address",
+          "city",
+          "state",
+          "zip",
+          "broker_name",
+          "Unit Size",
+          "Property Vintage",
+          "Deal Size ($)",
+          "Census County",
+          "Data Inserted Timestamp"
+        ],
+        "external_keys_optional": [
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "implied_total_price",
+          "report_date"
+        ],
+        "proof_keys_to_display": [
+          "property_name",
+          "address",
+          "city",
+          "state",
+          "zip",
+          "broker_name",
+          "Unit Size",
+          "Property Vintage",
+          "Deal Size ($)",
+          "implied_total_price",
+          "Census County",
+          "report_date",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "property_name": "string",
+          "full_address": "string",
+          "submarket_label": "string",
+          "broker": "string_or_not_available",
+          "total_units": "number",
+          "year_built": "number_or_not_available",
+          "asking_price_per_unit": "currency_or_not_available",
+          "implied_total_price": "currency_or_not_available",
+          "report_date": "date",
+          "data_sources_summary": "string"
+        },
+        "rendering_notes": [
+          "Use direct values from payload.",
+          "Do not generate narrative text here.",
+          "If a field is missing, render 'Not available'.",
+          "Submarket can default to 'City, State' if no better label exists."
+        ],
+        "validation_checks": [
+          "No narrative sentences allowed.",
+          "No field outside payload should appear.",
+          "Deal Size ($) should be clearly labeled as raw deal-size-related input unless transformed.",
+          "Unit Size should be rendered as Total Units."
+        ],
+        "llm_instruction": null
+      },
+      "decision_snapshot": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Give the fast decision answer: verdict, confidence, thesis, and explicit blocking conditions.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Missing Score Fields",
+          "Property Vintage",
+          "Median Income",
+          "Transit Score",
+          "Heatmap Score",
+          "Population Density",
+          "Undesirable Retail"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "review_sentiment_direction"
+        ],
+        "derived_keys_allowed": [
+          "missing_tier_1_fields",
+          "missing_tier_2_fields",
+          "confidence_label",
+          "verdict_label",
+          "thesis_label"
+        ],
+        "proof_keys_to_display": [
+          "Total Property Score",
+          "Missing Score Fields",
+          "Property Vintage",
+          "Median Income",
+          "Transit Score",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "verdict_label": "Go | Conditional Go | No-Go",
+          "thesis_label": "one_of_allowed_thesis_labels",
+          "confidence_label": "High | Medium | Low | Hypothesis",
+          "blocking_conditions": [
+            "string"
+          ],
+          "must_be_true_to_proceed": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "Verdict label should be visually prominent.",
+          "Blocking conditions must be explicit and short.",
+          "If any Tier 1 field is missing, verdict cannot be Go.",
+          "Confidence should be low/hypothesis if critical variables are missing."
+        ],
+        "validation_checks": [
+          "If Transit Score, Crime Score, or Location Score is missing, Go is not allowed.",
+          "Blocking conditions must name actual missing variables.",
+          "Thesis label must be one allowed value only.",
+          "Every blocking condition must be traceable to a payload key."
+        ],
+        "llm_instruction": "Generate a concise decision snapshot for a screening memo. Output only the verdict label, thesis label, confidence label, blocking conditions, and must-be-true-to-proceed bullets. Use only the provided values. If any Tier 1 variable is missing, the verdict cannot be Go. Name the missing variable explicitly. Do not write long paragraphs. Do not invent data. Ground the decision in the actual score, actual missing fields, and any available sentiment context."
+      },
+      "investment_perspective": {
+        "section_type": "narrative",
+        "llm_required": true,
+        "purpose": "Provide the 3-4 sentence executive read on the property.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Property Vintage",
+          "Median Income",
+          "Transit Score",
+          "Population Density",
+          "Undesirable Retail",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Walk Score",
+          "Sound Score",
+          "Missing Score Fields"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "review_sentiment_direction"
+        ],
+        "derived_keys_allowed": [
+          "missing_tier_1_fields",
+          "best_positive_driver",
+          "biggest_risk_driver"
+        ],
+        "proof_keys_to_display": [
+          "Total Property Score",
+          "Property Vintage",
+          "Median Income",
+          "Transit Score",
+          "Population Density",
+          "Undesirable Retail",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "paragraph": "exactly_3_to_4_sentences"
+        },
+        "rendering_notes": [
+          "This is the main narrative section on Page 1.",
+          "Every sentence that makes a claim must include the supporting figure in the same sentence or immediately adjacent format.",
+          "Final sentence must clearly state the directional implication."
+        ],
+        "validation_checks": [
+          "Must be exactly 3-4 sentences.",
+          "Must include the actual score or actual evidence values.",
+          "Must not mention unavailable fields as if present.",
+          "If Tier 1 fields are missing, final sentence must state that they block a full Go."
+        ],
+        "llm_instruction": "Write exactly 3 to 4 sentences for the investment perspective. Sentence 1 should summarize the opportunity using the total property score and the strongest Tier 1 facts available. Sentence 2 should name the most important positive signal using its actual value. Sentence 3 should name the most important risk or uncertainty using its actual value. Sentence 4, if needed, should state the directional implication and explicitly name any missing Tier 1 variables blocking a full Go. Every qualitative statement must include the supporting figure. Use only the provided fields. Do not invent any metric, benchmark, or conclusion."
+      },
+      "top_reasons_and_risks": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Show the clearest support and the clearest risks with visible proof.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Unit Size",
+          "Deal Size ($)",
+          "Walk Score",
+          "Transit Score",
+          "Sound Score",
+          "Great Schools Rating (Score)",
+          "Retail - Starbucks",
+          "Undesirable Retail",
+          "Retail - National Cluster",
+          "Retail - National Grocer",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields",
+          "Rubric - Vintage",
+          "Rubric - Unit Size",
+          "Rubric - Deal Size",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Sound Score",
+          "Rubric - School Score",
+          "Rubric - Dist Starbucks",
+          "Rubric - Undesirable Retail",
+          "Rubric - Nat Cluster",
+          "Rubric - Nat Grocer",
+          "Rubric - Median Income",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap",
+          "Rubric - Population Density"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "positive_themes",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "top_3_supporting_reasons",
+          "top_3_risk_reasons"
+        ],
+        "proof_keys_to_display": [
+          "Property Vintage",
+          "Rubric - Vintage",
+          "Median Income",
+          "Rubric - Median Income",
+          "Transit Score",
+          "Rubric - Transit Score",
+          "Population Density",
+          "Rubric - Population Density",
+          "Undesirable Retail",
+          "Rubric - Undesirable Retail",
+          "Heatmap Score",
+          "Rubric - Heatmap",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "top_supporting_reasons": [
+            {
+              "title": "string",
+              "fact_line": "string_with_actual_value_and_score",
+              "why_it_matters": "short_string"
+            }
+          ],
+          "top_risk_reasons": [
+            {
+              "title": "string",
+              "fact_line": "string_with_actual_value_and_score_or_missing_field",
+              "why_it_matters": "short_string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Each bullet/card must visibly show the fact line.",
+          "This section should feel evidence-heavy, not AI-heavy.",
+          "Prefer Tier 1 before Tier 2 before Tier 3.",
+          "If sentiment is used, include review count and analysis date."
+        ],
+        "validation_checks": [
+          "No bullet without a visible proof value.",
+          "If a reason cites sentiment, it must include review corpus context.",
+          "Do not include more than 3 support and 3 risk items on Page 1.",
+          "Do not repeat the exact same variable in both support and risk lists."
+        ],
+        "llm_instruction": "Select the three strongest support reasons and the three strongest risk reasons for whether this property should move forward. Each item must include a fact line using the actual payload value and, where available, the rubric score. Prioritize Tier 1 variables, then Tier 2. If sentiment is used, cite the operational rating together with review count and analysis date. Keep the wording short, factual, and decision-oriented. Do not invent any field or score."
+      },
+      "score_dashboard": {
+        "section_type": "direct_render_with_light_derivation",
+        "llm_required": false,
+        "purpose": "Show the score structure without narrative.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Property Vintage",
+          "Unit Size",
+          "Deal Size ($)",
+          "Market Scale",
+          "Walk Score",
+          "Transit Score",
+          "Sound Score",
+          "Great Schools Rating (Score)",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Rubric - Vintage",
+          "Rubric - Unit Size",
+          "Rubric - Deal Size",
+          "Rubric - Market Scale",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Sound Score",
+          "Rubric - School Score",
+          "Rubric - Median Income",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap",
+          "Rubric - Population Density",
+          "Missing Score Fields"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "building_attributes_subtotal",
+          "location_walkability_subtotal",
+          "demographics_demand_subtotal",
+          "score_completeness_percent",
+          "missing_tier_1_count",
+          "missing_tier_2_count"
+        ],
+        "proof_keys_to_display": [
+          "Total Property Score",
+          "Rubric - Vintage",
+          "Rubric - Unit Size",
+          "Rubric - Deal Size",
+          "Rubric - Market Scale",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Sound Score",
+          "Rubric - School Score",
+          "Rubric - Median Income",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap",
+          "Rubric - Population Density",
+          "Missing Score Fields",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "composite_score": "number",
+          "dimension_scores": {
+            "building_attributes": "number",
+            "location_walkability": "number",
+            "demographics_demand": "number",
+            "market_signal": "number"
+          },
+          "sentiment_panel": {
+            "operational_rating": "number_or_not_available",
+            "review_corpus_count": "number_or_not_available",
+            "sentiment_analysis_date": "date_or_not_available"
+          },
+          "missing_data_summary": {
+            "missing_score_fields": [
+              "string"
+            ],
+            "score_completeness_percent": "number"
+          }
+        },
+        "rendering_notes": [
+          "No narrative sentence should be generated here.",
+          "This is a structured panel/table/cards only.",
+          "If dimension subtotals are derived, derive consistently every time from the same rubric-score columns."
+        ],
+        "validation_checks": [
+          "Composite score must match Total Property Score.",
+          "Displayed dimension scores must be reproducible from rubric columns.",
+          "Sentiment panel must include review count and date if operational rating is shown.",
+          "Missing fields summary must exactly match Missing Score Fields."
+        ],
+        "llm_instruction": null
+      }
+    }
+  },
+  "page_2": {
+    "page_title": "Property & Score Evidence",
+    "page_goal": "Translate the raw property row into a factual, evidence-heavy page showing the physical product, key scored positives, key scored constraints, and limited physical/product interpretation grounded only in available values.",
+    "design_rule": "This page should be mostly deterministic. The reader should be able to see actual values, rubric scores, and what those values mean for the product without relying on long AI-written summaries.",
+    "layout_order": [
+      "property_product_overview",
+      "amenity_matrix",
+      "positive_score_drivers",
+      "structural_constraints",
+      "mixed_factors_and_neutral_signals",
+      "physical_condition_and_product_read"
+    ],
+    "sections": {
+      "property_product_overview": {
+        "section_type": "direct_render_with_light_derivation",
+        "llm_required": false,
+        "purpose": "Show the core property/product facts that define what is actually being bought.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Unit Size",
+          "Deal Size ($)",
+          "Unit Types & Square Footage",
+          "Apartment Size",
+          "Ceiling Height"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "implied_total_price",
+          "parsed_unit_mix_summary",
+          "parsed_1br_sqft_basis"
+        ],
+        "proof_keys_to_display": [
+          "Property Vintage",
+          "Unit Size",
+          "Deal Size ($)",
+          "implied_total_price",
+          "Unit Types & Square Footage",
+          "Apartment Size",
+          "Ceiling Height"
+        ],
+        "output_schema": {
+          "year_built": "number_or_not_available",
+          "total_units": "number_or_not_available",
+          "asking_price_per_unit": "currency_or_not_available",
+          "implied_total_price": "currency_or_not_available",
+          "unit_mix_raw": "string_or_not_available",
+          "apartment_size_helper_label": "string_or_not_available",
+          "ceiling_height_raw": "string_or_not_available",
+          "parsed_1br_sqft_basis": "string_or_not_available"
+        },
+        "rendering_notes": [
+          "Render this as a fact panel or compact table.",
+          "Do not generate narrative sentences here.",
+          "If Deal Size ($) is actually price/unit in the workflow, label it clearly as Asking Price / Unit.",
+          "If implied total price is shown, mark it as derived.",
+          "If 1BR sqft is parsed from Unit Types & Square Footage, show both the raw text and the parsed basis."
+        ],
+        "validation_checks": [
+          "No field outside payload may appear.",
+          "Do not treat Apartment Size helper label as the sole scoring basis unless explicitly confirmed.",
+          "If implied_total_price is shown, it must be reproducible from Deal Size ($) × Unit Size."
+        ],
+        "llm_instruction": null
+      },
+      "amenity_matrix": {
+        "section_type": "direct_render",
+        "llm_required": false,
+        "purpose": "Show the amenity and layout features as visible factual checks, not as prose.",
+        "raw_keys_required": [
+          "Swimming Pool",
+          "Fitness Center",
+          "2nd Bath for 2+ Bedroom Units",
+          "Washer/Dryer",
+          "Patio",
+          "Balcony",
+          "Yard",
+          "Ceiling Height"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "high_confidence_amenities",
+          "low_confidence_scrape_fields"
+        ],
+        "proof_keys_to_display": [
+          "Swimming Pool",
+          "Fitness Center",
+          "2nd Bath for 2+ Bedroom Units",
+          "Washer/Dryer",
+          "Patio",
+          "Balcony",
+          "Yard",
+          "Ceiling Height"
+        ],
+        "output_schema": {
+          "high_confidence_features": [
+            {
+              "feature": "string",
+              "status": "Yes | No | Not available"
+            }
+          ],
+          "low_confidence_features": [
+            {
+              "feature": "string",
+              "status": "Yes | No | Not available",
+              "confidence_note": "string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Prefer a matrix or checklist layout.",
+          "Group Patio/Balcony/Yard separately as scrape-weak or low-confidence if you want them shown.",
+          "Do not let this section become narrative."
+        ],
+        "validation_checks": [
+          "No unsupported amenities should be introduced.",
+          "Only fields present in payload may be shown.",
+          "Patio/Balcony/Yard should be visually marked as lower-confidence if the workflow still treats them as scrape-weak."
+        ],
+        "llm_instruction": null
+      },
+      "positive_score_drivers": {
+        "section_type": "template_render",
+        "llm_required": false,
+        "purpose": "Show all major positive rubric contributors as evidence cards.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Walk Score",
+          "Transit Score",
+          "Bike Score",
+          "Sound Score",
+          "Great Schools Rating (Score)",
+          "Retail - Starbucks",
+          "Retail - National Cluster",
+          "Retail - National Grocer",
+          "Median Income",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Rubric - Vintage",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Bike Score",
+          "Rubric - Sound Score",
+          "Rubric - School Score",
+          "Rubric - Dist Starbucks",
+          "Rubric - Nat Cluster",
+          "Rubric - Nat Grocer",
+          "Rubric - Median Income",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "positive_driver_cards_sorted_desc"
+        ],
+        "proof_keys_to_display": [
+          "Property Vintage",
+          "Walk Score",
+          "Transit Score",
+          "Bike Score",
+          "Sound Score",
+          "Great Schools Rating (Score)",
+          "Retail - Starbucks",
+          "Retail - National Cluster",
+          "Retail - National Grocer",
+          "Median Income",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Rubric - Vintage",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Bike Score",
+          "Rubric - Sound Score",
+          "Rubric - School Score",
+          "Rubric - Dist Starbucks",
+          "Rubric - Nat Cluster",
+          "Rubric - Nat Grocer",
+          "Rubric - Median Income",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "output_schema": {
+          "cards": [
+            {
+              "variable_name": "string",
+              "raw_value": "string_or_number",
+              "rubric_score": "number",
+              "fact_line": "short_fact_statement"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This section should be generated deterministically from variables with positive rubric scores only.",
+          "Sort highest positive score first.",
+          "Each card should show: variable name, raw value, rubric score, one factual line.",
+          "No interpretation beyond factual description."
+        ],
+        "validation_checks": [
+          "Only include variables whose rubric score is greater than 0.",
+          "Do not include a variable if the rubric score is null.",
+          "Fact line must not include unsupported conclusions.",
+          "Raw value must match the payload exactly or an approved derived form."
+        ],
+        "llm_instruction": null
+      },
+      "structural_constraints": {
+        "section_type": "template_render",
+        "llm_required": false,
+        "purpose": "Show all material negative rubric contributors as constraint cards.",
+        "raw_keys_required": [
+          "Apartment Size",
+          "Walk Score",
+          "Transit Score",
+          "Great Schools Rating (Score)",
+          "Undesirable Retail",
+          "Population Density",
+          "Rubric - Apartment Size",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - School Score",
+          "Rubric - Undesirable Retail",
+          "Rubric - Population Density"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "negative_constraint_cards_sorted_asc"
+        ],
+        "proof_keys_to_display": [
+          "Apartment Size",
+          "Undesirable Retail",
+          "Population Density",
+          "Walk Score",
+          "Transit Score",
+          "Great Schools Rating (Score)",
+          "Rubric - Apartment Size",
+          "Rubric - Undesirable Retail",
+          "Rubric - Population Density",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - School Score"
+        ],
+        "output_schema": {
+          "cards": [
+            {
+              "variable_name": "string",
+              "raw_value": "string_or_number",
+              "rubric_score": "number",
+              "fact_line": "short_fact_statement"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This section should be generated deterministically from variables with negative rubric scores only.",
+          "Show the most negative items first.",
+          "Keep the tone factual, not alarmist.",
+          "This section should emphasize that these are constraints visible in the current payload/model."
+        ],
+        "validation_checks": [
+          "Only include variables whose rubric score is below 0.",
+          "Do not add judgment outside the actual value and score.",
+          "If the field’s rubric definition is currently unresolved, mark it visually as model-dependent instead of hiding it."
+        ],
+        "llm_instruction": null
+      },
+      "mixed_factors_and_neutral_signals": {
+        "section_type": "direct_render_with_minimal_templating",
+        "llm_required": false,
+        "purpose": "Capture variables that are neutral, zero-scored, ambiguous, missing, helper labels, or transformation-dependent.",
+        "raw_keys_required": [
+          "Market Scale",
+          "Ceiling Height",
+          "Apartment Size",
+          "Transit Score",
+          "Bike Score",
+          "Crime Score",
+          "Location Score",
+          "Missing Score Fields",
+          "Rubric - Market Scale",
+          "Rubric - Ceiling Height",
+          "Rubric - Apartment Size",
+          "Rubric - Transit Score",
+          "Rubric - Bike Score",
+          "Rubric - Crime Score",
+          "Rubric - Location Score"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "zero_score_fields",
+          "missing_scored_fields",
+          "transform_dependent_fields"
+        ],
+        "proof_keys_to_display": [
+          "Market Scale",
+          "Ceiling Height",
+          "Apartment Size",
+          "Transit Score",
+          "Bike Score",
+          "Crime Score",
+          "Location Score",
+          "Missing Score Fields",
+          "Rubric - Market Scale",
+          "Rubric - Ceiling Height",
+          "Rubric - Apartment Size",
+          "Rubric - Transit Score",
+          "Rubric - Bike Score",
+          "Rubric - Crime Score",
+          "Rubric - Location Score"
+        ],
+        "output_schema": {
+          "mixed_factors": [
+            {
+              "variable_name": "string",
+              "raw_value": "string_or_number_or_null",
+              "rubric_score": "number_or_null",
+              "status": "neutral | missing | unresolved | helper_field | pending_rubric",
+              "note": "short_string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should look like a compact list/table, not a long paragraph.",
+          "This is where unresolved data logic should become visible rather than hidden.",
+          "Useful examples: missing Tier 1 variables, helper fields like Apartment Size label, pending rubric fields like Bike Score, transform-dependent raw values."
+        ],
+        "validation_checks": [
+          "Do not hide missing Tier 1 fields.",
+          "Do not classify a field as neutral if it is actually missing.",
+          "If a field exists but the scoring logic is unresolved, mark it as unresolved rather than normal."
+        ],
+        "llm_instruction": null
+      },
+      "physical_condition_and_product_read": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Provide a short, evidence-based read on what the current data suggests about the physical product and immediate capex/condition posture.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Ceiling Height",
+          "Swimming Pool",
+          "Fitness Center",
+          "2nd Bath for 2+ Bedroom Units",
+          "Washer/Dryer",
+          "Apartment Size",
+          "Unit Types & Square Footage",
+          "Great Schools Data"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "maintenance_theme",
+          "pest_control_theme",
+          "amenities_and_grounds_theme"
+        ],
+        "derived_keys_allowed": [
+          "parsed_1br_sqft_basis",
+          "physical_product_strength_summary",
+          "physical_product_constraint_summary"
+        ],
+        "proof_keys_to_display": [
+          "Property Vintage",
+          "Ceiling Height",
+          "Swimming Pool",
+          "Fitness Center",
+          "2nd Bath for 2+ Bedroom Units",
+          "Washer/Dryer",
+          "Apartment Size",
+          "Unit Types & Square Footage",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "paragraph": "2_to_4_sentences",
+          "capex_signal_label": "Current product | Likely current but verify | Physical verification needed"
+        },
+        "rendering_notes": [
+          "Keep this short and tightly evidence-based.",
+          "This is not a full inspection opinion.",
+          "Only use what the current payload and sentiment output actually support.",
+          "If sentiment is used, cite review count and date."
+        ],
+        "validation_checks": [
+          "Do not infer hidden capex needs not supported by the payload.",
+          "Do not claim structural quality from amenities alone.",
+          "If ceiling height is unknown, say it is unconfirmed rather than assuming.",
+          "If sentiment is cited, include review corpus context."
+        ],
+        "llm_instruction": "Write a short 2 to 4 sentence product and physical-condition read based only on the provided property facts and any provided sentiment evidence. Focus on whether the asset appears physically current, functionally competitive, and whether any obvious physical verification is still needed. Every qualitative claim must include the supporting fact or value. Do not invent inspection findings, capex budgets, or hidden condition issues. If sentiment is referenced, include operational rating together with review count and analysis date."
+      }
+    }
+  },
+  "page_3": {
+    "page_title": "Location, Access & Demand Context",
+    "page_goal": "Translate the location and demographic parts of the property payload into an evidence-heavy, mostly factual page that shows accessibility, retail adjacency, school context, and local demand support.",
+    "design_rule": "This page should be mostly factual and directly render actual values from the payload. Narrative should be limited to a short location-demand read at the end.",
+    "layout_order": [
+      "geographic_context",
+      "mobility_and_environment",
+      "retail_access_and_adjacency",
+      "school_context",
+      "demographic_demand_table",
+      "location_demand_read"
+    ],
+    "sections": {
+      "geographic_context": {
+        "section_type": "direct_render",
+        "llm_required": false,
+        "purpose": "Anchor the property in its geographic context and make any missing location-critical fields explicit.",
+        "raw_keys_required": [
+          "city",
+          "state",
+          "zip",
+          "Census Tract",
+          "Census County",
+          "Census State",
+          "FIPS State Code",
+          "FIPS County Code",
+          "FIPS Tract Code",
+          "FIPS Block Code",
+          "Missing Score Fields"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "location_missing_critical_fields",
+          "location_missing_noncritical_fields"
+        ],
+        "proof_keys_to_display": [
+          "city",
+          "state",
+          "zip",
+          "Census Tract",
+          "Census County",
+          "Census State",
+          "FIPS State Code",
+          "FIPS County Code",
+          "FIPS Tract Code",
+          "FIPS Block Code",
+          "Missing Score Fields"
+        ],
+        "output_schema": {
+          "location_label": "string",
+          "census_tract": "string_or_number",
+          "county": "string_or_not_available",
+          "state": "string_or_not_available",
+          "fips_summary": {
+            "state_code": "string_or_number",
+            "county_code": "string_or_number",
+            "tract_code": "string_or_number",
+            "block_code": "string_or_number"
+          },
+          "location_missing_fields": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "Render this as a compact location-identification block.",
+          "This section should make missing location-critical fields visible rather than hiding them.",
+          "Transit Score, Crime Score, and Location Score should be surfaced as missing here if they appear in Missing Score Fields."
+        ],
+        "validation_checks": [
+          "Do not invent submarket names not present in payload.",
+          "Only fields available in payload may be shown.",
+          "If Missing Score Fields contains location-critical variables, they must appear in location_missing_fields."
+        ],
+        "llm_instruction": null
+      },
+      "mobility_and_environment": {
+        "section_type": "direct_render_with_light_derivation",
+        "llm_required": false,
+        "purpose": "Show the factual accessibility and environmental-suitability metrics for the location.",
+        "raw_keys_required": [
+          "Walk Score",
+          "Transit Score",
+          "Bike Score",
+          "Sound Score",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Bike Score",
+          "Rubric - Sound Score",
+          "Missing Score Fields"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "mobility_panel_status",
+          "missing_mobility_metrics"
+        ],
+        "proof_keys_to_display": [
+          "Walk Score",
+          "Transit Score",
+          "Bike Score",
+          "Sound Score",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Bike Score",
+          "Rubric - Sound Score"
+        ],
+        "output_schema": {
+          "mobility_metrics": [
+            {
+              "metric": "Walk Score | Transit Score | Bike Score | Sound Score",
+              "raw_value": "number_or_not_available",
+              "rubric_score": "number_or_null",
+              "status_note": "string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should be a four-card or four-row panel.",
+          "No narrative paragraph should be generated here.",
+          "If a score is missing, render 'Not available' and explicitly note if it is decision-critical."
+        ],
+        "validation_checks": [
+          "Transit Score must be clearly flagged if missing.",
+          "Do not interpret Sound Score beyond showing its raw value and rubric contribution in this section.",
+          "Do not calculate new metrics that are not in payload."
+        ],
+        "llm_instruction": null
+      },
+      "retail_access_and_adjacency": {
+        "section_type": "direct_render_with_light_derivation",
+        "llm_required": false,
+        "purpose": "Show convenience and adjacency signals from nearby retail/access points using the actual distances and rubric scores.",
+        "raw_keys_required": [
+          "Retail - Starbucks",
+          "Undesirable Retail",
+          "Retail - National Cluster",
+          "Retail - National Grocer",
+          "Rubric - Dist Starbucks",
+          "Rubric - Undesirable Retail",
+          "Rubric - Nat Cluster",
+          "Rubric - Nat Grocer"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "retail_access_cards"
+        ],
+        "proof_keys_to_display": [
+          "Retail - Starbucks",
+          "Undesirable Retail",
+          "Retail - National Cluster",
+          "Retail - National Grocer",
+          "Rubric - Dist Starbucks",
+          "Rubric - Undesirable Retail",
+          "Rubric - Nat Cluster",
+          "Rubric - Nat Grocer"
+        ],
+        "output_schema": {
+          "retail_metrics": [
+            {
+              "metric": "Dist. Starbucks | Undesirable Retail | Nat. Cluster | Nat. Grocer",
+              "raw_value": "number_or_not_available",
+              "unit": "miles",
+              "rubric_score": "number_or_null",
+              "fact_line": "short_fact_statement"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This can be a 4-card layout.",
+          "Each card should visibly show the actual distance and the rubric score.",
+          "Keep it factual: raw value first, scoring implication second."
+        ],
+        "validation_checks": [
+          "Do not replace exact distances with vague language.",
+          "If Undesirable Retail scoring is currently under reconciliation, keep the raw value visible and do not hide the score issue.",
+          "No unsupported retail categories should be added."
+        ],
+        "llm_instruction": null
+      },
+      "school_context": {
+        "section_type": "direct_render_with_light_parsing",
+        "llm_required": false,
+        "purpose": "Show the nearby school evidence and composite school signal without over-interpreting it.",
+        "raw_keys_required": [
+          "Great Schools Rating (Score)",
+          "Great Schools Data",
+          "Rubric - School Score"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "parsed_school_rows"
+        ],
+        "proof_keys_to_display": [
+          "Great Schools Rating (Score)",
+          "Great Schools Data",
+          "Rubric - School Score"
+        ],
+        "output_schema": {
+          "school_summary": {
+            "composite_score": "number_or_not_available",
+            "rubric_score": "number_or_null"
+          },
+          "schools": [
+            {
+              "school_name": "string",
+              "level_codes": "string_or_not_available",
+              "rating_label": "string_or_not_available",
+              "distance_miles": "number_or_not_available"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Parse Great Schools Data into rows if possible.",
+          "If parsing fails, keep the raw text visible instead of inventing a structured row.",
+          "This section should stay factual only."
+        ],
+        "validation_checks": [
+          "Do not create school names or distances that are not in Great Schools Data.",
+          "Do not interpret school quality beyond the actual score and rubric value in this section."
+        ],
+        "llm_instruction": null
+      },
+      "demographic_demand_table": {
+        "section_type": "direct_render_with_light_derivation",
+        "llm_required": false,
+        "purpose": "Show the demand-context variables available in the payload using only available geographies and metrics.",
+        "raw_keys_required": [
+          "Census Tract",
+          "Justice Map - Income Range",
+          "Median Income",
+          "Population",
+          "Population Density",
+          "Justice Map - Surrounding",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Rubric - Median Income",
+          "Rubric - Population Density",
+          "Rubric - Justice Map Surroundings",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "demographic_rows",
+          "outlier_flags_if_any"
+        ],
+        "proof_keys_to_display": [
+          "Census Tract",
+          "Justice Map - Income Range",
+          "Median Income",
+          "Population",
+          "Population Density",
+          "Justice Map - Surrounding",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Rubric - Median Income",
+          "Rubric - Population Density",
+          "Rubric - Justice Map Surroundings",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "output_schema": {
+          "table_rows": [
+            {
+              "metric": "string",
+              "raw_value": "string_or_number_or_not_available",
+              "rubric_score": "number_or_null",
+              "note": "short_string_or_null"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should be table-first, not paragraph-first.",
+          "Only show geographies and values actually present in the payload.",
+          "Do not invent ZIP/MSA/1-mile/3-mile benchmarks if not available.",
+          "Heatmap fields can appear in this table because they are part of demand context in the current model."
+        ],
+        "validation_checks": [
+          "No unavailable geography benchmark may be inserted.",
+          "If a rubric lookup is unresolved for a field, raw value should still be shown with the score field marked accordingly.",
+          "Do not turn this into interpretation-heavy text."
+        ],
+        "llm_instruction": null
+      },
+      "location_demand_read": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Provide a short evidence-based interpretation of whether the location and local demand context support, constrain, or complicate moving forward.",
+        "raw_keys_required": [
+          "Walk Score",
+          "Transit Score",
+          "Bike Score",
+          "Sound Score",
+          "Great Schools Rating (Score)",
+          "Retail - Starbucks",
+          "Undesirable Retail",
+          "Retail - National Cluster",
+          "Retail - National Grocer",
+          "Justice Map - Income Range",
+          "Median Income",
+          "Population",
+          "Population Density",
+          "Justice Map - Surrounding",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Sound Score",
+          "Rubric - School Score",
+          "Rubric - Dist Starbucks",
+          "Rubric - Undesirable Retail",
+          "Rubric - Nat Cluster",
+          "Rubric - Nat Grocer",
+          "Rubric - Median Income",
+          "Rubric - Population Density",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "best_location_supports",
+          "main_location_constraints",
+          "location_data_gaps"
+        ],
+        "proof_keys_to_display": [
+          "Walk Score",
+          "Transit Score",
+          "Sound Score",
+          "Retail - Starbucks",
+          "Undesirable Retail",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields"
+        ],
+        "output_schema": {
+          "paragraph": "3_to_5_sentences",
+          "location_support_label": "Supportive | Mixed | Constrained",
+          "data_gap_note": "string"
+        },
+        "rendering_notes": [
+          "This is the main narrative section for Page 3.",
+          "It should synthesize accessibility, retail context, and demand context into one short read.",
+          "Every important claim must visibly tie to the actual values and/or rubric scores."
+        ],
+        "validation_checks": [
+          "Must not invent external benchmarks not in payload.",
+          "Must not claim a fully positive location picture if critical location variables are missing.",
+          "If Transit Score, Crime Score, or Location Score is missing, the narrative must acknowledge the gap.",
+          "Keep to 3-5 sentences and stay grounded in the current payload only."
+        ],
+        "llm_instruction": "Write a 3 to 5 sentence location-and-demand read using only the provided accessibility, retail, school, and demographic fields. Explain whether the location appears supportive, mixed, or constrained for moving this property forward. Every important claim must include the actual supporting value or rubric score. Explicitly acknowledge any missing decision-relevant location fields such as Transit Score, Crime Score, or Location Score if they are missing. Do not invent benchmarks, neighborhood facts, or market knowledge that is not present in the payload."
+      }
+    }
+  },
+  "page_4": {
+    "page_title": "Resident Sentiment & Operating Health",
+    "page_goal": "Translate the review corpus into an evidence-based operating-health page showing top-line sentiment, positive and negative resident themes, category-level operating signals, and whether any issue should affect the move-forward decision.",
+    "design_rule": "This page should be evidence-heavy and theme-based. Every important operating claim must show the actual review count, confidence level, and corpus context.",
+    "layout_order": [
+      "sentiment_overview_cards",
+      "positive_themes",
+      "negative_themes",
+      "operating_health_by_category",
+      "notable_patterns_and_threshold_signals",
+      "operating_health_read"
+    ],
+    "sections": {
+      "sentiment_overview_cards": {
+        "section_type": "direct_render",
+        "llm_required": false,
+        "purpose": "Show the top-line review-based operating picture in compact cards.",
+        "raw_keys_required": [],
+        "external_keys_required": [
+          "operational_rating",
+          "review_sentiment_direction",
+          "review_stability",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [],
+        "proof_keys_to_display": [
+          "operational_rating",
+          "review_sentiment_direction",
+          "review_stability",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "cards": [
+            {
+              "card_name": "Operational Rating",
+              "value": "number_or_not_available",
+              "subtext": "out_of_5.0"
+            },
+            {
+              "card_name": "Review Sentiment",
+              "value": "Positive | Mixed | Negative | Not available",
+              "subtext": "Stable | Improving | Deteriorating | Not available"
+            },
+            {
+              "card_name": "Review Corpus",
+              "value": "number_or_not_available",
+              "subtext": "reviews considered"
+            },
+            {
+              "card_name": "Analysis Date",
+              "value": "date_or_not_available",
+              "subtext": "corpus snapshot"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should be a card row, not narrative.",
+          "Operational rating should never be shown without corpus count and date somewhere visible on the page.",
+          "If sentiment data is unavailable, cards should still render with Not available."
+        ],
+        "validation_checks": [
+          "Do not show operational_rating alone without corpus context on the page.",
+          "No narrative generation here.",
+          "Only use actual sentiment payload values."
+        ],
+        "llm_instruction": null
+      },
+      "positive_themes": {
+        "section_type": "template_render",
+        "llm_required": false,
+        "purpose": "Show positive operating themes with actual review-volume and confidence evidence.",
+        "raw_keys_required": [],
+        "external_keys_required": [
+          "positive_themes"
+        ],
+        "derived_keys_allowed": [
+          "positive_themes_sorted_by_mentions"
+        ],
+        "proof_keys_to_display": [
+          "theme_label",
+          "mention_count",
+          "confidence_level",
+          "resident_mention_count"
+        ],
+        "output_schema": {
+          "themes": [
+            {
+              "theme_name": "string",
+              "mention_count": "number",
+              "confidence_level": "High | Medium | Low",
+              "resident_mention_count": "number_or_null",
+              "threshold_status": "Established pattern | Tentative signal",
+              "fact_summary": "2_to_3_sentence_factual_observation"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Sort highest mention count first.",
+          "This section should stay factual, not SWOT-style.",
+          "If a theme has fewer than 10 qualifying reviews, it must be visibly marked as tentative/below-threshold."
+        ],
+        "validation_checks": [
+          "Do not elevate low-count themes without threshold caveat.",
+          "Do not invent themes not present in sentiment output.",
+          "Each theme must show actual mention count and confidence."
+        ],
+        "llm_instruction": null
+      },
+      "negative_themes": {
+        "section_type": "template_render",
+        "llm_required": false,
+        "purpose": "Show negative operating themes with actual evidence and threshold visibility.",
+        "raw_keys_required": [],
+        "external_keys_required": [
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "negative_themes_sorted_by_mentions"
+        ],
+        "proof_keys_to_display": [
+          "theme_label",
+          "mention_count",
+          "confidence_level",
+          "resident_mention_count"
+        ],
+        "output_schema": {
+          "themes": [
+            {
+              "theme_name": "string",
+              "mention_count": "number",
+              "confidence_level": "High | Medium | Low",
+              "resident_mention_count": "number_or_null",
+              "threshold_status": "Established pattern | Tentative signal",
+              "fact_summary": "2_to_3_sentence_factual_observation"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Sort highest mention count first.",
+          "Keep this section factual and evidence-led.",
+          "Do not treat a below-threshold theme as a confirmed systemic issue without caveat."
+        ],
+        "validation_checks": [
+          "Do not create severity labels here unless the source logic already supports them.",
+          "Each theme must show actual mention count and confidence.",
+          "Below-threshold themes must be marked accordingly."
+        ],
+        "llm_instruction": null
+      },
+      "operating_health_by_category": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Group sentiment into investor-relevant operating categories and explain what the review evidence actually says.",
+        "raw_keys_required": [],
+        "external_keys_required": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "themes_by_category"
+        ],
+        "derived_keys_allowed": [
+          "management_staff_block",
+          "location_experience_block",
+          "building_condition_maintenance_block"
+        ],
+        "proof_keys_to_display": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "management_staff": {
+            "signal_label": "string",
+            "paragraph": "2_to_4_sentences"
+          },
+          "location_experience": {
+            "signal_label": "string",
+            "paragraph": "2_to_4_sentences"
+          },
+          "building_condition_maintenance": {
+            "signal_label": "string",
+            "paragraph": "2_to_4_sentences"
+          }
+        },
+        "rendering_notes": [
+          "Each category block should stay evidence-based.",
+          "Make structural vs operational distinction explicit where relevant.",
+          "This is still not SWOT; it is operating-health interpretation only."
+        ],
+        "validation_checks": [
+          "Every important claim must cite the underlying theme count and confidence in the text.",
+          "Do not describe a pattern as strong if it is below threshold without caveat.",
+          "If no themes exist for a category, state that evidence is limited rather than inventing one."
+        ],
+        "llm_instruction": "Write three category blocks for operating health: Management & Staff, Location & Experience, and Building Condition & Maintenance. Each block must stay grounded in the provided themes, mention counts, confidence levels, and corpus context. Keep each block to 2 to 4 sentences. Make clear whether the signal is primarily operational or whether it reflects a structural experience issue. Do not invent new themes. If evidence is limited or below threshold, say so explicitly."
+      },
+      "notable_patterns_and_threshold_signals": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Surface patterns that matter for diligence even if they are not yet formal flags.",
+        "raw_keys_required": [],
+        "external_keys_required": [
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "notable_patterns",
+          "threshold_signals",
+          "theme_timeline_notes"
+        ],
+        "derived_keys_allowed": [
+          "near_threshold_issues",
+          "resident_concentration_notes",
+          "transient_vs_systemic_notes"
+        ],
+        "proof_keys_to_display": [
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "theme_label",
+          "mention_count",
+          "resident_mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "pattern_bullets": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "This should be bullets, not a paragraph.",
+          "Good examples: concentrated resident complaints, below-threshold but credible issues, mixed-direction maintenance signal, lack of trend visibility due to no date segmentation."
+        ],
+        "validation_checks": [
+          "Do not convert tentative signals into full conclusions.",
+          "If a concern is near a severity threshold, say that factually without overstating.",
+          "Do not add timing/trend claims unless the sentiment payload supports them."
+        ],
+        "llm_instruction": "Write concise bullet points describing notable sentiment patterns that matter for diligence. Use only the provided theme evidence, counts, confidence levels, resident concentration, and any timeline notes. Focus on issues that are concentrated, near-threshold, mixed, or important to verify. Do not overstate uncertain evidence."
+      },
+      "operating_health_read": {
+        "section_type": "narrative",
+        "llm_required": true,
+        "purpose": "Provide the short executive read on whether the review corpus supports, complicates, or weakens the move-forward decision.",
+        "raw_keys_required": [],
+        "external_keys_required": [
+          "operational_rating",
+          "review_sentiment_direction",
+          "review_stability",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "positive_themes",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "strongest_operating_support",
+          "strongest_operating_concern",
+          "operating_dependency_assessment"
+        ],
+        "proof_keys_to_display": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "paragraph": "3_to_5_sentences",
+          "operating_health_label": "Supportive | Mixed | Watchlist | Concerning"
+        },
+        "rendering_notes": [
+          "This is the main Page 4 narrative section.",
+          "It should answer whether operations today appear to support the property moving forward, while staying honest about limitations.",
+          "This should not become a deal recommendation by itself; it is one input to the broader screening decision."
+        ],
+        "validation_checks": [
+          "Must include corpus context when citing operational_rating.",
+          "Must acknowledge uncertainty if evidence is mixed or below threshold.",
+          "Must not convert operating positives into a structural location conclusion.",
+          "Keep to 3-5 sentences."
+        ],
+        "llm_instruction": "Write a 3 to 5 sentence operating-health read for this property using only the provided sentiment evidence. State whether current operating sentiment is supportive, mixed, watchlist, or concerning. Use the operational rating together with review count and analysis date, and cite the most important positive and negative themes with actual counts and confidence levels. Make clear if current strength appears management-dependent or if any concern needs verification before underwriting. Do not invent trend claims, inspection findings, or structural conclusions."
+      }
+    }
+  },
+  "page_5": {
+    "page_title": "Risk Register, Contradictions & Decision Gates",
+    "page_goal": "Show what could stop the property from moving forward, what must be verified before underwriting, what evidence conflicts exist, and what data gaps still limit confidence.",
+    "design_rule": "This page should be action-oriented and decision-oriented. It should not just describe problems; it should clearly separate deal-breakers, notable flags, monitor items, contradictions, and gating conditions.",
+    "layout_order": [
+      "deal_breaker_flags",
+      "notable_flags",
+      "monitor_flags",
+      "signal_contradictions",
+      "known_unknowns_and_data_gaps",
+      "decision_gate_checklist"
+    ],
+    "sections": {
+      "deal_breaker_flags": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Identify any currently visible issue that would make the property unviable or unready to move forward without resolution.",
+        "raw_keys_required": [
+          "Transit Score",
+          "Undesirable Retail",
+          "Population Density",
+          "Property Vintage",
+          "Total Property Score",
+          "Missing Score Fields",
+          "Rubric - Transit Score",
+          "Rubric - Undesirable Retail",
+          "Rubric - Population Density",
+          "Rubric - Vintage"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "negative_themes",
+          "threshold_signals",
+          "severity_flags"
+        ],
+        "derived_keys_allowed": [
+          "tier_1_missing_flags",
+          "deal_breaker_candidates"
+        ],
+        "proof_keys_to_display": [
+          "Transit Score",
+          "Missing Score Fields",
+          "Total Property Score",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "deal_breaker_status": "None identified from available data | Active deal-breaker flags present",
+          "flags": [
+            {
+              "flag_name": "string",
+              "basis_type": "missing_critical_data | severity_issue | structural_constraint | combined",
+              "evidence": "string_with_actual_values",
+              "why_it_blocks": "short_string",
+              "resolution_path": "short_string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "If no current deal-breaker is supported by available evidence, explicitly say 'None identified from available data.'",
+          "Do not convert every missing field into a deal-breaker automatically; use verdict-blocking logic carefully.",
+          "Tier 1 missing fields can block a full Go without necessarily meaning the property is permanently dead."
+        ],
+        "validation_checks": [
+          "Any claimed deal-breaker must be supported by actual payload or sentiment evidence.",
+          "Do not label something a deal-breaker if the evidence is only low-confidence and below threshold without caveat.",
+          "If a Rule-2-style severe operating issue is present in sentiment evidence, it cannot be hidden here."
+        ],
+        "llm_instruction": "Identify whether any current deal-breaker flags are supported by the available structured data and sentiment evidence. Use only the provided values. If none are supported, return 'None identified from available data.' If a deal-breaker exists, explain it using the actual facts, the actual missing Tier 1 condition, or the actual severe operating evidence. Keep the explanation concise and action-oriented. Do not invent severity, inspections, or financial failure scenarios."
+      },
+      "notable_flags": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "List issues that require verification or resolution before underwriting, but are not yet direct deal-killers.",
+        "raw_keys_required": [
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Apartment Size",
+          "Undesirable Retail",
+          "Population Density",
+          "Missing Score Fields",
+          "Rubric - Transit Score",
+          "Rubric - Crime Score",
+          "Rubric - Location Score",
+          "Rubric - Market Scale",
+          "Rubric - Apartment Size",
+          "Rubric - Undesirable Retail",
+          "Rubric - Population Density"
+        ],
+        "external_keys_optional": [
+          "negative_themes",
+          "threshold_signals",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "notable_flag_candidates"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Apartment Size",
+          "Undesirable Retail",
+          "Population Density",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "flags": [
+            {
+              "flag_name": "string",
+              "tier_or_category": "Tier 1 | Tier 2 | Operational | Structural",
+              "evidence": "string_with_actual_values",
+              "open_question": "string",
+              "next_step": "specific_action_statement"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Each notable flag should include an open question and a specific next step.",
+          "This section should be the main diligence-to-do list.",
+          "Keep next steps executable and concrete."
+        ],
+        "validation_checks": [
+          "Every notable flag must have a next step.",
+          "No generic next steps like 'do more diligence' or 'investigate further'.",
+          "Each flag must tie to an actual variable, missing field, or sentiment signal."
+        ],
+        "llm_instruction": "Generate the notable flags that need resolution before underwriting. For each flag, include: the issue name, whether it is Tier 1, Tier 2, operational, or structural, the actual evidence from the payload, the specific open question it creates, and a concrete next step that someone can execute immediately. Do not use generic phrases like 'investigate further'."
+      },
+      "monitor_flags": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "List issues that are real but not currently critical enough to block movement.",
+        "raw_keys_required": [
+          "Great Schools Rating (Score)",
+          "Market Scale",
+          "Ceiling Height",
+          "Apartment Size",
+          "Rubric - School Score",
+          "Rubric - Market Scale",
+          "Rubric - Ceiling Height",
+          "Rubric - Apartment Size"
+        ],
+        "external_keys_optional": [
+          "negative_themes",
+          "mixed_themes",
+          "maintenance_signal",
+          "notable_patterns"
+        ],
+        "derived_keys_allowed": [
+          "monitor_candidates"
+        ],
+        "proof_keys_to_display": [
+          "Great Schools Rating (Score)",
+          "Market Scale",
+          "Ceiling Height",
+          "Apartment Size",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "flags": [
+            {
+              "flag_name": "string",
+              "evidence": "string_with_actual_values",
+              "why_monitor_only": "short_string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This section should stay short.",
+          "These are not underwriting blockers yet.",
+          "Good examples: average school score, mixed maintenance signal, unresolved but low-severity amenity issues."
+        ],
+        "validation_checks": [
+          "Do not push truly material issues down into monitor if they are actually notable or blocking.",
+          "Each monitor item must still show actual evidence."
+        ],
+        "llm_instruction": "Generate the monitor flags: real issues that should stay visible but do not currently block underwriting. Each item must include the actual evidence and one short statement explaining why it is being monitored rather than escalated."
+      },
+      "signal_contradictions": {
+        "section_type": "narrative_structured",
+        "llm_required": true,
+        "purpose": "Explain where different signals disagree and what that disagreement means for confidence.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Property Vintage",
+          "Walk Score",
+          "Transit Score",
+          "Median Income",
+          "Population Density",
+          "Undesirable Retail",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields",
+          "Rubric - Vintage",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Median Income",
+          "Rubric - Population Density",
+          "Rubric - Undesirable Retail",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "positive_themes",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "score_vs_sentiment_conflict",
+          "structural_vs_operational_conflict",
+          "missing_tier_1_bias_conflict",
+          "within_dimension_conflicts"
+        ],
+        "proof_keys_to_display": [
+          "Total Property Score",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "Transit Score",
+          "Missing Score Fields",
+          "Undesirable Retail",
+          "Population Density",
+          "Median Income",
+          "Heatmap Score"
+        ],
+        "output_schema": {
+          "contradictions": [
+            {
+              "signal_a": "string",
+              "signal_b": "string",
+              "conflict_implication": "string",
+              "resolution_path": "string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should feel like a structured contradiction register, not a loose essay.",
+          "Only include contradictions that actually exist.",
+          "Good examples: strong sentiment vs weak structural context, incomplete Tier 1 data vs present composite score, good income vs weaker school quality."
+        ],
+        "validation_checks": [
+          "Do not manufacture contradictions that are not supported by the data.",
+          "Each contradiction must tie to actual values.",
+          "Resolution path must be specific and realistic."
+        ],
+        "llm_instruction": "Generate only the real contradictions present in the provided data. Use the format: Signal A vs Signal B → What the conflict implies → What would resolve it. Focus especially on score versus sentiment, structural versus operational strength, and bias created by missing Tier 1 fields. Do not invent contradictions."
+      },
+      "known_unknowns_and_data_gaps": {
+        "section_type": "direct_render_with_light_grouping",
+        "llm_required": false,
+        "purpose": "Make unresolved data gaps visible so the report does not overstate certainty.",
+        "raw_keys_required": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Bike Score",
+          "Apartment Size",
+          "Deal Size ($)",
+          "Heatmap Score",
+          "Undesirable Retail"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "tier_1_missing_fields",
+          "tier_2_missing_fields",
+          "transformation_dependent_fields",
+          "rubric_reconciliation_fields"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Bike Score",
+          "Apartment Size",
+          "Deal Size ($)",
+          "Heatmap Score",
+          "Undesirable Retail"
+        ],
+        "output_schema": {
+          "tier_1_missing": [
+            "string"
+          ],
+          "tier_2_missing": [
+            "string"
+          ],
+          "transformation_dependent": [
+            "string"
+          ],
+          "rubric_reconciliation_needed": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "This should be a clean grouped block or table.",
+          "This section is not narrative-heavy.",
+          "It should honestly show what the current system still cannot treat as fully settled."
+        ],
+        "validation_checks": [
+          "Any missing Tier 1 field in Missing Score Fields must appear here.",
+          "If a field is known to need transform logic or rubric reconciliation, it should be surfaced here rather than hidden."
+        ],
+        "llm_instruction": null
+      },
+      "decision_gate_checklist": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Turn the current evidence into an explicit next-step gate for underwriting readiness.",
+        "raw_keys_required": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Total Property Score"
+        ],
+        "external_keys_optional": [
+          "negative_themes",
+          "threshold_signals",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "must_have_before_underwriting",
+          "should_have_before_underwriting",
+          "can_monitor_later"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "must_have_before_underwriting": [
+            "string"
+          ],
+          "should_have_before_underwriting": [
+            "string"
+          ],
+          "can_monitor_later": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "This should look like a checklist, not a paragraph.",
+          "It should be the most actionable section on the page.",
+          "Keep it short and execution-oriented."
+        ],
+        "validation_checks": [
+          "Tier 1 missing fields should appear in must-have-before-underwriting unless explicitly justified otherwise.",
+          "Do not put serious unresolved risks only in can-monitor-later.",
+          "Checklist items must be concrete."
+        ],
+        "llm_instruction": "Create a decision gate checklist with three buckets: must have before underwriting, should have before underwriting, and can monitor later. Base it only on the provided data gaps, contradictions, and operating/structural concerns. Be concrete and action-oriented. Do not use vague phrases."
+      }
+    }
+  }, 
+  "page_6": {
+    "page_title": "Investment Thesis & Go-Forward Logic",
+    "page_goal": "Classify the property into a single investment archetype, explain why using actual evidence, identify the most important underwriting assumption, and show why the other thesis paths are less appropriate.",
+    "design_rule": "This page is synthesis-heavy but must still be evidence-based. It should be strategically clear, but every important claim must tie back to actual payload values, rubric scores, and sentiment evidence where used.",
+    "layout_order": [
+      "thesis_classification",
+      "supporting_rationale",
+      "primary_underwriting_assumption",
+      "alternative_archetypes_ruled_out",
+      "thesis_confidence_and_dependency_note"
+    ],
+    "sections": {
+      "thesis_classification": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Select one and only one investment archetype, consistent with Page 1.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Property Vintage",
+          "Apartment Size",
+          "Walk Score",
+          "Transit Score",
+          "Sound Score",
+          "Undesirable Retail",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields",
+          "Rubric - Vintage",
+          "Rubric - Apartment Size",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Sound Score",
+          "Rubric - Undesirable Retail",
+          "Rubric - Median Income",
+          "Rubric - Population Density",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "positive_themes",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "thesis_label",
+          "thesis_is_hypothesis"
+        ],
+        "proof_keys_to_display": [
+          "Total Property Score",
+          "Property Vintage",
+          "Median Income",
+          "Transit Score",
+          "Undesirable Retail",
+          "Population Density",
+          "Heatmap Score",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "Missing Score Fields"
+        ],
+        "output_schema": {
+          "thesis_label": "Rent-to-Market | Value-Add Capex | Operational Turnaround | Core-Plus / Stabilized Hold",
+          "thesis_hypothesis_suffix": "HYPOTHESIS | null",
+          "primary_driver_type": "Structural | Operational | Mixed-but-primary-one-must-be-named"
+        },
+        "rendering_notes": [
+          "Display the thesis label prominently.",
+          "If any Tier 1 diagnostic variable is missing, append a visible HYPOTHESIS note.",
+          "Only one thesis label is allowed. No hybrids."
+        ],
+        "validation_checks": [
+          "Thesis label must be one allowed value only.",
+          "If Tier 1 variable(s) are missing, the hypothesis note must be present.",
+          "Thesis label must be consistent with Page 1 thesis label."
+        ],
+        "llm_instruction": "Choose exactly one investment thesis archetype from these options only: Rent-to-Market, Value-Add Capex, Operational Turnaround, Core-Plus / Stabilized Hold. Base the choice only on the provided structured evidence. Name whether the primary driver is structural or operational. If any Tier 1 diagnostic variable is missing, mark the thesis as a hypothesis. Do not create hybrid labels."
+      },
+
+      "supporting_rationale": {
+        "section_type": "narrative",
+        "llm_required": true,
+        "purpose": "Explain why this thesis fits the property better than the others, using specific data.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Property Vintage",
+          "Unit Size",
+          "Apartment Size",
+          "Walk Score",
+          "Transit Score",
+          "Sound Score",
+          "Undesirable Retail",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields",
+          "Rubric - Vintage",
+          "Rubric - Unit Size",
+          "Rubric - Apartment Size",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Sound Score",
+          "Rubric - Undesirable Retail",
+          "Rubric - Median Income",
+          "Rubric - Population Density",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "positive_themes",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "primary_thesis_support_points",
+          "primary_constraint_points"
+        ],
+        "proof_keys_to_display": [
+          "Property Vintage",
+          "Rubric - Vintage",
+          "Median Income",
+          "Rubric - Median Income",
+          "Population Density",
+          "Rubric - Population Density",
+          "Undesirable Retail",
+          "Rubric - Undesirable Retail",
+          "Heatmap Score",
+          "Rubric - Heatmap",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "paragraph": "2_to_4_sentences"
+        },
+        "rendering_notes": [
+          "Keep this to 2-4 sentences.",
+          "This is the main thesis rationale block.",
+          "The rationale should explicitly say whether the main thesis driver is structural or operational."
+        ],
+        "validation_checks": [
+          "Every important claim must carry an actual value or rubric score.",
+          "Do not reference fields outside the payload.",
+          "Do not smuggle underwriting metrics that are not available.",
+          "If sentiment is cited, corpus count and date must be included."
+        ],
+        "llm_instruction": "Write a 2 to 4 sentence supporting rationale for the chosen thesis. Use actual values, rubric scores, and sentiment evidence where provided. Explicitly state whether the primary investment driver is structural or operational. Keep the explanation strategic but evidence-based. Do not invent rent gaps, capex budgets, financing assumptions, or market facts not present in the payload."
+      },
+
+      "primary_underwriting_assumption": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Identify the single most important assumption the underwriting model would need to get right for this thesis to hold.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Median Income",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Population Density",
+          "Undesirable Retail",
+          "Total Property Score",
+          "Missing Score Fields"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "assumption_label",
+          "assumption_dependency_type"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Property Vintage",
+          "Median Income",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Population Density",
+          "Undesirable Retail",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "assumption_title": "string",
+          "assumption_statement": "2_to_3_sentences",
+          "must_confirm_inputs": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "This should feel like a focused underwriting hinge, not a long narrative.",
+          "Only one primary underwriting assumption should be named.",
+          "A short list of must-confirm inputs can appear under it."
+        ],
+        "validation_checks": [
+          "Assumption must fit the selected thesis archetype.",
+          "Do not use unavailable seller financial fields as if they are already known.",
+          "If the assumption depends on missing Tier 1 variables, say so clearly."
+        ],
+        "llm_instruction": "Identify the single most important underwriting assumption for the chosen thesis. Write 2 to 3 sentences explaining why that assumption matters and what specific inputs would need to be confirmed. Use only the provided data and explicit missing-field context. Do not pretend seller financials or rent-roll facts are already available if they are not."
+      },
+
+      "alternative_archetypes_ruled_out": {
+        "section_type": "narrative_structured",
+        "llm_required": true,
+        "purpose": "Explain why the other thesis options are less appropriate than the chosen one.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Apartment Size",
+          "Walk Score",
+          "Transit Score",
+          "Sound Score",
+          "Undesirable Retail",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields",
+          "Rubric - Vintage",
+          "Rubric - Apartment Size",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Sound Score",
+          "Rubric - Undesirable Retail",
+          "Rubric - Median Income",
+          "Rubric - Population Density",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "positive_themes",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "ruled_out_archetype_reasons"
+        ],
+        "proof_keys_to_display": [
+          "Property Vintage",
+          "Apartment Size",
+          "Walk Score",
+          "Transit Score",
+          "Undesirable Retail",
+          "Median Income",
+          "Population Density",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "archetypes": [
+            {
+              "archetype_name": "Rent-to-Market | Value-Add Capex | Operational Turnaround | Core-Plus / Stabilized Hold",
+              "status": "Selected | Ruled Out",
+              "reason": "1_to_2_sentences"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Only the non-selected archetypes need ruled-out explanations.",
+          "Keep each reason short and evidence-based.",
+          "This should be structured, like a mini-table or repeated blocks."
+        ],
+        "validation_checks": [
+          "Do not rule out an archetype using facts not present in payload.",
+          "Reasons must align with the official archetype definitions.",
+          "No hybrid or extra archetypes are allowed."
+        ],
+        "llm_instruction": "For each non-selected thesis archetype, write a brief 1 to 2 sentence explanation of why it is less appropriate than the chosen thesis. Use only the provided data and the allowed archetype definitions. Keep the logic evidence-based and concise."
+      },
+
+      "thesis_confidence_and_dependency_note": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Make clear how confident we should be in the thesis and what unresolved dependencies still sit under it.",
+        "raw_keys_required": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Total Property Score"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "thesis_confidence_label",
+          "thesis_dependency_list"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Total Property Score"
+        ],
+        "output_schema": {
+          "confidence_label": "High | Medium | Low | Hypothesis",
+          "dependency_note": "2_to_4_sentences",
+          "critical_dependencies": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "This section should be visually separate from the main rationale.",
+          "It should directly state whether the thesis is provisional.",
+          "Good format: label + short paragraph + bullet list."
+        ],
+        "validation_checks": [
+          "If Tier 1 fields are missing, confidence cannot be High.",
+          "Critical dependencies must reflect actual missing or unresolved inputs.",
+          "No invented underwriting dependencies should appear."
+        ],
+        "llm_instruction": "Assign a thesis confidence label and write a short dependency note explaining how secure or provisional the thesis is. If any Tier 1 variable is missing, the thesis must be treated as a hypothesis or low-confidence provisional view. Name the specific missing or unresolved dependencies directly. Do not invent unavailable underwriting inputs."
+      }
+    }
+  },
+  "page_7": {
+    "page_title": "Data Quality, Assumptions & Variable Log",
+    "page_goal": "Provide the complete audit trail for the report by showing the raw variables used, rubric contributions, missing fields, assumptions, transformations, sentiment data context, and enough traceability to reconstruct the report later.",
+    "design_rule": "This page should be mostly deterministic and table-driven. Narrative should be minimal. It should feel like an audit appendix that is still readable by the investment team.",
+    "layout_order": [
+      "data_reliability_summary",
+      "assumption_and_transformation_register",
+      "missing_data_summary",
+      "core_variable_log",
+      "sentiment_data_log",
+      "traceability_and_rebuild_metadata"
+    ],
+    "sections": {
+      "data_reliability_summary": {
+        "section_type": "direct_render_with_light_derivation",
+        "llm_required": false,
+        "purpose": "Give a compact overview of how complete and reliable the current structured input is.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Missing Score Fields",
+          "Relaxed Fields Used",
+          "Data Inserted Timestamp"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "score_completeness_percent",
+          "missing_tier_1_fields",
+          "missing_tier_2_fields",
+          "missing_tier_3_fields",
+          "data_reliability_label"
+        ],
+        "proof_keys_to_display": [
+          "Total Property Score",
+          "Missing Score Fields",
+          "Relaxed Fields Used",
+          "Data Inserted Timestamp",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "summary_cards": [
+            {
+              "label": "Score Completeness",
+              "value": "number_or_not_available",
+              "subtext": "percent_or_fraction"
+            },
+            {
+              "label": "Missing Tier 1",
+              "value": "number",
+              "subtext": "list_or_none"
+            },
+            {
+              "label": "Missing Tier 2",
+              "value": "number",
+              "subtext": "list_or_none"
+            },
+            {
+              "label": "Data Reliability",
+              "value": "High | Medium | Low | Provisional",
+              "subtext": "short_note"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Use compact summary cards or a small audit summary table.",
+          "This section should stay factual and should not drift into recommendation language.",
+          "If Tier 1 fields are missing, reliability cannot be shown as High."
+        ],
+        "validation_checks": [
+          "Missing Tier 1 list must agree with Missing Score Fields.",
+          "Reliability label must reflect actual missing critical fields.",
+          "No invented completeness figure should be shown if not derivable."
+        ],
+        "llm_instruction": null
+      },
+
+      "assumption_and_transformation_register": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Expose any interpretation rules, helper labels, or transformations used so the report does not hide model assumptions.",
+        "raw_keys_required": [
+          "Unit Size",
+          "Deal Size ($)",
+          "Apartment Size",
+          "Unit Types & Square Footage",
+          "Ceiling Height",
+          "Patio",
+          "Balcony",
+          "Yard",
+          "Relaxed Fields Used"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "assumption_register_entries",
+          "transform_rules_used",
+          "low_confidence_fields"
+        ],
+        "proof_keys_to_display": [
+          "Unit Size",
+          "Deal Size ($)",
+          "Apartment Size",
+          "Unit Types & Square Footage",
+          "Ceiling Height",
+          "Patio",
+          "Balcony",
+          "Yard",
+          "Relaxed Fields Used"
+        ],
+        "output_schema": {
+          "assumptions": [
+            {
+              "assumption_name": "string",
+              "raw_field": "string",
+              "assumption_or_transform": "string",
+              "reason": "short_string",
+              "impact_scope": "scoring | rendering | interpretation"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should be a structured register, not a narrative paragraph.",
+          "Good examples: Unit Size interpreted as unit count, Deal Size ($) may require transform logic, Apartment Size helper label vs actual 1BR sqft scoring basis, Patio/Balcony/Yard scrape confidence concerns.",
+          "This section is important for honesty and reproducibility."
+        ],
+        "validation_checks": [
+          "Do not hide known field ambiguities.",
+          "Every listed assumption must tie to a real field or transform dependency.",
+          "Do not invent transformations that are not actually used."
+        ],
+        "llm_instruction": "Create an assumptions and transformation register using only the provided property fields and known workflow logic. Focus on ambiguous raw fields, helper labels, derived scoring logic, and scrape-confidence issues. Keep each entry short, concrete, and auditable."
+      },
+
+      "missing_data_summary": {
+        "section_type": "direct_render_with_light_grouping",
+        "llm_required": false,
+        "purpose": "Show exactly what is missing, by tier, and why it matters.",
+        "raw_keys_required": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Bike Score"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "tier_1_missing_fields",
+          "tier_2_missing_fields",
+          "tier_3_missing_fields",
+          "bias_direction_notes"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "Bike Score"
+        ],
+        "output_schema": {
+          "tier_1_missing": [
+            {
+              "field": "string",
+              "bias_direction": "string_or_unknown",
+              "verdict_implication": "short_string"
+            }
+          ],
+          "tier_2_missing": [
+            {
+              "field": "string",
+              "bias_direction": "string_or_unknown",
+              "verdict_implication": "short_string"
+            }
+          ],
+          "tier_3_missing": [
+            {
+              "field": "string",
+              "bias_direction": "string_or_unknown",
+              "verdict_implication": "short_string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should be grouped by Tier 1, Tier 2, Tier 3.",
+          "Tier 1 block should appear first and be visually emphasized.",
+          "Bias direction can be unknown if not safely inferable."
+        ],
+        "validation_checks": [
+          "Any Tier 1 missing field in Missing Score Fields must appear here.",
+          "Do not imply a precise score impact when it is unknown.",
+          "Tier ordering must be correct."
+        ],
+        "llm_instruction": null
+      },
+
+      "core_variable_log": {
+        "section_type": "direct_render_with_strict_schema",
+        "llm_required": false,
+        "purpose": "Provide the full structured variable log for the property so the score can be audited and reconstructed.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Unit Size",
+          "Deal Size ($)",
+          "Market Scale",
+          "Ceiling Height",
+          "Swimming Pool",
+          "Fitness Center",
+          "2nd Bath for 2+ Bedroom Units",
+          "Apartment Size",
+          "Washer/Dryer",
+          "Walk Score",
+          "Transit Score",
+          "Bike Score",
+          "Sound Score",
+          "Great Schools Rating (Score)",
+          "Retail - Starbucks",
+          "Undesirable Retail",
+          "Retail - National Cluster",
+          "Retail - National Grocer",
+          "Median Income",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Crime Score",
+          "Location Score",
+          "Population Density",
+          "Justice Map - Surrounding",
+          "Rubric - Vintage",
+          "Rubric - Unit Size",
+          "Rubric - Deal Size",
+          "Rubric - Market Scale",
+          "Rubric - Ceiling Height",
+          "Rubric - Swimming Pool",
+          "Rubric - Fitness Center",
+          "Rubric - 2nd Bath",
+          "Rubric - Apartment Size",
+          "Rubric - Washer Dryer",
+          "Rubric - Walk Score",
+          "Rubric - Transit Score",
+          "Rubric - Bike Score",
+          "Rubric - Sound Score",
+          "Rubric - School Score",
+          "Rubric - Dist Starbucks",
+          "Rubric - Undesirable Retail",
+          "Rubric - Nat Cluster",
+          "Rubric - Nat Grocer",
+          "Rubric - Median Income",
+          "Rubric - Heatmap",
+          "Rubric - Mod Heatmap",
+          "Rubric - Crime Score",
+          "Rubric - Location Score",
+          "Rubric - Population Density",
+          "Rubric - Justice Map Surroundings"
+        ],
+        "external_keys_optional": [],
+        "derived_keys_allowed": [
+          "variable_log_rows",
+          "tier_lookup_from_dictionary",
+          "max_score_lookup_from_dictionary",
+          "source_lookup_from_dictionary"
+        ],
+        "proof_keys_to_display": [
+          "*"
+        ],
+        "output_schema": {
+          "rows": [
+            {
+              "variable_display_name": "string",
+              "tier": "1 | 2 | 3 | null",
+              "raw_value": "string_or_number_or_null",
+              "rubric_score": "number_or_null",
+              "max_score": "number_or_null",
+              "data_source": "string",
+              "notes_or_missing_flag": "string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This is the main table on the page.",
+          "Do not summarize away rows; this should be complete.",
+          "Every scored variable should appear, including missing ones.",
+          "Use the data dictionary to enrich each row with tier, max score, and source."
+        ],
+        "validation_checks": [
+          "Every scored variable expected by the dictionary must appear.",
+          "Raw value must match the property payload exactly unless a visibly marked derived display form is used.",
+          "Missing variables must still appear as rows.",
+          "No analysis should appear inside the row text beyond short notes/missing flags."
+        ],
+        "llm_instruction": null
+      },
+
+      "sentiment_data_log": {
+        "section_type": "direct_render_with_template",
+        "llm_required": false,
+        "purpose": "Show the audit details for the sentiment input used on Page 4.",
+        "raw_keys_required": [],
+        "external_keys_required": [
+          "review_platform",
+          "total_reviews_collected",
+          "review_corpus_count",
+          "excluded_reviews_count",
+          "sentiment_analysis_date",
+          "operational_rating",
+          "review_sentiment_direction",
+          "review_stability",
+          "established_patterns",
+          "tentative_signals"
+        ],
+        "derived_keys_allowed": [],
+        "proof_keys_to_display": [
+          "review_platform",
+          "total_reviews_collected",
+          "review_corpus_count",
+          "excluded_reviews_count",
+          "sentiment_analysis_date",
+          "operational_rating",
+          "review_sentiment_direction",
+          "review_stability",
+          "established_patterns",
+          "tentative_signals"
+        ],
+        "output_schema": {
+          "sentiment_summary": {
+            "platform": "string_or_not_available",
+            "total_reviews_collected": "number_or_not_available",
+            "qualifying_reviews_analyzed": "number_or_not_available",
+            "excluded_reviews_count": "number_or_not_available",
+            "analysis_date": "date_or_not_available",
+            "operational_rating": "number_or_not_available",
+            "review_sentiment_direction": "string_or_not_available",
+            "review_stability": "string_or_not_available"
+          },
+          "theme_groups": {
+            "established_patterns": [
+              "string"
+            ],
+            "tentative_signals": [
+              "string"
+            ]
+          }
+        },
+        "rendering_notes": [
+          "Use a compact sentiment audit block or mini-table.",
+          "This should not become another narrative sentiment summary.",
+          "Theme groups can be displayed as comma-separated lists or chips."
+        ],
+        "validation_checks": [
+          "Operational rating must align with the sentiment page inputs.",
+          "Tentative signals should remain below-threshold items only.",
+          "No new themes may be introduced here."
+        ],
+        "llm_instruction": null
+      },
+
+      "traceability_and_rebuild_metadata": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Provide the final audit note showing where the record came from and whether anything about the current input set limits future reproducibility.",
+        "raw_keys_required": [
+          "broker_name",
+          "property_name",
+          "address",
+          "city",
+          "state",
+          "zip",
+          "email_16_digit_code",
+          "gmail_message_id",
+          "Data Inserted Timestamp",
+          "Relaxed Fields Used"
+        ],
+        "external_keys_optional": [
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "traceability_note",
+          "rebuild_limitations"
+        ],
+        "proof_keys_to_display": [
+          "broker_name",
+          "property_name",
+          "address",
+          "city",
+          "state",
+          "zip",
+          "email_16_digit_code",
+          "gmail_message_id",
+          "Data Inserted Timestamp",
+          "Relaxed Fields Used",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "traceability_note": "2_to_4_sentences",
+          "rebuild_limitations": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "Keep this short and operational.",
+          "Do not expose internal-only identifiers if the final audience should not see them; this may depend on internal/external rendering mode.",
+          "This section is useful for internal report versions."
+        ],
+        "validation_checks": [
+          "Do not invent source provenance beyond the available IDs and timestamps.",
+          "If any field has a known reproducibility limitation, it should be listed clearly."
+        ],
+        "llm_instruction": "Write a short traceability note explaining what source identifiers, timestamps, and workflow conditions make this report reconstructable, and what limitations still exist. Use only the provided provenance fields and known workflow details. Keep it concise and audit-oriented."
+      }
+    }
+  },
+  "page_8": {
+    "page_title": "Underwriting Readiness & Action Plan",
+    "page_goal": "Turn the screening report into an actionable handoff for underwriting and diligence by specifying what must be obtained, verified, modeled, and monitored next.",
+    "design_rule": "This page should be highly actionable and operational. It should not introduce new investment facts; it should translate existing findings into a prioritized action plan.",
+    "layout_order": [
+      "go_forward_readiness_status",
+      "critical_data_requests",
+      "site_and_operational_verification_plan",
+      "underwriting_focus_areas",
+      "kill_criteria_and_flip_conditions",
+      "recommended_next_7_day_plan"
+    ],
+    "sections": {
+      "go_forward_readiness_status": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "State whether the property is ready to enter underwriting now, conditionally ready, or not yet ready based on the current report.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "negative_themes"
+        ],
+        "derived_keys_allowed": [
+          "underwriting_readiness_label",
+          "blocking_dependencies",
+          "nonblocking_dependencies"
+        ],
+        "proof_keys_to_display": [
+          "Total Property Score",
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Market Scale",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "output_schema": {
+          "readiness_label": "Ready for underwriting | Conditionally ready | Not ready",
+          "summary_statement": "2_to_4_sentences",
+          "blocking_dependencies": [
+            "string"
+          ],
+          "nonblocking_dependencies": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "This is the top block on the page and should be easy to understand quickly.",
+          "If Tier 1 fields are missing, 'Ready for underwriting' should be used very cautiously or avoided unless your internal process allows conditional underwriting entry.",
+          "Keep the summary short and action-oriented."
+        ],
+        "validation_checks": [
+          "Blocking dependencies must align with actual missing or unresolved critical fields.",
+          "Do not call it fully ready if essential Tier 1 gaps remain unresolved unless explicitly framed as conditional entry.",
+          "Do not invent readiness logic beyond current workflow."
+        ],
+        "llm_instruction": "Assign an underwriting readiness label using only the current report evidence: Ready for underwriting, Conditionally ready, or Not ready. Explain the label in 2 to 4 sentences. Clearly separate blocking dependencies from nonblocking dependencies. Use actual missing fields, actual contradictions, and actual operating concerns only."
+      },
+
+      "critical_data_requests": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "List the exact documents, data pulls, or seller inputs needed next.",
+        "raw_keys_required": [
+          "Missing Score Fields",
+          "Deal Size ($)",
+          "Property Vintage",
+          "Unit Size"
+        ],
+        "external_keys_optional": [
+          "negative_themes",
+          "threshold_signals"
+        ],
+        "derived_keys_allowed": [
+          "data_request_items"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Deal Size ($)",
+          "Property Vintage",
+          "Unit Size",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "requests": [
+            {
+              "request_name": "string",
+              "requested_from": "Broker | Seller | Internal data team | Third-party data vendor | Property management",
+              "why_needed": "short_string",
+              "report_link": "which finding or gap triggered this request"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This should be a prioritized request register.",
+          "Focus on concrete data asks, not generic diligence wording.",
+          "Good examples: Transit Score backfill, Crime Score pull, Location Score source, pest treatment logs, rent roll, occupancy snapshot, seller operating summary."
+        ],
+        "validation_checks": [
+          "Every request must be triggered by an actual gap, contradiction, or concern already in the report.",
+          "Do not add requests unrelated to the current evidence.",
+          "Keep the list actionable."
+        ],
+        "llm_instruction": "Generate the critical data request list needed to move from screening into underwriting. Each request must say what is needed, who it should come from, why it is needed, and which current finding or gap triggered it. Use only issues already visible in the report."
+      },
+
+      "site_and_operational_verification_plan": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Translate physical-product and operating concerns into concrete verification tasks.",
+        "raw_keys_required": [
+          "Property Vintage",
+          "Ceiling Height",
+          "Apartment Size",
+          "Unit Types & Square Footage",
+          "Undesirable Retail",
+          "Population Density"
+        ],
+        "external_keys_optional": [
+          "negative_themes",
+          "maintenance_signal",
+          "pest_control_theme",
+          "amenities_and_grounds_theme",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "site_verification_items",
+          "operational_verification_items"
+        ],
+        "proof_keys_to_display": [
+          "Property Vintage",
+          "Ceiling Height",
+          "Apartment Size",
+          "Unit Types & Square Footage",
+          "Undesirable Retail",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "site_checks": [
+            {
+              "check_name": "string",
+              "reason": "short_string",
+              "evidence": "string_with_actual_values",
+              "pass_condition": "string"
+            }
+          ],
+          "operational_checks": [
+            {
+              "check_name": "string",
+              "reason": "short_string",
+              "evidence": "string_with_actual_values",
+              "pass_condition": "string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "Separate site checks from operating checks.",
+          "A pass condition makes this section very usable.",
+          "Do not invent inspection items unrelated to the actual evidence."
+        ],
+        "validation_checks": [
+          "Every check must connect to actual product or sentiment evidence.",
+          "No generic 'inspect property' style entries.",
+          "Pass condition should be concrete and observable."
+        ],
+        "llm_instruction": "Create a site and operational verification plan using only the actual concerns and evidence already in the report. Split the output into site checks and operational checks. For each item, explain why it is needed, cite the evidence that triggered it, and define what would count as a pass condition."
+      },
+
+      "underwriting_focus_areas": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Tell the underwriting team what assumptions or stress cases should receive special attention first.",
+        "raw_keys_required": [
+          "Total Property Score",
+          "Deal Size ($)",
+          "Property Vintage",
+          "Apartment Size",
+          "Walk Score",
+          "Transit Score",
+          "Undesirable Retail",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "Modified Heatmap Score",
+          "Missing Score Fields"
+        ],
+        "external_keys_optional": [
+          "operational_rating",
+          "negative_themes",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "underwriting_focus_items"
+        ],
+        "proof_keys_to_display": [
+          "Deal Size ($)",
+          "Property Vintage",
+          "Apartment Size",
+          "Transit Score",
+          "Undesirable Retail",
+          "Median Income",
+          "Population Density",
+          "Heatmap Score",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "Missing Score Fields"
+        ],
+        "output_schema": {
+          "focus_areas": [
+            {
+              "focus_area": "string",
+              "why_it_matters": "short_string",
+              "evidence": "string_with_actual_values",
+              "modeling_implication": "short_string"
+            }
+          ]
+        },
+        "rendering_notes": [
+          "This is not a full underwriting model spec.",
+          "It is a prioritized attention list for the underwriting team.",
+          "Good examples: downside visibility limited by missing Tier 1, micro-location penalty should be stress-tested, thesis depends on stable operations, etc."
+        ],
+        "validation_checks": [
+          "Do not introduce unavailable financial inputs as if already known.",
+          "Focus areas must come from actual structural, operating, or data-confidence issues in the report.",
+          "Keep it tied to screening-to-underwriting transition."
+        ],
+        "llm_instruction": "Identify the most important underwriting focus areas implied by the current screening report. For each one, explain why it matters, cite the evidence that triggered it, and state the modeling or diligence implication. Do not invent pro forma details that are not available."
+      },
+
+      "kill_criteria_and_flip_conditions": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Make explicit what future findings would kill the current recommendation or strengthen it materially.",
+        "raw_keys_required": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Undesirable Retail",
+          "Population Density",
+          "Total Property Score"
+        ],
+        "external_keys_optional": [
+          "negative_themes",
+          "threshold_signals",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "kill_conditions",
+          "strengthening_conditions"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "Transit Score",
+          "Crime Score",
+          "Location Score",
+          "Undesirable Retail",
+          "Population Density",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "kill_conditions": [
+            "string"
+          ],
+          "strengthening_conditions": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "This section is very useful for decision discipline.",
+          "Kill conditions should be clear and not overly broad.",
+          "Strengthening conditions should explain what evidence would increase confidence."
+        ],
+        "validation_checks": [
+          "Kill conditions must be tied to actual unresolved or potentially adverse evidence paths.",
+          "Do not invent dramatic scenarios not grounded in the report.",
+          "Strengthening conditions must reflect realistic next evidence, not vague optimism."
+        ],
+        "llm_instruction": "Write two short lists: kill conditions and strengthening conditions. Kill conditions should state what future finding would materially weaken or overturn the current move-forward recommendation. Strengthening conditions should state what future evidence would materially improve confidence. Base both only on the actual current report evidence and known missing fields."
+      },
+
+      "recommended_next_7_day_plan": {
+        "section_type": "hybrid",
+        "llm_required": true,
+        "purpose": "Give the team an immediate short-horizon execution plan.",
+        "raw_keys_required": [
+          "Missing Score Fields",
+          "Total Property Score"
+        ],
+        "external_keys_optional": [
+          "negative_themes",
+          "threshold_signals",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date"
+        ],
+        "derived_keys_allowed": [
+          "next_7_day_action_plan"
+        ],
+        "proof_keys_to_display": [
+          "Missing Score Fields",
+          "operational_rating",
+          "review_corpus_count",
+          "sentiment_analysis_date",
+          "theme_label",
+          "mention_count",
+          "confidence_level"
+        ],
+        "output_schema": {
+          "days_1_to_2": [
+            "string"
+          ],
+          "days_3_to_5": [
+            "string"
+          ],
+          "days_6_to_7": [
+            "string"
+          ]
+        },
+        "rendering_notes": [
+          "Keep this practical and short.",
+          "This is an execution plan, not a strategy essay.",
+          "Make the sequence logical: backfill critical fields first, verify risk drivers next, prepare underwriting handoff after."
+        ],
+        "validation_checks": [
+          "Every action must connect to an actual gap or risk.",
+          "Do not create steps unrelated to the current report.",
+          "Keep actions concrete and orderable."
+        ],
+        "llm_instruction": "Create a practical next-7-day action plan in three buckets: Days 1-2, Days 3-5, and Days 6-7. Base the steps only on the current report’s data gaps, flags, contradictions, and underwriting handoff needs. Keep every action concrete and sequenced logically."
+      }
+    }
+  }
+}
