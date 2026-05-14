@@ -99,9 +99,8 @@ The five resolution types recorded in the audit log:
 | `auto_conflict` | No overrides; majority vote applied |
 | `auto_tie` | No overrides; tie broken alphabetically — needs manual review |
 
-The output rulebook is written to `output_docs/` only, never directly to `db/`. A human
-reviews the audit log, then manually promotes the file to `db/mapping_rule_book_v2.json`.
-This prevents automatic overwrites of the production rulebook.
+The output rulebook is written to `output_docs/` only, never directly to `db/`.
+This keeps Stage 0 build artifacts separate from the read-only reference snapshots.
 
 ---
 
@@ -115,8 +114,9 @@ Each of the 36 canonical categories is classified into one of three buckets:
 | `EXPENSE` | 17 | Yes — subtracted |
 | `SKIP` | 3 | No — Capex items below the NOI line |
 
-This classification is stored in `db/category_classification.json` and loaded by
-`compute_noi.py` at runtime.
+This classification is stored in
+`output_docs/<date>/0_build_rulebook/category_config/category_classification.json`
+and loaded by `compute_noi.py` at runtime.
 
 ---
 
@@ -329,7 +329,7 @@ narrow down which rows to investigate.
 | Exact match only (no fuzzy) | Auto-mapping | A wrong match silently corrupts NOI; no match → AI handles it |
 | AI must pick from existing categories | Prompt constraint | Prevents drift — new categories would silently miss NOI calculation |
 | Human overrides beat auto in conflict | Rulebook v2 priority | Overrides represent analyst corrections; auto is an algorithmic guess |
-| Rulebook output to `output_docs/` only | Never auto-write to `db/` | Prevents overwriting production rulebook without human review |
+| Rulebook output to `output_docs/` only | Never auto-write to `db/` | Keeps runtime build artifacts separate from read-only reference snapshots |
 | Row boundary at empty Index cell | `extract_mappings_v2.py` | Sheet content beyond the table would produce false category names |
 | `isinstance(val, str)` guard on categories | `normalize()` | Excel formula results (booleans, numbers) must not become category keys |
 | `section_context` instead of hierarchy | Block detection | Flat context field is sufficient for AI; full tree was fragile across 3 formats |

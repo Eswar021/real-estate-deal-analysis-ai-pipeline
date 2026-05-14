@@ -49,10 +49,9 @@ Step 0a  extract_mappings_v2    Read all 19 human-reviewed .xlsm files
 
 Step 0b  build_rulebook_v2      Resolve conflicts, build canonical rulebook
                                 → output_docs/0_build_rulebook/mapping_rulebook_v2/
-                                  (review audit, then promote to db/)
 
 Step 0c  category_config        Classify each category as REVENUE / EXPENSE / SKIP
-                                → db/category_classification.json
+                                → output_docs/0_build_rulebook/category_config/
 
 
 PER FILE (run for every new T12 file received)
@@ -126,6 +125,33 @@ LMSTUDIO_MODEL=qwen/qwen2.5-coder-14b
 
 All commands are run from `logic/mapping_rulebook/`.
 
+### Master runner
+
+```bash
+python run_pipeline.py --stages 0,1,2
+python run_pipeline.py --stages 1,2
+python run_pipeline.py --from-stage 1 --to-stage 2
+python run_pipeline.py --from-stage 0 --to-stage 2
+python run_pipeline.py --stages 1 --ai-limit 5
+```
+
+This runner uses the stage runners internally and supports:
+- running the whole pipeline
+- running selected numbered stages
+- continuing from a later stage
+- requiring an explicit stage selection every time, so the run scope is always clear
+
+### Stage runners
+
+```bash
+python pipeline/0_build_rulebook/run_stage.py
+
+python pipeline/1_mapping/run_stage.py
+python pipeline/1_mapping/run_stage.py --ai-limit 5
+
+python pipeline/2_noi_verification/run_stage.py
+```
+
 ### One-time rulebook build
 
 ```bash
@@ -134,10 +160,6 @@ python pipeline/0_build_rulebook/extract_mappings_v2.py
 
 # Step 2 — resolve conflicts and build rulebook
 python pipeline/0_build_rulebook/build_rulebook_v2.py
-
-# Review output_docs/0_build_rulebook/mapping_rulebook_v2/rulebook_v2_audit.json
-# then copy the rulebook to db/:
-cp output_docs/0_build_rulebook/mapping_rulebook_v2/mapping_rule_book_v2.json db/
 
 # Step 3 — classify categories as REVENUE / EXPENSE / SKIP
 python pipeline/0_build_rulebook/category_config.py
@@ -170,9 +192,9 @@ python pipeline/utils/convert_rulebook_to_excel.py  # rulebook → flat Excel
 
 | File | Role |
 |---|---|
-| `db/mapping_rule_book.json` | v1 rulebook — legacy Final_Mapping-only approach |
-| `db/mapping_rule_book_v2.json` | v2 rulebook — preferred conflict-resolved approach |
-| `db/category_classification.json` | REVENUE / EXPENSE / SKIP classification per category |
+| `db/mapping_rule_book.json` | v1 rulebook snapshot — read-only reference baseline |
+| `db/mapping_rule_book_v2.json` | v2 rulebook snapshot — read-only reference baseline |
+| `output_docs/<date>/0_build_rulebook/category_config/category_classification.json` | REVENUE / EXPENSE / SKIP classification used by NOI verification |
 | `config/paths.py` | All file paths — single source of truth for directories and output locations |
 | `config/rulebook_runtime.py` | One-place switch for which runtime rulebook profile the downstream stages should use |
 | `config/agent_llm_config.py` | One-place config for agent-to-model/provider mapping |
@@ -198,15 +220,19 @@ A file PASSES only if every month and the annual total are within tolerance.
 
 ```
 mapping_rulebook/
+├── run_pipeline.py      Master runner for numbered stages
 ├── pipeline/           Main pipeline scripts (numbered by stage)
 │   ├── 0_build_rulebook/
+│   │   └── run_stage.py
 │   ├── 1_mapping/
+│   │   └── run_stage.py
 │   ├── 2_noi_verification/
+│   │   └── run_stage.py
 │   └── utils/
 ├── analysis/           Diagnostic scripts — read-only, not part of pipeline
-├── config/             paths.py only
+├── config/             paths, runtime rulebook selection, and agent model config
 ├── data/               Input files (raw xlsx + human-reviewed xlsm)
-├── db/                 Active rulebook and category classification JSON
+├── db/                 Read-only reference snapshots
 ├── llm/                LLM client wrapper
 ├── output_docs/        All pipeline outputs (mirrors pipeline/ numbering)
 └── docs/               Documentation

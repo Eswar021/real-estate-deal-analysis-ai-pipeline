@@ -11,11 +11,11 @@ MAPPED_T12_DOCS_BASE  = DATA_DIR / "mapped_T12_docs"
 MAPPED_T12_DOCS_DIR   = MAPPED_T12_DOCS_BASE / "t12_docs"
 NEW_MAPPED_T12_DOCS_DIR = MAPPED_T12_DOCS_BASE / "new_t12_docs"
 
-# ── Database (core knowledge base) ───────────────────────────────────────────
-DB_DIR                       = PROJECT_ROOT / "db"
-RULEBOOK_DB_PATH             = DB_DIR / "mapping_rule_book.json"
-RULEBOOK_DB_V2_PATH          = DB_DIR / "mapping_rule_book_v2.json"
-CATEGORY_CLASSIFICATION_PATH = DB_DIR / "category_classification.json"
+# ── Database (read-only reference snapshots) ─────────────────────────────────
+DB_DIR                          = PROJECT_ROOT / "db"
+RULEBOOK_DB_PATH                = DB_DIR / "mapping_rule_book.json"
+RULEBOOK_DB_V2_PATH             = DB_DIR / "mapping_rule_book_v2.json"
+CATEGORY_CLASSIFICATION_DB_PATH = DB_DIR / "category_classification.json"
 
 # ── Output Directories ────────────────────────────────────────────────────────
 _RUN_DATE = date.today().strftime("%Y_%m_%d")
@@ -24,7 +24,13 @@ OUTPUT_DOCS_DIR = PROJECT_ROOT / "output_docs" / _RUN_DATE
 # Step 0 — Rulebook build
 BUILD_RULEBOOK_OUT_DIR    = OUTPUT_DOCS_DIR / "0_build_rulebook"
 EXTRACTED_MAPPINGS_V2_DIR = BUILD_RULEBOOK_OUT_DIR / "extracted_mappings_v2"
+RULEBOOK_V1_OUTPUT_DIR    = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook_v1"
 RULEBOOK_V2_OUTPUT_DIR    = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook_v2"
+CATEGORY_CONFIG_OUT_DIR   = BUILD_RULEBOOK_OUT_DIR / "category_config"
+
+RULEBOOK_V1_OUTPUT_PATH      = RULEBOOK_V1_OUTPUT_DIR / "mapping_rule_book.json"
+RULEBOOK_V2_OUTPUT_PATH      = RULEBOOK_V2_OUTPUT_DIR / "mapping_rule_book_v2.json"
+CATEGORY_CLASSIFICATION_PATH = CATEGORY_CONFIG_OUT_DIR / "category_classification.json"
 
 # Step 1 — Mapping
 MAPPING_OUT_DIR    = OUTPUT_DOCS_DIR / "1_mapping"
@@ -54,7 +60,9 @@ DOCS_DIR = PROJECT_ROOT / "docs"
 # ── Create directories on import ──────────────────────────────────────────────
 for _d in [
     EXTRACTED_MAPPINGS_V2_DIR,
+    RULEBOOK_V1_OUTPUT_DIR,
     RULEBOOK_V2_OUTPUT_DIR,
+    CATEGORY_CONFIG_OUT_DIR,
     BLOCK_DETECTION_DIR,
     AUTO_MAPPED_DIR,
     AI_MAPPED_DIR,

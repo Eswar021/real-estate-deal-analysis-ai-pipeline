@@ -6,7 +6,8 @@ Reads all canonical categories from the rulebook and classifies each as:
   EXPENSE  — operating expense items (factor into NOI)
   SKIP     — below-NOI-line items (capex, debt service — do NOT factor into NOI)
 
-Outputs db/category_classification.json for use by the NOI verification agents.
+Outputs output_docs/<date>/0_build_rulebook/category_config/category_classification.json
+for use by the NOI verification stage.
 
 Run this whenever new categories are added to the rulebook to keep the
 classification file up to date. It will warn about any unclassified categories.

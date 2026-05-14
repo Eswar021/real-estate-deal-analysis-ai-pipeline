@@ -15,7 +15,7 @@ No aggregation or analysis happens here — that is a later step.
 [One-time / Rulebook Build]  pipeline/0_build_rulebook/
   extract_mappings_v2  →  output_docs/0_build_rulebook/extracted_mappings_v2/
   build_rulebook_v2    →  output_docs/0_build_rulebook/mapping_rulebook_v2/
-  category_config      →  db/category_classification.json
+  category_config      →  output_docs/0_build_rulebook/category_config/
 
 [Per file — Mapping]  pipeline/1_mapping/
   detect_blocks        →  output_docs/1_mapping/block_detection/
@@ -45,20 +45,25 @@ No aggregation or analysis happens here — that is a later step.
 
 ```
 mapping_rulebook/
+├── run_pipeline.py                  Master runner for numbered stages
 ├── pipeline/
+│   ├── runner_utils.py             Small shared runner helpers
 │   ├── 0_build_rulebook/
 │   │   ├── create_mappings.py        v1 — build rulebook from Final_Mapping only (kept for reference)
 │   │   ├── extract_mappings_v2.py    v2 Step 1 — extract rows with auto/override/final per row
 │   │   ├── build_rulebook_v2.py      v2 Step 2 — conflict-resolved rulebook, override-priority logic
-│   │   └── category_config.py        Classify each category as REVENUE / EXPENSE / SKIP
+│   │   ├── category_config.py        Classify each category as REVENUE / EXPENSE / SKIP
+│   │   └── run_stage.py              Stage 0 runner
 │   ├── 1_mapping/
 │   │   ├── detect_blocks.py          Classify rows in raw T12 .xlsx files
 │   │   ├── map_blocks.py             Auto-map DATA rows using rulebook (exact match)
 │   │   ├── find_mapping.py           AI fallback — LangChain structured output via llm_client.py
-│   │   └── prompt.txt                System prompt — AI must choose from existing categories only
+│   │   ├── prompt.txt                System prompt — AI must choose from existing categories only
+│   │   └── run_stage.py              Stage 1 runner
 │   ├── 2_noi_verification/
 │   │   ├── compute_noi.py            Extract actual NOI + compute NOI from mapped rows
-│   │   └── compare_noi.py            PASS/FAIL diff: actual vs computed NOI
+│   │   ├── compare_noi.py            PASS/FAIL diff: actual vs computed NOI
+│   │   └── run_stage.py              Stage 2 runner
 │   └── utils/
 │       ├── results_to_excel.py       Export auto_mapped JSON → styled Excel
 │       ├── ai_results_to_excel.py    Export ai_mapped JSON → styled Excel with AI columns
@@ -82,9 +87,9 @@ mapping_rulebook/
 │       └── new_t12_docs/             13 newer human-reviewed .xlsm files (batch 2)
 │
 ├── db/
-│   ├── mapping_rule_book.json        v1 rulebook — kept for reference, no longer active
-│   ├── mapping_rule_book_v2.json     v2 rulebook — ACTIVE — conflict-resolved, override-priority
-│   └── category_classification.json  REVENUE / EXPENSE / SKIP bucket per canonical category
+│   ├── mapping_rule_book.json        v1 rulebook snapshot — read-only reference
+│   ├── mapping_rule_book_v2.json     v2 rulebook snapshot — read-only reference
+│   └── category_classification.json  older classification snapshot — read-only reference
 │
 ├── llm/
 │   ├── llm_client.py                 LLM client wrapper (Gemini / OpenAI / LM Studio)
@@ -93,7 +98,9 @@ mapping_rulebook/
 ├── output_docs/
 │   ├── 0_build_rulebook/
 │   │   ├── extracted_mappings_v2/    Per-file JSON from extract_mappings_v2 (one per .xlsm)
-│   │   └── mapping_rulebook_v2/      mapping_rule_book_v2.json + rulebook_v2_audit.json
+│   │   ├── mapping_rulebook_v1/      mapping_rule_book.json from the v1 builder
+│   │   ├── mapping_rulebook_v2/      mapping_rule_book_v2.json + rulebook_v2_audit.json
+│   │   └── category_config/          category_classification.json used by Stage 2
 │   ├── 1_mapping/
 │   │   ├── block_detection/          JSON from detect_blocks
 │   │   ├── auto_mapped/              JSON from map_blocks
@@ -189,7 +196,8 @@ Total Rental Reductions                  0      →  SUBTOTAL (starts with "Tota
 ## Rulebook
 
 **Configured active path:** controlled by `config/rulebook_runtime.py`
-**Rulebook files:** `db/mapping_rule_book.json` (v1) and `db/mapping_rule_book_v2.json` (v2)
+**Runtime rulebook outputs:** `output_docs/<date>/0_build_rulebook/mapping_rulebook_v1/` and `mapping_rulebook_v2/`
+**db copies:** kept as read-only reference snapshots
 
 **Structure:** `{ canonical_category: [vendor_description_variants, ...] }`
 
@@ -207,7 +215,7 @@ V2 captures `Auto Mapping`, `OVERRIDE`, and `Final_Mapping` per row, then resolv
 
 ## Category Classification
 
-**Path:** `db/category_classification.json`
+**Path:** `output_docs/<date>/0_build_rulebook/category_config/category_classification.json`
 **Script:** `pipeline/0_build_rulebook/category_config.py`
 
 | Bucket | Count | Meaning |
@@ -262,7 +270,7 @@ Resolves conflicts using source-type priority:
 | Override vs Override | `override_conflict` — most common override wins; flagged in audit |
 | Auto vs Auto | `auto_conflict` — majority vote; `auto_tie` if tied |
 
-Outputs to `output_docs/` only — **never writes directly to `db/`**. Review the audit file, then manually copy to `db/mapping_rule_book_v2.json`.
+Outputs to `output_docs/` only — **never writes directly to `db/`**.
 
 ```bash
 python pipeline/0_build_rulebook/build_rulebook_v2.py
@@ -274,7 +282,7 @@ python pipeline/0_build_rulebook/build_rulebook_v2.py
 
 #### `category_config.py`
 
-Reads the active rulebook, classifies all categories, writes `db/category_classification.json`.
+Reads the active rulebook, classifies all categories, writes `output_docs/0_build_rulebook/category_config/category_classification.json`.
 ```bash
 python pipeline/0_build_rulebook/category_config.py
 ```
@@ -338,7 +346,7 @@ Handles both logical substeps in the current Stage 2 implementation:
 ```bash
 python pipeline/2_noi_verification/compute_noi.py
 ```
-**Input:** `output_docs/1_mapping/ai_mapped/*.json` + `db/category_classification.json`
+**Input:** `output_docs/1_mapping/ai_mapped/*.json` + `output_docs/0_build_rulebook/category_config/category_classification.json`
 **Output:** `output_docs/2_noi_verification/actual_noi/` + `output_docs/2_noi_verification/computed_noi/`
 
 ---
@@ -363,7 +371,7 @@ Not part of the main pipeline flow — run on demand.
 |---|---|---|
 | `results_to_excel.py` | `1_mapping/auto_mapped/` | `utils/auto_mapped_to_excel/` |
 | `ai_results_to_excel.py` | `1_mapping/ai_mapped/` | `utils/ai_mapped_to_excel/` |
-| `convert_rulebook_to_excel.py` | `db/mapping_rule_book_v2.json` | `utils/mapping_rule_book.xlsx` |
+| `convert_rulebook_to_excel.py` | runtime rulebook from `config/rulebook_runtime.py` | `utils/mapping_rule_book.xlsx` |
 
 ---
 
@@ -415,7 +423,7 @@ LangChain used in `find_mapping.py` for prompt templating and structured output 
 | Fuzzy matching | Not implemented | LLM fallback handles variants; exact match keeps false-positives at zero |
 | Subtotal values in detect_blocks | Captured | NOI verification needs vendor-reported NOI subtotal for comparison |
 | Rulebook v2 conflict resolution | Override > Auto > Majority vote | Human overrides are authoritative; auto mappings are algorithmic guesses |
-| Rulebook v2 output location | `output_docs/` only | Never auto-write to `db/`; human reviews audit before promoting |
+| Rulebook v2 output location | `output_docs/` only | Never auto-write to `db/`; runtime stages read the current build artifact |
 | AI prompt — category constraint | Must pick from existing list | Prevents LLM from inventing categories that silently miss classification |
 | NOI tolerance | `max($1.00, 0.1% of actual)` | Absorbs rounding without masking real mapping errors |
 | Capex excluded from NOI | SKIP bucket | Capex rows appear below the NOI line in T12 files |

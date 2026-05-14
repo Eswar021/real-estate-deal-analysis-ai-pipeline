@@ -16,7 +16,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from config.paths import (
     MAPPED_T12_DOCS_DIR,
     NEW_MAPPED_T12_DOCS_DIR,
-    RULEBOOK_DB_PATH
+    RULEBOOK_DB_PATH,
+    RULEBOOK_V1_OUTPUT_PATH,
 )
 
 # ── 1. Find anchor row ──
@@ -116,7 +117,7 @@ if __name__ == "__main__":
 
     files.extend(file_2)
 
-    # ── Load existing rulebook or start fresh ──
+    # ── Load read-only baseline rulebook or start fresh ──
     rulebook_path = str(RULEBOOK_DB_PATH)
     global_rulebook = defaultdict(set)
 
@@ -150,6 +151,7 @@ if __name__ == "__main__":
 
     mapping_rulebook = {k: sorted(v) for k, v in sorted(global_rulebook.items())}
 
-    # ── Save updated rulebook ──
-    with open(RULEBOOK_DB_PATH, "w") as f:
+    # ── Save built rulebook to output_docs only ──
+    with open(RULEBOOK_V1_OUTPUT_PATH, "w") as f:
         json.dump(mapping_rulebook, f, indent=2)
+    print(f"Saved rulebook -> {RULEBOOK_V1_OUTPUT_PATH}")

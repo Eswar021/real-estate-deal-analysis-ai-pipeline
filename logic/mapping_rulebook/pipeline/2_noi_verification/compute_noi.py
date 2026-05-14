@@ -26,7 +26,7 @@ Pipeline position:
   compare_noi.py    → noi_verification/comparison/
 
 Input:  output_docs/<date>/1_mapping/ai_mapped/*.json
-        db/category_classification.json
+        output_docs/<date>/0_build_rulebook/category_config/category_classification.json
 Output: output_docs/<date>/2_noi_verification/actual_noi/<filename>.json
         output_docs/<date>/2_noi_verification/computed_noi/<filename>.json
 """

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This audit records the current active state of `logic/mapping_rulebook/` after the docs-folder refactor and before a dedicated pipeline runner has been introduced.
+This audit records the current active state of `logic/mapping_rulebook/` after the docs-folder refactor and after the first dedicated runner layer was introduced.
 
 It focuses on:
 
@@ -21,6 +21,7 @@ It focuses on:
 - The root README had stale references to `mapping_rulebook_docs/` and `Docs/`; those were corrected.
 - The active mapping docs had an outdated Stage 2 description that referenced a non-existent `extract_actual_noi.py` script. This was corrected to match the real implementation: `compute_noi.py` handles both logical substeps.
 - The repo intentionally uses simple stage modules plus temporary `__main__` harnesses. That pattern is now documented as a deliberate working style, not a bug.
+- Thin runners now exist for each numbered stage plus a master runner for the full pipeline.
 - Runtime rulebook selection is now centralized in `config/rulebook_runtime.py` so v1 versus v2 testing does not require edits across multiple stage files.
 - Agent → model/provider selection is now centralized in `config/agent_llm_config.py` and consumed through `llm/llm_client.py`.
 
@@ -94,11 +95,13 @@ This is not "unfinished by accident." It is the current development method for t
 
 ### Target documented architecture
 
-The docs describe `db/mapping_rule_book_v2.json` as the intended active rulebook.
+The active runtime rulebook now comes from the current dated `output_docs/` build,
+selected through `config/rulebook_runtime.py`.
 
 ### Current development reality
 
 Manual v1 versus v2 comparison is still being done during development to verify downstream NOI behavior.
+Both profiles now build into `output_docs/` only, and downstream stages read those artifacts directly.
 
 That comparison is now meant to be controlled from:
 
@@ -137,12 +140,18 @@ Some active docs previously implied that the AI fallback was always Gemini. That
 
 These are acceptable for now and should not be "cleaned up" automatically:
 
-- manual `__main__` harnesses instead of a dedicated runner
+- manual `__main__` harnesses alongside the dedicated runners
 - per-stage scripts that can be run independently for inspection
+
+These are now part of the active structure:
+
+- `pipeline/0_build_rulebook/run_stage.py`
+- `pipeline/1_mapping/run_stage.py`
+- `pipeline/2_noi_verification/run_stage.py`
+- `run_pipeline.py`
 
 These are future improvements, not current correctness bugs:
 
-- introduce dedicated runners for stage batches
 - parameterize rulebook choice in runners instead of comment/uncomment imports
 - maintain additional dated audits as the system evolves
 
@@ -158,6 +167,6 @@ Near-term:
 
 Later:
 
-1. Add a dedicated runner layer once the stage contracts stop moving frequently.
-2. Move rulebook selection to runner parameters or config once A/B testing settles down.
+1. Consider adding named stage aliases or presets only if the current numeric CLI stops being enough.
+2. Move rulebook selection to runner parameters once A/B testing settles down.
 3. Keep the active docs lean: overview, context, logic, working style, decisions, and dated audits are enough for now.

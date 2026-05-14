@@ -109,3 +109,49 @@ Why:
 - this matches the current development style
 - the substeps are closely related and easier to inspect together right now
 - a separate orchestration runner can split or sequence them later if needed
+
+---
+
+## 2026-05-15 — Thin Runners Over Heavy Refactors
+
+Decision:
+
+- keep the existing single-item stage modules as the source of truth for logic
+- add thin stage runners for `0_build_rulebook`, `1_mapping`, and `2_noi_verification`
+- add one master runner that sequences the stage runners instead of moving logic into a new framework
+
+Why:
+
+- this preserves the current inspectable, fail-hard module style
+- orchestration becomes reusable without hiding the raw stage code
+- later runner changes can happen without rewriting the core business logic
+
+---
+
+## 2026-05-15 — Stage Selection Must Be Explicit
+
+Decision:
+
+- the master runner must not assume default stages
+- every pipeline run must pass either `--stages` or both `--from-stage` and `--to-stage`
+
+Why:
+
+- explicit run scope makes testing safer
+- it removes ambiguity about whether a run is partial or end-to-end
+- this matches the repo's preference for visible, intentional execution
+
+---
+
+## 2026-05-15 — Stage 0 Writes To Output Only
+
+Decision:
+
+- Stage 0 builders write rulebooks and category classification only under `output_docs/`
+- `db/` stays read-only from the pipeline's point of view
+
+Why:
+
+- build artifacts should stay versioned by run date
+- runtime testing should use the current build outputs directly
+- reference snapshots in `db/` should not be overwritten by routine pipeline runs
