@@ -14,7 +14,8 @@ the same description appears in multiple files with different mappings.
 
 Input:  data/mapped_T12_docs/t12_docs/*.xlsm
         data/mapped_T12_docs/new_t12_docs/*.xlsm
-Output: output_docs/extracted_mappings_v2/<filename>.json  (one per source file)
+Output: output_docs/<date>/0_build_rulebook/extracted_mappings_v2/<filename>.json
+        (one per source file)
 
 Run before build_rulebook_v2.py.
 """

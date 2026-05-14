@@ -23,8 +23,8 @@ No aggregation or analysis happens here — that is a later step.
   find_mapping         →  output_docs/1_mapping/ai_mapped/
 
 [Per file — NOI Verification]  pipeline/2_noi_verification/
-  extract_actual_noi   →  output_docs/2_noi_verification/actual_noi/
-  compute_noi          →  output_docs/2_noi_verification/computed_noi/
+  compute_noi          →  output_docs/2_noi_verification/actual_noi/
+                       →  output_docs/2_noi_verification/computed_noi/
   compare_noi          →  output_docs/2_noi_verification/comparison/
 
 [Utilities — on demand]  pipeline/utils/
@@ -54,11 +54,10 @@ mapping_rulebook/
 │   ├── 1_mapping/
 │   │   ├── detect_blocks.py          Classify rows in raw T12 .xlsx files
 │   │   ├── map_blocks.py             Auto-map DATA rows using rulebook (exact match)
-│   │   ├── find_mapping.py           AI fallback — LangChain + Gemini structured output
+│   │   ├── find_mapping.py           AI fallback — LangChain structured output via llm_client.py
 │   │   └── prompt.txt                System prompt — AI must choose from existing categories only
 │   ├── 2_noi_verification/
-│   │   ├── extract_actual_noi.py     Read vendor-reported NOI subtotal from ai_mapped files
-│   │   ├── compute_noi.py            Compute NOI by summing REVENUE/EXPENSE rows
+│   │   ├── compute_noi.py            Extract actual NOI + compute NOI from mapped rows
 │   │   └── compare_noi.py            PASS/FAIL diff: actual vs computed NOI
 │   └── utils/
 │       ├── results_to_excel.py       Export auto_mapped JSON → styled Excel
@@ -72,7 +71,9 @@ mapping_rulebook/
 │   └── conflict_sources_to_excel.py  Generates two-tab Excel conflict report for client
 │
 ├── config/
-│   └── paths.py                      All file paths — import from here, never hardcode
+│   ├── paths.py                      All file paths — import from here, never hardcode
+│   ├── rulebook_runtime.py           Central switch for active runtime rulebook profile
+│   └── agent_llm_config.py           Central config for agent → provider/model mapping
 │
 ├── data/
 │   ├── input_T12_docs/               Raw vendor T12 .xlsx files (7 files — test set)
@@ -109,7 +110,12 @@ mapping_rulebook/
 │   └── analysis/                     All outputs from analysis/ scripts (JSON, Excel)
 │
 └── docs/
-    └── CONTEXT.md                    This file
+    ├── README.md                     Overview and run guide
+    ├── CONTEXT.md                    This file
+    ├── LOGIC.md                      Algorithm reference
+    ├── WORKING_STYLE.md              Repo-specific coding style
+    ├── DECISIONS.md                  Structural decision log
+    └── audits/                       Dated system audits
 ```
 
 ---
@@ -182,8 +188,8 @@ Total Rental Reductions                  0      →  SUBTOTAL (starts with "Tota
 
 ## Rulebook
 
-**Active path:** `db/mapping_rule_book_v2.json`
-**Legacy path:** `db/mapping_rule_book.json` (v1 — kept for reference only)
+**Configured active path:** controlled by `config/rulebook_runtime.py`
+**Rulebook files:** `db/mapping_rule_book.json` (v1) and `db/mapping_rule_book_v2.json` (v2)
 
 **Structure:** `{ canonical_category: [vendor_description_variants, ...] }`
 
@@ -292,19 +298,19 @@ python pipeline/1_mapping/detect_blocks.py
 
 #### `map_blocks.py`
 
-Exact-match (case-insensitive) lookup of every DATA row description against the v2 rulebook.
+Exact-match (case-insensitive) lookup of every DATA row description against the currently configured runtime rulebook.
 
 ```bash
 python pipeline/1_mapping/map_blocks.py
 ```
-**Input:** `output_docs/1_mapping/block_detection/` + `db/mapping_rule_book_v2.json`
+**Input:** `output_docs/1_mapping/block_detection/` + runtime rulebook from `config/rulebook_runtime.py`
 **Output:** `output_docs/1_mapping/auto_mapped/` — adds `mapping` and `not_found` to each row
 
 ---
 
 #### `find_mapping.py`
 
-Calls Gemini via LangChain for every row with `not_found: true`. Returns a structured suggestion.
+Calls the configured LLM provider via LangChain for every row with `not_found: true`. Returns a structured suggestion.
 
 > **Prompt constraint:** AI must choose only from the existing canonical category list. New category names are forbidden — prevents rulebook drift.
 
@@ -320,29 +326,20 @@ python pipeline/1_mapping/find_mapping.py
 
 Runs after `find_mapping.py`. Tolerance: `max($1.00, 0.1% of actual NOI)`.
 
-#### `extract_actual_noi.py`
-
-Finds the NOI subtotal row in each ai_mapped file and extracts the vendor-reported values.
-Uses reversed candidate search — if two NOI rows exist, the last one with numeric values wins.
-
-```bash
-python pipeline/2_noi_verification/extract_actual_noi.py
-```
-**Input:** `output_docs/1_mapping/ai_mapped/*.json`
-**Output:** `output_docs/2_noi_verification/actual_noi/`
-
----
-
 #### `compute_noi.py`
 
-Sums DATA rows by REVENUE/EXPENSE bucket. SKIP (Capex) rows excluded.
+Handles both logical substeps in the current Stage 2 implementation:
+
+1. Extract vendor-reported NOI from the ai_mapped subtotal rows
+2. Compute NOI from mapped DATA rows using REVENUE / EXPENSE / SKIP buckets
+
 `final_mapping = auto_mapping if found in rulebook, else ai_suggested_mapping`
 
 ```bash
 python pipeline/2_noi_verification/compute_noi.py
 ```
 **Input:** `output_docs/1_mapping/ai_mapped/*.json` + `db/category_classification.json`
-**Output:** `output_docs/2_noi_verification/computed_noi/`
+**Output:** `output_docs/2_noi_verification/actual_noi/` + `output_docs/2_noi_verification/computed_noi/`
 
 ---
 
@@ -397,10 +394,11 @@ python analysis/conflict_sources_to_excel.py     # → output_docs/analysis/conf
 
 ## LLM Configuration
 
-**Primary model:** Gemini 2.5 Flash Lite (via `llm/llm_client.py` → `make_llm()`)
+**LLM provider:** Configurable via `config/agent_llm_config.py` and resolved by `llm/llm_client.py` → `make_llm()`
 
-**Fallback options** (configurable in `.env`):
+**Supported options** (selected via `.env` and code-level provider choice):
 - OpenAI GPT models
+- Gemini models
 - LM Studio local model (qwen2.5-coder-14b)
 
 LangChain used in `find_mapping.py` for prompt templating and structured output (`with_structured_output(AISuggestedMapping)`).
@@ -423,4 +421,5 @@ LangChain used in `find_mapping.py` for prompt templating and structured output 
 | Capex excluded from NOI | SKIP bucket | Capex rows appear below the NOI line in T12 files |
 | Folder structure | Numbered pipeline folders | Order is visible from directory listing; no ambiguity about sequence |
 | Export / analysis scripts | Separate `utils/` and `analysis/` folders | Not part of the run-every-file pipeline; separating avoids confusion |
-| `config/` contains only `paths.py` | Moved `category_config.py` to `0_build_rulebook/` | config/ is pure configuration; runnable logic belongs with its pipeline step |
+| Runtime rulebook selection | `config/rulebook_runtime.py` | Change the active profile in one place instead of comment/uncommenting multiple stage files |
+| Agent LLM selection | `config/agent_llm_config.py` | Keep provider/model choice centralized per agent |

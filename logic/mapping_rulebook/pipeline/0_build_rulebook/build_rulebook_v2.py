@@ -19,8 +19,10 @@ Baseline:
   over the baseline for the same description.
 
 Output:
-  output_docs/mapping_rulebook_v2/mapping_rule_book_v2.json  — drop-in rulebook
-  output_docs/mapping_rulebook_v2/rulebook_v2_audit.json     — full resolution log
+  output_docs/<date>/0_build_rulebook/mapping_rulebook_v2/mapping_rule_book_v2.json
+      — drop-in rulebook
+  output_docs/<date>/0_build_rulebook/mapping_rulebook_v2/rulebook_v2_audit.json
+      — full resolution log
 
 Run extract_mappings_v2.py first.
 """

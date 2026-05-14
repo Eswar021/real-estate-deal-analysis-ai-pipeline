@@ -11,20 +11,22 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from config.paths import (
-    RULEBOOK_DB_PATH, 
-    # RULEBOOK_DB_V2_PATH as RULEBOOK_DB_PATH,
     AUTO_MAPPED_DIR, 
     AI_MAPPED_DIR, 
     AI_MAPPING_LOGS_DIR
     )
+from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
+from config.agent_llm_config import MAPPING_AI_AGENT
 from llm.llm_client import make_llm
+
+ACTIVE_RULEBOOK_PATH = get_active_rulebook_path()
+ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
 
 # ── Structured Output Schema ──
 class AISuggestedMapping(BaseModel):
     suggested_category: str = Field(
         description="The standardized chart of account category mapping for the given item. "
-                    "You may select from the provided existing categories, or suggest a new "
-                    "better one if none match perfectly."
+                    "Must be chosen from the provided existing canonical categories exactly as written."
     )
     confidence: str = Field(
         description="High, Medium, or Low depending on how confident you are in the mapping."
@@ -33,14 +35,14 @@ class AISuggestedMapping(BaseModel):
         description="Brief reasoning for why this mapping was chosen."
     )
 
-def load_rulebook_categories(rulebook_path=RULEBOOK_DB_PATH):
+def load_rulebook_categories(rulebook_path=ACTIVE_RULEBOOK_PATH):
     """Returns a list of existing categories from the rulebook to use as context."""
     with open(rulebook_path, "r") as f:
         rulebook = json.load(f)
     # The keys of the rulebook are the canonical categories
     return list(rulebook.keys())
 
-def get_context_for_section(section_context, rulebook_path=RULEBOOK_DB_PATH):
+def get_context_for_section(section_context, rulebook_path=ACTIVE_RULEBOOK_PATH):
     """
     Returns an examples dictionary mapping category to an array of example descriptions.
     """
@@ -59,8 +61,8 @@ def get_context_for_section(section_context, rulebook_path=RULEBOOK_DB_PATH):
 def create_ai_mapping_pipeline():
     """Sets up the Langchain prompt and LLM pipeline."""
     
-    # Using the default gemini-2.5-flash-lite as requested
-    llm = make_llm()
+    # Provider / model selection is owned by llm/llm_client.py.
+    llm = make_llm(agent_name=MAPPING_AI_AGENT)
     structured_llm = llm.with_structured_output(AISuggestedMapping)
     
     prompt_path = Path(__file__).parent / "prompt.txt"
@@ -87,6 +89,8 @@ def run_ai_mapping(file_data, limit=None):
     categories = load_rulebook_categories()
     valid_categories_str = "\n".join([f"- {c}" for c in categories])
     mapping_examples = get_context_for_section("")
+
+    print(f"Using rulebook ({ACTIVE_RULEBOOK_NAME}): {ACTIVE_RULEBOOK_PATH}")
     
     prompt_template, pipeline = create_ai_mapping_pipeline()
     
@@ -165,9 +169,10 @@ def run_ai_mapping(file_data, limit=None):
 
 if __name__ == "__main__":
 
-    ################
-    file_path = PROJECT_ROOT / "output_docs" / "1_mapping" / "auto_mapped" / "Willows of Coventry T12 11-25.json"
-    # file_path = PROJECT_ROOT / "output_docs" / "1_mapping" / "auto_mapped" / "Pointe Inverness T12 11-25.json"
+    # Manual single-file harness. Keep this simple while the stage is still
+    # being iterated; batch orchestration can move to a dedicated runner later.
+    file_path = AUTO_MAPPED_DIR / "Willows of Coventry T12 11-25.json"
+    # file_path = AUTO_MAPPED_DIR / "Pointe Inverness T12 11-25.json"
     
     with open(file_path, "r") as fp:
         file_data = json.load(fp)
@@ -179,7 +184,6 @@ if __name__ == "__main__":
     with open(out_path, "w") as fp:
         json.dump(updated_data, fp, indent=2)
     print(f"Saved AI mapped results to {out_path}")
-    ################
 
 
     # json_files = sorted(list(AUTO_MAPPED_DIR.glob("*.json")))

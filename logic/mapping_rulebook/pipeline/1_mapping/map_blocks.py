@@ -22,10 +22,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from config.paths import (
     BLOCK_DETECTION_DIR,
-    RULEBOOK_DB_PATH,
-    # RULEBOOK_DB_V2_PATH as RULEBOOK_DB_PATH,
     AUTO_MAPPED_DIR
 )
+from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
+
+ACTIVE_RULEBOOK_PATH = get_active_rulebook_path()
+ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
 
 
 # ── Build reverse lookup from the rulebook ──
@@ -92,8 +94,9 @@ def map_results(entry, reverse_map):
 
 if __name__ == "__main__":
     # ── Build reverse lookup ──
-    reverse_map = build_reverse_map(RULEBOOK_DB_PATH)
-    print(f"Rulebook loaded: {len(reverse_map)} descriptions mapped\n")
+    reverse_map = build_reverse_map(ACTIVE_RULEBOOK_PATH)
+    print(f"Rulebook loaded ({ACTIVE_RULEBOOK_NAME}): {len(reverse_map)} descriptions mapped")
+    print(f"  Source: {ACTIVE_RULEBOOK_PATH}\n")
 
     json_files = sorted(list(BLOCK_DETECTION_DIR.glob("*.json")))
     print(f"Found {len(json_files)} file(s) in block_detection_results")

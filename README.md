@@ -21,9 +21,20 @@ intelligence report generation to support Oakdale Capital's deal underwriting.
 
 **Node.js 18+** (only needed for the SWOT track — used by Puppeteer for PDF generation)
 
-**API Keys** — create a `.env` file inside `logic/mapping_rulebook/` with:
+**LLM configuration** — create a `.env` file inside `logic/mapping_rulebook/` with the provider-specific keys used by `llm/llm_client.py`.
+
+Common options:
 ```
-GEMINI_API_KEY=your_key_here
+OPENAI_API_KEY_AI_MAPPING=your_key_here
+OPENAI_MODEL=gpt-5-nano
+
+# Optional if switching provider
+GOOGLE_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash-lite
+
+# Optional if using LM Studio
+LMSTUDIO_BASE_URL=http://localhost:1234/v1
+LMSTUDIO_MODEL=qwen/qwen2.5-coder-14b
 ```
 
 ---
@@ -34,7 +45,7 @@ GEMINI_API_KEY=your_key_here
 
 From the project root (or inside a virtual environment):
 ```bash
-pip install openpyxl langchain langchain-google-genai pydantic
+pip install openpyxl langchain langchain-openai langchain-google-genai pydantic python-dotenv
 ```
 
 ### 2. Install Node dependencies (SWOT track only)
@@ -123,12 +134,12 @@ Output: `output/PIR_<PropertyName>_<City>_<Date>.pdf`
 │   ├── mapping_rulebook/       T12 mapping pipeline
 │   │   ├── pipeline/           Numbered pipeline scripts (0–2 + utils)
 │   │   ├── analysis/           Diagnostic notebooks (read-only)
-│   │   ├── config/             paths.py — all file paths
+│   │   ├── config/             paths, runtime rulebook selection, and agent model config
 │   │   ├── data/               Input Excel files (gitignored)
 │   │   ├── db/                 Active rulebook + category classification JSON
 │   │   ├── llm/                LLM client wrapper (Gemini / OpenAI / LM Studio)
 │   │   ├── output_docs/        All pipeline outputs, dated by run (gitignored)
-│   │   └── mapping_rulebook_docs/  Documentation (README, LOGIC, CONTEXT)
+│   │   └── docs/               Mapping rulebook docs, decisions, and audits
 │   │
 │   └── intial_swot_pdf_prototype/   Property Intelligence Report generator
 │       ├── scripts/            Python + JS scripts
@@ -136,7 +147,7 @@ Output: `output/PIR_<PropertyName>_<City>_<Date>.pdf`
 │       ├── output/             Generated reports
 │       └── property.json       Input — fill this per property
 │
-└── Docs/                       Meeting recordings and client docs (gitignored)
+└── master_docs/                Meeting recordings and client docs
 ```
 
 ---
@@ -145,6 +156,10 @@ Output: `output/PIR_<PropertyName>_<City>_<Date>.pdf`
 
 | File | Contents |
 |---|---|
-| `logic/mapping_rulebook/mapping_rulebook_docs/README.md` | T12 pipeline overview and run guide |
-| `logic/mapping_rulebook/mapping_rulebook_docs/LOGIC.md` | Algorithm deep-dive (format detection, conflict resolution, NOI) |
-| `logic/mapping_rulebook/mapping_rulebook_docs/CONTEXT.md` | Developer reference — all paths, inputs/outputs, run commands |
+| `logic/mapping_rulebook/docs/README.md` | T12 pipeline overview and run guide |
+| `logic/mapping_rulebook/docs/LOGIC.md` | Algorithm deep-dive (format detection, conflict resolution, NOI) |
+| `logic/mapping_rulebook/docs/CONTEXT.md` | Developer reference — all paths, inputs/outputs, run commands |
+| `logic/mapping_rulebook/docs/WORKING_STYLE.md` | Repo-specific coding style and module design rules |
+| `logic/mapping_rulebook/docs/DECISIONS.md` | Key implementation decisions and the reasons behind them |
+| `logic/mapping_rulebook/docs/audits/` | Dated system audits and change audits for state tracking |
+| `master_docs/` | External meeting recordings, transcripts, and client-shared materials |

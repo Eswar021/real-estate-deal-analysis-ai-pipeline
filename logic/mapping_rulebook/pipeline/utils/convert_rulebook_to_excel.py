@@ -8,14 +8,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from config.paths import (
-    # RULEBOOK_DB_PATH, 
-    RULEBOOK_DB_V2_PATH as RULEBOOK_DB_PATH,
-    RULEBOOK_EXCEL_PATH)
+from config.paths import RULEBOOK_EXCEL_PATH
+from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
 
 # ── Paths ────────────────────────────────────────────────────────────────────
-INPUT_JSON = RULEBOOK_DB_PATH
+INPUT_JSON = get_active_rulebook_path()
 OUTPUT_XLS = RULEBOOK_EXCEL_PATH
+ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
 
 # ── Load JSON ────────────────────────────────────────────────────────────────
 with open(INPUT_JSON, "r", encoding="utf-8") as f:
@@ -40,3 +39,4 @@ with pd.ExcelWriter(OUTPUT_XLS, engine="openpyxl") as writer:
         ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 4, 80)
 
 print(f"✅  Done! {len(df):,} rows written → {OUTPUT_XLS}")
+print(f"   Source rulebook: {ACTIVE_RULEBOOK_NAME} -> {INPUT_JSON}")

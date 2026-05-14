@@ -63,13 +63,13 @@ Step 1a  detect_blocks          Detect format, classify every row
 Step 1b  map_blocks             Exact-match lookup against the rulebook
                                 → output_docs/1_mapping/auto_mapped/
 
-Step 1c  find_mapping           AI fallback for unmatched rows (Gemini)
+Step 1c  find_mapping           AI fallback for unmatched rows (provider via llm_client.py)
                                 → output_docs/1_mapping/ai_mapped/
 
-Step 2a  extract_actual_noi     Read vendor-reported NOI from ai_mapped file
+Step 2a  extract_actual_noi     Logical substep inside compute_noi.py
                                 → output_docs/2_noi_verification/actual_noi/
 
-Step 2b  compute_noi            Sum REVENUE/EXPENSE rows to compute our NOI
+Step 2b  compute_noi            Same script computes NOI from mapped rows
                                 → output_docs/2_noi_verification/computed_noi/
 
 Step 2c  compare_noi            Month-by-month diff, PASS/FAIL verdict
@@ -94,17 +94,30 @@ they have been reviewed and corrected by a human analyst. The 7 `.xlsx` files in
 
 ## Prerequisites
 
-```
+```txt
 Python 3.10+
 openpyxl
 langchain
+langchain-openai
 langchain-google-genai
 pydantic
+python-dotenv
 ```
 
-A `.env` file at `logic/mapping_rulebook/.env` with:
-```
-GEMINI_API_KEY=your_key_here
+A `.env` file at `logic/mapping_rulebook/.env` with the provider-specific keys used by `llm/llm_client.py`.
+
+Common options:
+```txt
+OPENAI_API_KEY_AI_MAPPING=your_key_here
+OPENAI_MODEL=gpt-5-nano
+
+# Optional if switching provider
+GOOGLE_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash-lite
+
+# Optional if using LM Studio
+LMSTUDIO_BASE_URL=http://localhost:1234/v1
+LMSTUDIO_MODEL=qwen/qwen2.5-coder-14b
 ```
 
 ---
@@ -139,7 +152,6 @@ python pipeline/1_mapping/detect_blocks.py
 python pipeline/1_mapping/map_blocks.py
 python pipeline/1_mapping/find_mapping.py
 
-python pipeline/2_noi_verification/extract_actual_noi.py
 python pipeline/2_noi_verification/compute_noi.py
 python pipeline/2_noi_verification/compare_noi.py
 ```
@@ -158,10 +170,13 @@ python pipeline/utils/convert_rulebook_to_excel.py  # rulebook → flat Excel
 
 | File | Role |
 |---|---|
-| `db/mapping_rule_book_v2.json` | Active rulebook — canonical categories → description variants |
+| `db/mapping_rule_book.json` | v1 rulebook — legacy Final_Mapping-only approach |
+| `db/mapping_rule_book_v2.json` | v2 rulebook — preferred conflict-resolved approach |
 | `db/category_classification.json` | REVENUE / EXPENSE / SKIP classification per category |
-| `config/paths.py` | All file paths — single source of truth, never hardcode paths elsewhere |
-| `llm/llm_client.py` | LLM wrapper — swaps between Gemini, OpenAI, and LM Studio |
+| `config/paths.py` | All file paths — single source of truth for directories and output locations |
+| `config/rulebook_runtime.py` | One-place switch for which runtime rulebook profile the downstream stages should use |
+| `config/agent_llm_config.py` | One-place config for agent-to-model/provider mapping |
+| `llm/llm_client.py` | Shared LLM factory that reads the agent config and builds the correct client |
 
 ---
 
@@ -200,3 +215,13 @@ mapping_rulebook/
 See [CONTEXT.md](CONTEXT.md) for the complete folder tree with all files listed,
 per-script input/output specs, and run commands.
 See [LOGIC.md](LOGIC.md) for how each algorithm works internally.
+
+---
+
+## Internal Docs
+
+| File | Purpose |
+|---|---|
+| [WORKING_STYLE.md](WORKING_STYLE.md) | Repo-specific coding style: single-item modules, fail-hard behavior, and runner-later orchestration |
+| [DECISIONS.md](DECISIONS.md) | Short decision log for structural choices and why they were made |
+| [`audits/`](audits/) | Dated system-state audits so project context survives across coding sessions |

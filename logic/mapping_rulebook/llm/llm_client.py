@@ -1,29 +1,46 @@
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
+from config.agent_llm_config import DEFAULT_AGENT_NAME, get_agent_llm_config
+
 load_dotenv()
 
 
 def make_llm(
-    provider: str = "openai",                  # "openai" | "lmstudio" | "gemini"
+    agent_name: str = DEFAULT_AGENT_NAME,
+    provider: str | None = None,              # "openai" | "lmstudio" | "gemini"
     model: str | None = None,
-    temperature: float = 0.15,
+    temperature: float | None = None,
     base_url: str | None = None,
+    api_key_env: str | None = None,
 ):
+    agent_config = get_agent_llm_config(agent_name)
+
+    provider = provider or str(agent_config["provider"])
     provider = provider.lower().strip()
+    model = model or agent_config.get("model")  # type: ignore[assignment]
+    temperature = temperature if temperature is not None else float(agent_config.get("temperature", 0.15))
+    api_key_env = api_key_env or agent_config.get("api_key_env")  # type: ignore[assignment]
 
     # -------------------------
     # OpenAI (Cloud)
     # -------------------------
     if provider == "openai":
         model = model or os.getenv("OPENAI_MODEL", "gpt-5-nano")
-        api_key = os.getenv("OPENAI_API_KEY_S_M_R")
+        api_key_env = api_key_env or "OPENAI_API_KEY_AI_MAPPING"
+        api_key = os.getenv(api_key_env)
 
         if not api_key:
-            raise ValueError("OPENAI_API_KEY_S_M_R is missing")
+            raise ValueError(f"{api_key_env} is missing")
 
         return ChatOpenAI(
             model=model,
@@ -57,10 +74,11 @@ def make_llm(
         model = model or os.getenv(
             "GEMINI_MODEL", "gemini-2.5-flash-lite"
         )
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key_env = api_key_env or "GOOGLE_API_KEY"
+        api_key = os.getenv(api_key_env)
 
         if not api_key:
-            raise ValueError("GOOGLE_API_KEY is missing")
+            raise ValueError(f"{api_key_env} is missing")
 
         return ChatGoogleGenerativeAI(
             model=model,
@@ -177,4 +195,3 @@ if __name__ == "__main__":
 #     llm = make_llm()
 #     res = llm.invoke("Hi").content
 #     print(res)
-

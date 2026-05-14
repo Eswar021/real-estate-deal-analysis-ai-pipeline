@@ -12,7 +12,7 @@ Run this whenever new categories are added to the rulebook to keep the
 classification file up to date. It will warn about any unclassified categories.
 
 Usage:
-    python config/category_config.py
+    python pipeline/0_build_rulebook/category_config.py
 """
 
 import json
@@ -23,9 +23,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from config.paths import (
-    RULEBOOK_DB_PATH, 
-    # RULEBOOK_DB_V2_PATH as RULEBOOK_DB_PATH,
     CATEGORY_CLASSIFICATION_PATH)
+from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
+
+ACTIVE_RULEBOOK_PATH = get_active_rulebook_path()
+ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
 
 
 # ── Manual classification of all 36 canonical categories ─────────────────────
@@ -77,7 +79,7 @@ CLASSIFICATION = {
 
 
 if __name__ == "__main__":
-    with open(RULEBOOK_DB_PATH) as f:
+    with open(ACTIVE_RULEBOOK_PATH) as f:
         rulebook = json.load(f)
 
     rulebook_categories = set(rulebook.keys())
@@ -112,6 +114,7 @@ if __name__ == "__main__":
         json.dump(output, f, indent=2)
 
     print(f"Saved: {CATEGORY_CLASSIFICATION_PATH}")
+    print(f"  Source rulebook: {ACTIVE_RULEBOOK_NAME} -> {ACTIVE_RULEBOOK_PATH}")
     print(f"  REVENUE:      {counts.get('REVENUE', 0)}")
     print(f"  EXPENSE:      {counts.get('EXPENSE', 0)}")
     print(f"  SKIP:         {counts.get('SKIP', 0)}")

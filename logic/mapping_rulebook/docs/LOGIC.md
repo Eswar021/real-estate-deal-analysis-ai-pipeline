@@ -238,7 +238,7 @@ propagates into NOI computation.
 
 ### Step 7: AI mapping (`find_mapping.py`)
 
-Every row with `not_found: true` is passed to Gemini 2.5 Flash Lite via LangChain.
+Every row with `not_found: true` is passed to the configured LLM provider via LangChain.
 
 **Prompt design:** The system prompt provides the full list of canonical categories and
 instructs the model to choose only from that list. Inventing new category names is
@@ -247,7 +247,7 @@ the NOI calculation.
 
 **Structured output:** LangChain's `with_structured_output(AISuggestedMapping)` is used
 so the response is a typed Pydantic object, not free text. Fields:
-- `suggested_mapping` — one of the canonical categories
+- `suggested_category` — one of the canonical categories
 - `confidence` — `"high"` / `"medium"` / `"low"`
 - `reasoning` — brief explanation
 
@@ -270,7 +270,7 @@ vendor-reported NOI. Verification catches this before the mapped data is used in
 
 ---
 
-### Extracting vendor-reported NOI (`extract_actual_noi.py`)
+### Extracting vendor-reported NOI (inside `compute_noi.py`)
 
 The vendor-reported NOI is a SUBTOTAL row in the ai_mapped file. The script scans all
 SUBTOTAL rows for descriptions that match NOI-related keywords:
@@ -284,6 +284,10 @@ The monthly values and the annual total are extracted from the `values` array of
 ---
 
 ### Computing NOI from mapped rows (`compute_noi.py`)
+
+The current Stage 2 implementation keeps both logical substeps inside `compute_noi.py`:
+- extract vendor-reported NOI into `actual_noi/`
+- compute our NOI into `computed_noi/`
 
 For each DATA row in the ai_mapped file:
 1. Look up its category in `category_classification.json`
