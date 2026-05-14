@@ -22,7 +22,7 @@ output_docs/
 archive/
 
 # Docs — meeting recordings and client-sent files (large, not source code)
-Docs/
+master_docs/
 
 # Claude Code local data
 .claude/

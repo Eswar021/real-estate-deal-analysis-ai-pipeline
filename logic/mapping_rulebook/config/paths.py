@@ -49,7 +49,7 @@ RULEBOOK_EXCEL_PATH    = UTILS_OUT_DIR / "mapping_rule_book.xlsx"
 ANALYSIS_OUTPUT_DIR = OUTPUT_DOCS_DIR / "analysis"
 
 # ── Documentation ─────────────────────────────────────────────────────────────
-DOCS_DIR = PROJECT_ROOT / "mapping_rulebook_docs"
+DOCS_DIR = PROJECT_ROOT / "docs"
 
 # ── Create directories on import ──────────────────────────────────────────────
 for _d in [
