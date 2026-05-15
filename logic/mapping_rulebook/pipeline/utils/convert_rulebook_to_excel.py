@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from config.paths import RULEBOOK_EXCEL_PATH
 from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
+from config.rulebook_utils import flatten_rulebook_rows
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 INPUT_JSON = get_active_rulebook_path()
@@ -18,15 +19,23 @@ ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
 
 # ── Load JSON ────────────────────────────────────────────────────────────────
 with open(INPUT_JSON, "r", encoding="utf-8") as f:
-    rulebook: dict[str, list[str]] = json.load(f)
+    rulebook = json.load(f)
 
-# ── Flatten  key → each value as its own row ─────────────────────────────────
+# ── Flatten rulebook rows across all supported schemas ───────────────────────
 rows = []
-for final_mapping, descriptions in rulebook.items():
-    for desc in descriptions:
-        rows.append({"Final Mapping": final_mapping, "Row Description": desc})
+for entry in flatten_rulebook_rows(rulebook):
+    rows.append({
+        "Rulebook Section": entry["rulebook_section"],
+        "Row Description": entry["row_description"],
+        "Final Mapping": entry["mapping"],
+        "Rule Type": entry["rule_type"],
+        "Rule Detail": entry["rule_detail"],
+    })
 
-df = pd.DataFrame(rows, columns=["Row Description", "Final Mapping"])
+df = pd.DataFrame(
+    rows,
+    columns=["Rulebook Section", "Row Description", "Final Mapping", "Rule Type", "Rule Detail"],
+)
 
 # ── Write to Excel ───────────────────────────────────────────────────────────
 with pd.ExcelWriter(OUTPUT_XLS, engine="openpyxl") as writer:

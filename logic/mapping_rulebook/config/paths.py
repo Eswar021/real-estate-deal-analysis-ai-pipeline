@@ -15,7 +15,6 @@ NEW_MAPPED_T12_DOCS_DIR = MAPPED_T12_DOCS_BASE / "new_t12_docs"
 # ── Database (read-only reference snapshots) ─────────────────────────────────
 DB_DIR                          = PROJECT_ROOT / "db"
 RULEBOOK_DB_PATH                = DB_DIR / "mapping_rule_book.json"
-RULEBOOK_DB_V2_PATH             = DB_DIR / "mapping_rule_book_v2.json"
 CATEGORY_CLASSIFICATION_DB_PATH = DB_DIR / "category_classification.json"
 
 # ── Output Directories ────────────────────────────────────────────────────────
@@ -23,25 +22,22 @@ _RUN_DATE = date.today().strftime("%Y_%m_%d")
 OUTPUT_DOCS_DIR = PROJECT_ROOT / "output_docs" / _RUN_DATE
 
 # Step 0 — Rulebook build
-BUILD_RULEBOOK_OUT_DIR    = OUTPUT_DOCS_DIR / "0_build_rulebook"
-EXTRACTED_MAPPINGS_V2_DIR = BUILD_RULEBOOK_OUT_DIR / "extracted_mappings_v2"
-REVIEWED_ROW_HISTORY_DIR  = BUILD_RULEBOOK_OUT_DIR / "reviewed_row_history"
+BUILD_RULEBOOK_OUT_DIR      = OUTPUT_DOCS_DIR / "0_build_rulebook"
+REVIEWED_ROW_HISTORY_DIR    = BUILD_RULEBOOK_OUT_DIR / "reviewed_row_history"
 REVIEWED_ROW_HISTORY_PER_FILE_DIR = REVIEWED_ROW_HISTORY_DIR / "per_file"
 HISTORICAL_RULE_SUPPORT_DIR = BUILD_RULEBOOK_OUT_DIR / "historical_rule_support"
-RULEBOOK_V1_OUTPUT_DIR    = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook_v1"
-RULEBOOK_V2_OUTPUT_DIR    = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook_v2"
-RULEBOOK_V3_OUTPUT_DIR    = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook_v3"
-CATEGORY_CONFIG_OUT_DIR   = BUILD_RULEBOOK_OUT_DIR / "category_config"
+SECTION_SIDE_SUPPORT_DIR    = BUILD_RULEBOOK_OUT_DIR / "section_side_support"
+RULEBOOK_OUTPUT_DIR         = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook"
+CATEGORY_CONFIG_OUT_DIR     = BUILD_RULEBOOK_OUT_DIR / "category_config"
 CLIENT_REVIEW_RULES_OUT_DIR = BUILD_RULEBOOK_OUT_DIR / "client_review_rules"
 
 REVIEWED_ROW_HISTORY_INDEX_PATH = REVIEWED_ROW_HISTORY_DIR / "reviewed_row_history_index.json"
-NO_CONFLICT_RULEBOOK_PATH = HISTORICAL_RULE_SUPPORT_DIR / "no_conflict_rulebook.json"
-HISTORICAL_CONFLICTS_PATH = HISTORICAL_RULE_SUPPORT_DIR / "historical_conflicts.json"
-RULEBOOK_V1_OUTPUT_PATH      = RULEBOOK_V1_OUTPUT_DIR / "mapping_rule_book.json"
-RULEBOOK_V2_OUTPUT_PATH      = RULEBOOK_V2_OUTPUT_DIR / "mapping_rule_book_v2.json"
-RULEBOOK_V3_OUTPUT_PATH      = RULEBOOK_V3_OUTPUT_DIR / "mapping_rule_book_v3.json"
-CATEGORY_CLASSIFICATION_PATH = CATEGORY_CONFIG_OUT_DIR / "category_classification.json"
-CLIENT_REVIEW_RULES_PATH     = CLIENT_REVIEW_RULES_OUT_DIR / "client_review_rulebook_phase1.json"
+NO_CONFLICT_RULEBOOK_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "no_conflict_rulebook.json"
+HISTORICAL_CONFLICTS_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "historical_conflicts.json"
+SECTION_SIDE_SUPPORT_PATH       = SECTION_SIDE_SUPPORT_DIR / "section_side_support.json"
+RULEBOOK_OUTPUT_PATH            = RULEBOOK_OUTPUT_DIR / "mapping_rule_book.json"
+CATEGORY_CLASSIFICATION_PATH    = CATEGORY_CONFIG_OUT_DIR / "category_classification.json"
+CLIENT_REVIEW_RULES_PATH        = CLIENT_REVIEW_RULES_OUT_DIR / "client_review_rulebook_phase1.json"
 
 # Step 1 — Mapping
 MAPPING_OUT_DIR    = OUTPUT_DOCS_DIR / "1_mapping"
@@ -76,13 +72,11 @@ DOCS_DIR = PROJECT_ROOT / "docs"
 
 # ── Create directories on import ──────────────────────────────────────────────
 for _d in [
-    EXTRACTED_MAPPINGS_V2_DIR,
     REVIEWED_ROW_HISTORY_DIR,
     REVIEWED_ROW_HISTORY_PER_FILE_DIR,
     HISTORICAL_RULE_SUPPORT_DIR,
-    RULEBOOK_V1_OUTPUT_DIR,
-    RULEBOOK_V2_OUTPUT_DIR,
-    RULEBOOK_V3_OUTPUT_DIR,
+    SECTION_SIDE_SUPPORT_DIR,
+    RULEBOOK_OUTPUT_DIR,
     CATEGORY_CONFIG_OUT_DIR,
     CLIENT_REVIEW_RULES_OUT_DIR,
     BLOCK_DETECTION_DIR,

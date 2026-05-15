@@ -26,6 +26,7 @@ sys.path.append(str(PROJECT_ROOT))
 from config.paths import (
     CATEGORY_CLASSIFICATION_PATH)
 from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
+from config.rulebook_utils import get_rulebook_categories, load_rulebook
 
 ACTIVE_RULEBOOK_PATH = get_active_rulebook_path()
 ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
@@ -80,10 +81,9 @@ CLASSIFICATION = {
 
 
 if __name__ == "__main__":
-    with open(ACTIVE_RULEBOOK_PATH) as f:
-        rulebook = json.load(f)
+    rulebook = load_rulebook(ACTIVE_RULEBOOK_PATH)
 
-    rulebook_categories = set(rulebook.keys())
+    rulebook_categories = set(get_rulebook_categories(rulebook))
     classified_categories = set(CLASSIFICATION.keys())
 
     # ── Warn about anything in the rulebook but not classified ───────────────

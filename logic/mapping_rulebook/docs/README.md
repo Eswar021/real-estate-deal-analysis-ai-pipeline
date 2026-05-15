@@ -44,13 +44,7 @@ The pipeline has two phases: a one-time rulebook build, and per-file processing.
 ```
 ONE-TIME SETUP (run when adding new source files or reviewing conflicts)
 ────────────────────────────────────────────────────────────────────────
-Step 0a  extract_mappings_v2    Read all 19 human-reviewed .xlsm files
-                                → output_docs/0_build_rulebook/extracted_mappings_v2/
-
-Step 0b  build_rulebook_v2      Resolve conflicts, build canonical rulebook
-                                → output_docs/0_build_rulebook/mapping_rulebook_v2/
-
-Step 0c  build_client_review_rules
+Step 0a  build_client_review_rules
                                 Parse the client-reviewed conflict workbook into:
                                 certain / contextual / unresolved
                                 → output_docs/0_build_rulebook/client_review_rules/
@@ -60,15 +54,20 @@ Support  extract_reviewed_row_history
                                 `.xlsm` files for later no_conflict / conflict work
                                 → output_docs/0_build_rulebook/reviewed_row_history/
 
+Support  build_section_side_support
+                                Learn section_path / section name -> statement side
+                                support from reviewed `.xlsm` history
+                                → output_docs/0_build_rulebook/section_side_support/
+
 Support  build_historical_rule_support
                                 Split the historical layer into:
                                 no_conflict + historical_conflicts
                                 → output_docs/0_build_rulebook/historical_rule_support/
 
-Support  build_rulebook_v3
+Support  build_rulebook
                                 Merge:
                                 certain + contextual + no_conflict + unresolved
-                                → output_docs/0_build_rulebook/mapping_rulebook_v3/
+                                → output_docs/0_build_rulebook/mapping_rulebook/
 
 Step 0d  category_config        Classify each category as REVENUE / EXPENSE / SKIP
                                 → output_docs/0_build_rulebook/category_config/
@@ -178,23 +177,20 @@ python pipeline/2_noi_verification/run_stage.py
 ### One-time rulebook build
 
 ```bash
-# Step 1 — extract rows from all .xlsm source files
-python pipeline/0_build_rulebook/extract_mappings_v2.py
-
-# Step 2 — resolve conflicts and build rulebook
-python pipeline/0_build_rulebook/build_rulebook_v2.py
-
-# Step 3 — build phase-1 client-reviewed decisions
+# Step 1 — build phase-1 client-reviewed decisions
 python pipeline/0_build_rulebook/build_client_review_rules.py
 
 # Support step — extract reviewed-row history for later no_conflict work
 python pipeline/0_build_rulebook/extract_reviewed_row_history.py
 
+# Support step — learn section-side inference support from reviewed history
+python pipeline/0_build_rulebook/build_section_side_support.py
+
 # Support step — split historical layer into no_conflict + conflicts
 python pipeline/0_build_rulebook/build_historical_rule_support.py
 
-# Support step — build merged v3 rulebook artifact
-python pipeline/0_build_rulebook/build_rulebook_v3.py
+# Support step — build merged runtime rulebook artifact
+python pipeline/0_build_rulebook/build_rulebook.py
 
 # Step 4 — classify categories as REVENUE / EXPENSE / SKIP
 python pipeline/0_build_rulebook/category_config.py
@@ -227,16 +223,16 @@ python pipeline/utils/convert_rulebook_to_excel.py  # rulebook → flat Excel
 
 | File | Role |
 |---|---|
-| `db/mapping_rule_book.json` | v1 rulebook snapshot — read-only reference baseline |
-| `db/mapping_rule_book_v2.json` | v2 rulebook snapshot — read-only reference baseline |
+| `db/mapping_rule_book.json` | Read-only rulebook snapshot area if we want to bless a build later |
 | `output_docs/<date>/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json` | Phase-1 client review decisions: certain / contextual / unresolved |
 | `output_docs/<date>/0_build_rulebook/reviewed_row_history/reviewed_row_history_index.json` | Historical row-context index extracted from the 19 reviewed `.xlsm` files |
+| `output_docs/<date>/0_build_rulebook/section_side_support/section_side_support.json` | Learned exact section-path and section-name support used for contextual statement-side matching in Stage 1 |
 | `output_docs/<date>/0_build_rulebook/historical_rule_support/no_conflict_rulebook.json` | Stable single-mapping descriptions derived from reviewed `.xlsm` history |
 | `output_docs/<date>/0_build_rulebook/historical_rule_support/historical_conflicts.json` | Historical conflict descriptions enriched with client-review bucket info |
-| `output_docs/<date>/0_build_rulebook/mapping_rulebook_v3/mapping_rule_book_v3.json` | Merged v3 rulebook with `certain / contextual / no_conflict / unresolved` sections |
+| `output_docs/<date>/0_build_rulebook/mapping_rulebook/mapping_rule_book.json` | Current runtime rulebook with `certain / contextual / no_conflict / unresolved` sections |
 | `output_docs/<date>/0_build_rulebook/category_config/category_classification.json` | REVENUE / EXPENSE / SKIP classification used by NOI verification |
 | `config/paths.py` | All file paths — single source of truth for directories and output locations |
-| `config/rulebook_runtime.py` | One-place switch for which runtime rulebook profile the downstream stages should use |
+| `config/rulebook_runtime.py` | One-place config for the current runtime rulebook path and Stage 0 builder chain |
 | `config/agent_llm_config.py` | One-place config for agent-to-model/provider mapping |
 | `llm/llm_client.py` | Shared LLM factory that reads the agent config and builds the correct client |
 
@@ -266,15 +262,16 @@ mapping_rulebook/
 │   │   ├── run_stage.py
 │   │   ├── build_client_review_rules.py
 │   │   ├── extract_reviewed_row_history.py
+│   │   ├── build_section_side_support.py
 │   │   ├── build_historical_rule_support.py
-│   │   └── build_rulebook_v3.py
+│   │   └── build_rulebook.py
 │   ├── 1_mapping/
 │   │   └── run_stage.py
 │   ├── 2_noi_verification/
 │   │   └── run_stage.py
 │   └── utils/
 ├── analysis/           Diagnostic scripts — read-only, not part of pipeline
-├── config/             paths, runtime rulebook selection, and agent model config
+├── config/             paths, runtime rulebook config, and agent model config
 ├── data/               Input files (raw xlsx + human-reviewed xlsm)
 ├── db/                 Read-only reference snapshots
 ├── llm/                LLM client wrapper

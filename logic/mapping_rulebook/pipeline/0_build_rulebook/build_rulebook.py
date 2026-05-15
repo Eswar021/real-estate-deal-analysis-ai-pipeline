@@ -1,24 +1,20 @@
 """
-build_rulebook_v3.py
+build_rulebook.py
 
-Builds the merged v3 mapping rulebook from the already-prepared support layers:
+Builds the current mapping rulebook from the already-prepared support layers:
 
-  1. client-reviewed decisions
-  2. historical no_conflict output
-  3. historical conflicts support
+1. client-reviewed decisions
+2. historical no_conflict output
+3. historical conflicts support
 
-The merged v3 rulebook keeps four runtime sections:
-  - certain
-  - contextual
-  - no_conflict
-  - unresolved
-
-This script intentionally builds the v3 artifact only.
-It does NOT wire v3 into the current runtime yet, because the current mapping
-stage still expects the older flat rulebook shape.
+The runtime rulebook keeps four sections:
+- certain
+- contextual
+- no_conflict
+- unresolved
 
 Usage:
-    python pipeline/0_build_rulebook/build_rulebook_v3.py
+    python pipeline/0_build_rulebook/build_rulebook.py
 
 Input:
     output_docs/<date>/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json
@@ -26,7 +22,7 @@ Input:
     output_docs/<date>/0_build_rulebook/historical_rule_support/historical_conflicts.json
 
 Output:
-    output_docs/<date>/0_build_rulebook/mapping_rulebook_v3/mapping_rule_book_v3.json
+    output_docs/<date>/0_build_rulebook/mapping_rulebook/mapping_rule_book.json
 """
 
 import json
@@ -43,7 +39,7 @@ from config.paths import (
     HISTORICAL_CONFLICTS_PATH,
     NO_CONFLICT_RULEBOOK_PATH,
     REPO_ROOT,
-    RULEBOOK_V3_OUTPUT_PATH,
+    RULEBOOK_OUTPUT_PATH,
 )
 
 
@@ -72,9 +68,6 @@ def ensure_same_source_date(payloads: list[tuple[str, dict]]) -> None:
         files = payload.get("source_files", {})
         source_files.append((label, files))
 
-    # No strict path-equality requirement across all payloads because they store
-    # different input sets, but each support payload should at least point back
-    # to the same client review and reviewed history source where applicable.
     historical_files = dict(source_files[1][1])
     conflict_files = dict(source_files[2][1])
     if historical_files != conflict_files:
@@ -139,7 +132,7 @@ if __name__ == "__main__":
     expected_total = no_conflict_payload["summary"]["total_descriptions"]
     if total_runtime_descriptions != expected_total:
         raise ValueError(
-            "Merged v3 description count mismatch: "
+            "Merged rulebook description count mismatch: "
             f"{total_runtime_descriptions} != {expected_total}"
         )
 
@@ -155,7 +148,7 @@ if __name__ == "__main__":
     )
 
     merged_rulebook = {
-        "schema_version": "v3_runtime_rulebook",
+        "schema_version": "runtime_rulebook",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "source_files": {
             "client_review_rules": str(CLIENT_REVIEW_RULES_PATH.relative_to(REPO_ROOT)),
@@ -183,13 +176,13 @@ if __name__ == "__main__":
         "unresolved": unresolved,
     }
 
-    with open(RULEBOOK_V3_OUTPUT_PATH, "w") as f:
+    with open(RULEBOOK_OUTPUT_PATH, "w") as f:
         json.dump(merged_rulebook, f, indent=2)
 
-    print("Built merged rulebook v3")
+    print("Built runtime rulebook")
     print(f"  Certain:       {len(certain)}")
     print(f"  Contextual:    {len(contextual)}")
     print(f"  No-conflict:   {len(no_conflict)}")
     print(f"  Unresolved:    {len(unresolved)}")
     print(f"  Total:         {total_runtime_descriptions}")
-    print(f"Saved: {RULEBOOK_V3_OUTPUT_PATH}")
+    print(f"Saved: {RULEBOOK_OUTPUT_PATH}")

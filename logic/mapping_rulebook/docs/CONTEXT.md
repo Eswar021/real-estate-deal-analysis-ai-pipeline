@@ -13,12 +13,11 @@ No aggregation or analysis happens here — that is a later step.
 
 ```
 [One-time / Rulebook Build]  pipeline/0_build_rulebook/
-  extract_mappings_v2  →  output_docs/0_build_rulebook/extracted_mappings_v2/
-  build_rulebook_v2    →  output_docs/0_build_rulebook/mapping_rulebook_v2/
   build_client_review_rules  →  output_docs/0_build_rulebook/client_review_rules/
   extract_reviewed_row_history  →  output_docs/0_build_rulebook/reviewed_row_history/
+  build_section_side_support  →  output_docs/0_build_rulebook/section_side_support/
   build_historical_rule_support  →  output_docs/0_build_rulebook/historical_rule_support/
-  build_rulebook_v3  →  output_docs/0_build_rulebook/mapping_rulebook_v3/
+  build_rulebook  →  output_docs/0_build_rulebook/mapping_rulebook/
   category_config      →  output_docs/0_build_rulebook/category_config/
 
 [Per file — Mapping]  pipeline/1_mapping/
@@ -53,13 +52,11 @@ mapping_rulebook/
 ├── pipeline/
 │   ├── runner_utils.py             Small shared runner helpers
 │   ├── 0_build_rulebook/
-│   │   ├── create_mappings.py        v1 — build rulebook from Final_Mapping only (kept for reference)
-│   │   ├── extract_mappings_v2.py    v2 Step 1 — extract rows with auto/override/final per row
-│   │   ├── build_rulebook_v2.py      v2 Step 2 — conflict-resolved rulebook, override-priority logic
 │   │   ├── build_client_review_rules.py  Phase 1 — client-reviewed certain/contextual/unresolved
 │   │   ├── extract_reviewed_row_history.py  Historical reviewed-row context extraction
+│   │   ├── build_section_side_support.py  Learn section-path -> statement-side support
 │   │   ├── build_historical_rule_support.py  Build no_conflict + historical conflicts support
-│   │   ├── build_rulebook_v3.py      Merge v3 sections into one runtime-ready artifact
+│   │   ├── build_rulebook.py         Merge current sections into one runtime-ready artifact
 │   │   ├── category_config.py        Classify each category as REVENUE / EXPENSE / SKIP
 │   │   └── run_stage.py              Stage 0 runner
 │   ├── 1_mapping/
@@ -85,7 +82,7 @@ mapping_rulebook/
 │
 ├── config/
 │   ├── paths.py                      All file paths — import from here, never hardcode
-│   ├── rulebook_runtime.py           Central switch for active runtime rulebook profile
+│   ├── rulebook_runtime.py           Central config for the current runtime rulebook
 │   └── agent_llm_config.py           Central config for agent → provider/model mapping
 │
 ├── data/
@@ -96,8 +93,7 @@ mapping_rulebook/
 │       └── new_t12_docs/             13 newer human-reviewed .xlsm files (batch 2)
 │
 ├── db/
-│   ├── mapping_rule_book.json        v1 rulebook snapshot — read-only reference
-│   ├── mapping_rule_book_v2.json     v2 rulebook snapshot — read-only reference
+│   ├── mapping_rule_book.json        read-only rulebook snapshot area
 │   └── category_classification.json  older classification snapshot — read-only reference
 │
 ├── llm/
@@ -106,12 +102,10 @@ mapping_rulebook/
 │
 ├── output_docs/
 │   ├── 0_build_rulebook/
-│   │   ├── extracted_mappings_v2/    Per-file JSON from extract_mappings_v2 (one per .xlsm)
 │   │   ├── reviewed_row_history/     Historical row-context extraction from reviewed `.xlsm` files
+│   │   ├── section_side_support/     Learned section-path and section-name side support
 │   │   ├── historical_rule_support/  no_conflict and historical conflict support outputs
-│   │   ├── mapping_rulebook_v1/      mapping_rule_book.json from the v1 builder
-│   │   ├── mapping_rulebook_v2/      mapping_rule_book_v2.json + rulebook_v2_audit.json
-│   │   ├── mapping_rulebook_v3/      merged v3 rulebook with sectioned runtime structure
+│   │   ├── mapping_rulebook/         current runtime rulebook build output
 │   │   ├── client_review_rules/      client_review_rulebook_phase1.json
 │   │   └── category_config/          category_classification.json used by Stage 2
 │   ├── 1_mapping/
@@ -209,16 +203,39 @@ Total Rental Reductions                  0      →  SUBTOTAL (starts with "Tota
 ## Rulebook
 
 **Configured active path:** controlled by `config/rulebook_runtime.py`
-**Runtime rulebook outputs:** `output_docs/<date>/0_build_rulebook/mapping_rulebook_v1/` and `mapping_rulebook_v2/`
+**Runtime rulebook output:** `output_docs/<date>/0_build_rulebook/mapping_rulebook/`
 **db copies:** kept as read-only reference snapshots
 
-**Structure:** `{ canonical_category: [vendor_description_variants, ...] }`
+**Runtime structure:**
+- `{ certain, contextual, no_conflict, unresolved }`
 
-**Current state (v2):** ~1,690 entries across 36 canonical categories.
-Built from 19 human-reviewed `.xlsm` files (6 in `t12_docs/` + 13 in `new_t12_docs/`).
+**Current active state:**
+- `certain`: 72
+- `contextual`: 10
+- `no_conflict`: 1,594
+- `unresolved`: 12
+- total runtime descriptions: 1,688
 
-**Lookup:** Reverse-map built at runtime (`description_lower → category`, exact match).
-Rows not found → `"not_found": true` → passed to AI agent.
+Built from:
+- the client-reviewed conflict workbook
+- the 19 human-reviewed `.xlsm` files (6 in `t12_docs/` + 13 in `new_t12_docs/`)
+
+**Lookup behavior:**
+- ordered lookup
+  - `certain`
+  - `contextual`
+  - `no_conflict`
+  - `unresolved -> AI`
+
+Rows not found still flow forward with `"not_found": true` and go to the AI stage.
+The Stage 1 JSON contract is kept compatible; the current rulebook only adds extra metadata fields such as
+`mapping_source`, `inferred_statement_side`, and client-review context when available.
+
+**Statement-side inference in Stage 1:**
+- first try exact `section_path`
+- then nearest section name
+- then top section name
+- if no exact learned support matches, leave the row unresolved for AI
 
 **V2 vs V1:**
 V1 reads only `Final_Mapping` — last file processed wins on conflict.
@@ -341,6 +358,26 @@ and `output_docs/0_build_rulebook/reviewed_row_history/reviewed_row_history_inde
 
 ---
 
+#### `build_section_side_support.py` — learned section-side inference support
+
+Reads the reviewed-row history index and learns stable statement-side rules from:
+
+- full `section_path`
+- nearest section name
+- top section name
+
+The support file keeps only exact learned rules from reviewed-history labels.
+Ambiguous sections are kept in the same file for audit/reference but are not used
+as direct Stage 1 side rules.
+
+```bash
+python pipeline/0_build_rulebook/build_section_side_support.py
+```
+**Input:** `output_docs/0_build_rulebook/reviewed_row_history/reviewed_row_history_index.json`
+**Output:** `output_docs/0_build_rulebook/section_side_support/section_side_support.json`
+
+---
+
 #### `build_historical_rule_support.py` — no_conflict + conflict support
 
 Reads the reviewed-row history index and the phase-1 client-reviewed decisions,
@@ -372,27 +409,24 @@ and `output_docs/0_build_rulebook/historical_rule_support/historical_conflicts.j
 
 ---
 
-#### `build_rulebook_v3.py` — merged v3 rulebook
+#### `build_rulebook.py` — merged runtime rulebook
 
-Reads the already-built support artifacts and merges them into one sectioned v3
-rulebook with four runtime sections:
+Reads the already-built support artifacts and merges them into one sectioned
+runtime rulebook with four runtime sections:
 
 - `certain`
 - `contextual`
 - `no_conflict`
 - `unresolved`
 
-This is the first artifact that matches the intended new rulebook structure.
-It is still kept separate from the active runtime profile for now, because the
-current mapping stage still expects the older flat `category -> descriptions`
-shape.
+This is the current runtime artifact used by the downstream stages.
 
 ```bash
-python pipeline/0_build_rulebook/build_rulebook_v3.py
+python pipeline/0_build_rulebook/build_rulebook.py
 ```
 **Input:** `output_docs/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json`
 plus `output_docs/0_build_rulebook/historical_rule_support/*.json`
-**Output:** `output_docs/0_build_rulebook/mapping_rulebook_v3/mapping_rule_book_v3.json`
+**Output:** `output_docs/0_build_rulebook/mapping_rulebook/mapping_rule_book.json`
 
 ---
 
@@ -545,5 +579,5 @@ LangChain used in `find_mapping.py` for prompt templating and structured output 
 | Capex excluded from NOI | SKIP bucket | Capex rows appear below the NOI line in T12 files |
 | Folder structure | Numbered pipeline folders | Order is visible from directory listing; no ambiguity about sequence |
 | Export / analysis scripts | Separate `utils/` and `analysis/` folders | Not part of the run-every-file pipeline; separating avoids confusion |
-| Runtime rulebook selection | `config/rulebook_runtime.py` | Change the active profile in one place instead of comment/uncommenting multiple stage files |
+| Runtime rulebook config | `config/rulebook_runtime.py` | Keep one current rulebook path and one current Stage 0 builder chain in one place |
 | Agent LLM selection | `config/agent_llm_config.py` | Keep provider/model choice centralized per agent |

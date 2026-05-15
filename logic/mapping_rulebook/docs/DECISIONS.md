@@ -186,3 +186,53 @@ Why:
 - the current runtime still expects the older flat `category -> [descriptions]` rulebook shape
 - forcing v3 into the runtime too early would break the existing mapping stage
 - keeping v3 separate lets us validate the new structure before changing downstream consumers
+
+---
+
+## 2026-05-15 — V3 Is Now The Active Runtime Profile
+
+Decision:
+
+- switch `config/rulebook_runtime.py` to the `v3` profile
+- keep the Stage 1 output contract stable while adding only non-breaking metadata fields
+
+Why:
+
+- `map_blocks.py`, `find_mapping.py`, and `category_config.py` now understand the v3 shape
+- this lets the pipeline use the new lookup order without rewriting downstream stages
+- downstream JSON consumers still receive the same core fields (`mapping`, `not_found`, row values, summaries)
+
+---
+
+## 2026-05-15 — Statement-Side Inference Uses Only Built Support
+
+Decision:
+
+- Stage 1 should infer `revenue / expense / capex / other` using layered context:
+  - exact `section_path`
+  - nearest section name
+  - top section name
+- raw block-detection output should keep a `section_path` field, not only one `section_context`
+- if exact learned support does not match, keep the row unresolved and let the AI stage handle it later
+
+Why:
+
+- the new v3 contextual rules depend on better section awareness
+- the reviewed `.xlsm` history already gives us stable section-to-side patterns
+- Stage 1 should consume Stage 0 outputs, not add a second layer of guesswork
+
+---
+
+## 2026-05-15 — Active Runtime Uses One Current Rulebook
+
+Decision:
+
+- remove version-switching from the active runtime path
+- keep one current rulebook build chain in `config/rulebook_runtime.py`
+- keep one current runtime artifact at `output_docs/<date>/0_build_rulebook/mapping_rulebook/mapping_rule_book.json`
+
+Why:
+
+- the live pipeline should be simple to reason about
+- multiple-version runtime branches add noise without helping the current build flow
+- older experimental scripts can remain as references, but the production path should stay singular

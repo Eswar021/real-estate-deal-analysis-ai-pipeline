@@ -50,20 +50,18 @@ The reason is simple: silent continuation can hide accounting or mapping mistake
 
 ---
 
-## Rulebook Testing Style
+## Rulebook Runtime Style
 
-The documented target architecture still treats rulebook v2 as the preferred end-state, but runtime testing can switch between v1 and v2 through `config/rulebook_runtime.py`.
+The active system should use one current rulebook path and one current build flow through `config/rulebook_runtime.py`.
 
-For A/B verification, change the active rulebook profile in that config file instead of comment/uncommenting imports across multiple scripts.
-
-Keep the rulebook choice aligned across every affected stage, especially:
+Keep that single rulebook path aligned across every affected stage, especially:
 
 - `pipeline/1_mapping/map_blocks.py`
 - `pipeline/1_mapping/find_mapping.py`
 - `pipeline/0_build_rulebook/category_config.py`
 - `pipeline/utils/convert_rulebook_to_excel.py`
 
-Future runners can parameterize this further. For now, one central config switch is the intended workflow.
+The goal is to avoid multiple-version branching in the active pipeline. Older experiments can stay as reference files, but the runtime path should stay singular and obvious.
 
 ---
 

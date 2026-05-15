@@ -1,6 +1,5 @@
 import json
 import sys
-import os
 from pathlib import Path
 from pydantic import BaseModel, Field
 from langchain_core.prompts import PromptTemplate
@@ -17,6 +16,7 @@ from config.paths import (
     )
 from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
 from config.agent_llm_config import MAPPING_AI_AGENT
+from config.rulebook_utils import get_rulebook_categories, get_rulebook_examples, load_rulebook
 from llm.llm_client import make_llm
 
 ACTIVE_RULEBOOK_PATH = get_active_rulebook_path()
@@ -37,26 +37,15 @@ class AISuggestedMapping(BaseModel):
 
 def load_rulebook_categories(rulebook_path=ACTIVE_RULEBOOK_PATH):
     """Returns a list of existing categories from the rulebook to use as context."""
-    with open(rulebook_path, "r") as f:
-        rulebook = json.load(f)
-    # The keys of the rulebook are the canonical categories
-    return list(rulebook.keys())
+    rulebook = load_rulebook(rulebook_path)
+    return get_rulebook_categories(rulebook)
 
 def get_context_for_section(section_context, rulebook_path=ACTIVE_RULEBOOK_PATH):
     """
     Returns an examples dictionary mapping category to an array of example descriptions.
     """
-    with open(rulebook_path, "r") as f:
-        rulebook = json.load(f)
-    
-    examples = {}
-    count = 0
-    for k, v in rulebook.items():
-        if count >= 10: break
-        if v:  # if it has mapped descriptions
-            examples[k] = v[:3]  # take up to 3 examples per category
-            count += 1
-    return examples
+    rulebook = load_rulebook(rulebook_path)
+    return get_rulebook_examples(rulebook)
 
 def create_ai_mapping_pipeline():
     """Sets up the Langchain prompt and LLM pipeline."""
@@ -110,9 +99,18 @@ def run_ai_mapping(file_data, limit=None):
             item_to_map_dict = {
                 "file_name": file_name,
                 "section_context": section_context,
+                "section_path": row.get("section_path"),
+                "inferred_statement_side": row.get("inferred_statement_side"),
+                "statement_side_source": row.get("statement_side_source"),
                 "description": description,
                 "column_headers": file_data.get("column_headers", []),
-                "monthly_values": values
+                "monthly_values": values,
+                "mapping_source": row.get("mapping_source"),
+                "client_review_note": row.get("client_review_note"),
+                "unresolved_reason_type": row.get("unresolved_reason_type"),
+                "historical_candidate_mappings": row.get("historical_candidate_mappings"),
+                "historical_statement_sides": row.get("historical_statement_sides"),
+                "historical_section_paths": row.get("historical_section_paths"),
             }
             
             inputs = {

@@ -66,7 +66,7 @@ def run_pipeline(stages: list[int], ai_limit: int | None = None) -> None:
     active_rulebook = get_active_rulebook_name()
 
     print(f"Running stages: {stages}")
-    print(f"Active runtime rulebook profile: {active_rulebook}")
+    print(f"Active runtime rulebook: {active_rulebook}")
 
     for stage in stages:
         runner_path = STAGE_RUNNERS[stage]

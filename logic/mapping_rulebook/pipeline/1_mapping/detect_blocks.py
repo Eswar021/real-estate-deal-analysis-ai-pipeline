@@ -330,6 +330,9 @@ def classify_file(file_path):
 
     classified_rows = []
     current_section = None
+    current_path = []
+    pending_headers = []
+    previous_non_empty_type = None
 
     for row in range(start_row, ws.max_row + 1):
         row_type, description = classify_row(ws, row, fmt)
@@ -337,15 +340,28 @@ def classify_file(file_path):
         if row_type == "empty":
             continue
 
-        # Track nearest header as section context
         if row_type == "header":
+            if previous_non_empty_type == "header":
+                pending_headers.append(description)
+            else:
+                pending_headers = [description]
             current_section = description
-            
+            active_path = list(pending_headers)
+        else:
+            if row_type == "data" and pending_headers:
+                current_path = list(pending_headers)
+                pending_headers = []
+
+            active_path = list(current_path)
+            if active_path:
+                current_section = active_path[-1]
+
         classified_row = {
             "row": row,
             "type": row_type,
             "description": description,
             "section_context": current_section,
+            "section_path": active_path,
         }
         
         if row_type in ("data", "subtotal"):
@@ -356,6 +372,7 @@ def classify_file(file_path):
             classified_row["values"] = values
 
         classified_rows.append(classified_row)
+        previous_non_empty_type = row_type
 
     # Summary counts
     data_count = sum(1 for r in classified_rows if r["type"] == "data")
