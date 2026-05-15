@@ -155,3 +155,34 @@ Why:
 - build artifacts should stay versioned by run date
 - runtime testing should use the current build outputs directly
 - reference snapshots in `db/` should not be overwritten by routine pipeline runs
+
+---
+
+## 2026-05-15 — Client Review And Historical XLSM Extraction Stay Separate
+
+Decision:
+
+- keep the client-reviewed conflict workbook build separate from the 19 reviewed `.xlsm` history extraction
+- first build `certain / contextual / unresolved` from the reviewed client workbook
+- separately extract historical row context from the `.xlsm` files before building `no_conflict`
+
+Why:
+
+- this avoids mixing two different sources of truth too early
+- client-reviewed decisions should stay explicit and inspectable
+- the later `no_conflict` builder can work from a clean historical extraction artifact instead of reparsing spreadsheets every time
+
+---
+
+## 2026-05-15 — V3 Rulebook Is Built Separately Before Runtime Integration
+
+Decision:
+
+- build the new sectioned v3 rulebook as a separate Stage 0 artifact first
+- do not switch the active runtime profile to v3 until `map_blocks.py` and later mapping logic are updated to read the new structure
+
+Why:
+
+- the current runtime still expects the older flat `category -> [descriptions]` rulebook shape
+- forcing v3 into the runtime too early would break the existing mapping stage
+- keeping v3 separate lets us validate the new structure before changing downstream consumers

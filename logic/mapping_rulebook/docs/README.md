@@ -55,6 +55,21 @@ Step 0c  build_client_review_rules
                                 certain / contextual / unresolved
                                 → output_docs/0_build_rulebook/client_review_rules/
 
+Support  extract_reviewed_row_history
+                                Extract historical row context from the 19 reviewed
+                                `.xlsm` files for later no_conflict / conflict work
+                                → output_docs/0_build_rulebook/reviewed_row_history/
+
+Support  build_historical_rule_support
+                                Split the historical layer into:
+                                no_conflict + historical_conflicts
+                                → output_docs/0_build_rulebook/historical_rule_support/
+
+Support  build_rulebook_v3
+                                Merge:
+                                certain + contextual + no_conflict + unresolved
+                                → output_docs/0_build_rulebook/mapping_rulebook_v3/
+
 Step 0d  category_config        Classify each category as REVENUE / EXPENSE / SKIP
                                 → output_docs/0_build_rulebook/category_config/
 
@@ -172,6 +187,15 @@ python pipeline/0_build_rulebook/build_rulebook_v2.py
 # Step 3 — build phase-1 client-reviewed decisions
 python pipeline/0_build_rulebook/build_client_review_rules.py
 
+# Support step — extract reviewed-row history for later no_conflict work
+python pipeline/0_build_rulebook/extract_reviewed_row_history.py
+
+# Support step — split historical layer into no_conflict + conflicts
+python pipeline/0_build_rulebook/build_historical_rule_support.py
+
+# Support step — build merged v3 rulebook artifact
+python pipeline/0_build_rulebook/build_rulebook_v3.py
+
 # Step 4 — classify categories as REVENUE / EXPENSE / SKIP
 python pipeline/0_build_rulebook/category_config.py
 ```
@@ -206,6 +230,10 @@ python pipeline/utils/convert_rulebook_to_excel.py  # rulebook → flat Excel
 | `db/mapping_rule_book.json` | v1 rulebook snapshot — read-only reference baseline |
 | `db/mapping_rule_book_v2.json` | v2 rulebook snapshot — read-only reference baseline |
 | `output_docs/<date>/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json` | Phase-1 client review decisions: certain / contextual / unresolved |
+| `output_docs/<date>/0_build_rulebook/reviewed_row_history/reviewed_row_history_index.json` | Historical row-context index extracted from the 19 reviewed `.xlsm` files |
+| `output_docs/<date>/0_build_rulebook/historical_rule_support/no_conflict_rulebook.json` | Stable single-mapping descriptions derived from reviewed `.xlsm` history |
+| `output_docs/<date>/0_build_rulebook/historical_rule_support/historical_conflicts.json` | Historical conflict descriptions enriched with client-review bucket info |
+| `output_docs/<date>/0_build_rulebook/mapping_rulebook_v3/mapping_rule_book_v3.json` | Merged v3 rulebook with `certain / contextual / no_conflict / unresolved` sections |
 | `output_docs/<date>/0_build_rulebook/category_config/category_classification.json` | REVENUE / EXPENSE / SKIP classification used by NOI verification |
 | `config/paths.py` | All file paths — single source of truth for directories and output locations |
 | `config/rulebook_runtime.py` | One-place switch for which runtime rulebook profile the downstream stages should use |
@@ -236,7 +264,10 @@ mapping_rulebook/
 ├── pipeline/           Main pipeline scripts (numbered by stage)
 │   ├── 0_build_rulebook/
 │   │   ├── run_stage.py
-│   │   └── build_client_review_rules.py
+│   │   ├── build_client_review_rules.py
+│   │   ├── extract_reviewed_row_history.py
+│   │   ├── build_historical_rule_support.py
+│   │   └── build_rulebook_v3.py
 │   ├── 1_mapping/
 │   │   └── run_stage.py
 │   ├── 2_noi_verification/

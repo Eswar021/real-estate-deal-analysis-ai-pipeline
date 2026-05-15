@@ -16,6 +16,9 @@ No aggregation or analysis happens here — that is a later step.
   extract_mappings_v2  →  output_docs/0_build_rulebook/extracted_mappings_v2/
   build_rulebook_v2    →  output_docs/0_build_rulebook/mapping_rulebook_v2/
   build_client_review_rules  →  output_docs/0_build_rulebook/client_review_rules/
+  extract_reviewed_row_history  →  output_docs/0_build_rulebook/reviewed_row_history/
+  build_historical_rule_support  →  output_docs/0_build_rulebook/historical_rule_support/
+  build_rulebook_v3  →  output_docs/0_build_rulebook/mapping_rulebook_v3/
   category_config      →  output_docs/0_build_rulebook/category_config/
 
 [Per file — Mapping]  pipeline/1_mapping/
@@ -54,6 +57,9 @@ mapping_rulebook/
 │   │   ├── extract_mappings_v2.py    v2 Step 1 — extract rows with auto/override/final per row
 │   │   ├── build_rulebook_v2.py      v2 Step 2 — conflict-resolved rulebook, override-priority logic
 │   │   ├── build_client_review_rules.py  Phase 1 — client-reviewed certain/contextual/unresolved
+│   │   ├── extract_reviewed_row_history.py  Historical reviewed-row context extraction
+│   │   ├── build_historical_rule_support.py  Build no_conflict + historical conflicts support
+│   │   ├── build_rulebook_v3.py      Merge v3 sections into one runtime-ready artifact
 │   │   ├── category_config.py        Classify each category as REVENUE / EXPENSE / SKIP
 │   │   └── run_stage.py              Stage 0 runner
 │   ├── 1_mapping/
@@ -101,8 +107,11 @@ mapping_rulebook/
 ├── output_docs/
 │   ├── 0_build_rulebook/
 │   │   ├── extracted_mappings_v2/    Per-file JSON from extract_mappings_v2 (one per .xlsm)
+│   │   ├── reviewed_row_history/     Historical row-context extraction from reviewed `.xlsm` files
+│   │   ├── historical_rule_support/  no_conflict and historical conflict support outputs
 │   │   ├── mapping_rulebook_v1/      mapping_rule_book.json from the v1 builder
 │   │   ├── mapping_rulebook_v2/      mapping_rule_book_v2.json + rulebook_v2_audit.json
+│   │   ├── mapping_rulebook_v3/      merged v3 rulebook with sectioned runtime structure
 │   │   ├── client_review_rules/      client_review_rulebook_phase1.json
 │   │   └── category_config/          category_classification.json used by Stage 2
 │   ├── 1_mapping/
@@ -302,6 +311,88 @@ python pipeline/0_build_rulebook/build_client_review_rules.py
 ```
 **Input:** `data/client_review_docs/conflict_sources_report_v2_J VM Notes.xlsx`
 **Output:** `output_docs/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json`
+
+---
+
+#### `extract_reviewed_row_history.py` — Historical row-context extraction
+
+Reads the 19 reviewed `.xlsm` mapping docs and extracts enriched data-row history
+for later `no_conflict` / conflict work. Each extracted row keeps:
+
+- `row_description`
+- `statement_side`
+- `section_path`
+- `nearest_section`
+- `auto_mapping`
+- `override`
+- `final_mapping`
+- `source_type`
+
+This script intentionally does not build the final runtime rulebook yet. It is a
+support builder so later stages can derive `no_conflict` and historical conflict
+metadata without reparsing all reviewed workbooks.
+
+```bash
+python pipeline/0_build_rulebook/extract_reviewed_row_history.py
+```
+**Input:** `.xlsm` files from `data/mapped_T12_docs/`
+**Output:** `output_docs/0_build_rulebook/reviewed_row_history/per_file/<filename>.json`
+and `output_docs/0_build_rulebook/reviewed_row_history/reviewed_row_history_index.json`
+
+---
+
+#### `build_historical_rule_support.py` — no_conflict + conflict support
+
+Reads the reviewed-row history index and the phase-1 client-reviewed decisions,
+then splits the historical layer into two outputs:
+
+- `no_conflict_rulebook.json`
+- `historical_conflicts.json`
+
+`no_conflict_rulebook.json` contains the descriptions that only ever mapped to one
+final category across the 19 reviewed `.xlsm` files.
+
+`historical_conflicts.json` keeps the multi-mapping descriptions together with:
+
+- historical mappings
+- statement-side history
+- section-path history
+- client-review bucket (`certain`, `contextual`, or `unresolved`)
+- the corresponding client-review entry
+
+This keeps runtime-rule decisions separate from historical support context.
+
+```bash
+python pipeline/0_build_rulebook/build_historical_rule_support.py
+```
+**Input:** `output_docs/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json`
+and `output_docs/0_build_rulebook/reviewed_row_history/reviewed_row_history_index.json`
+**Output:** `output_docs/0_build_rulebook/historical_rule_support/no_conflict_rulebook.json`
+and `output_docs/0_build_rulebook/historical_rule_support/historical_conflicts.json`
+
+---
+
+#### `build_rulebook_v3.py` — merged v3 rulebook
+
+Reads the already-built support artifacts and merges them into one sectioned v3
+rulebook with four runtime sections:
+
+- `certain`
+- `contextual`
+- `no_conflict`
+- `unresolved`
+
+This is the first artifact that matches the intended new rulebook structure.
+It is still kept separate from the active runtime profile for now, because the
+current mapping stage still expects the older flat `category -> descriptions`
+shape.
+
+```bash
+python pipeline/0_build_rulebook/build_rulebook_v3.py
+```
+**Input:** `output_docs/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json`
+plus `output_docs/0_build_rulebook/historical_rule_support/*.json`
+**Output:** `output_docs/0_build_rulebook/mapping_rulebook_v3/mapping_rule_book_v3.json`
 
 ---
 
