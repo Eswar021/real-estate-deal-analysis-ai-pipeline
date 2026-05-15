@@ -50,7 +50,12 @@ Step 0a  extract_mappings_v2    Read all 19 human-reviewed .xlsm files
 Step 0b  build_rulebook_v2      Resolve conflicts, build canonical rulebook
                                 → output_docs/0_build_rulebook/mapping_rulebook_v2/
 
-Step 0c  category_config        Classify each category as REVENUE / EXPENSE / SKIP
+Step 0c  build_client_review_rules
+                                Parse the client-reviewed conflict workbook into:
+                                certain / contextual / unresolved
+                                → output_docs/0_build_rulebook/client_review_rules/
+
+Step 0d  category_config        Classify each category as REVENUE / EXPENSE / SKIP
                                 → output_docs/0_build_rulebook/category_config/
 
 
@@ -84,10 +89,13 @@ Step 2c  compare_noi            Month-by-month diff, PASS/FAIL verdict
 | `data/input_T12_docs/` | Raw vendor T12 `.xlsx` files to process | 7 (test set) |
 | `data/mapped_T12_docs/t12_docs/` | Human-reviewed `.xlsm` files (batch 1) | 6 |
 | `data/mapped_T12_docs/new_t12_docs/` | Human-reviewed `.xlsm` files (batch 2) | 13 |
+| `data/client_review_docs/` | Local working copy of the client-reviewed conflict workbook | 1 |
 
 The 19 `.xlsm` files in `mapped_T12_docs/` are the training data for the rulebook —
 they have been reviewed and corrected by a human analyst. The 7 `.xlsx` files in
-`input_T12_docs/` are the test set that the pipeline processes.
+`input_T12_docs/` are the test set that the pipeline processes. The reviewed
+conflict workbook is also kept locally under `data/client_review_docs/` so the
+rulebook build does not depend on paths outside `logic/mapping_rulebook/`.
 
 ---
 
@@ -161,7 +169,10 @@ python pipeline/0_build_rulebook/extract_mappings_v2.py
 # Step 2 — resolve conflicts and build rulebook
 python pipeline/0_build_rulebook/build_rulebook_v2.py
 
-# Step 3 — classify categories as REVENUE / EXPENSE / SKIP
+# Step 3 — build phase-1 client-reviewed decisions
+python pipeline/0_build_rulebook/build_client_review_rules.py
+
+# Step 4 — classify categories as REVENUE / EXPENSE / SKIP
 python pipeline/0_build_rulebook/category_config.py
 ```
 
@@ -194,6 +205,7 @@ python pipeline/utils/convert_rulebook_to_excel.py  # rulebook → flat Excel
 |---|---|
 | `db/mapping_rule_book.json` | v1 rulebook snapshot — read-only reference baseline |
 | `db/mapping_rule_book_v2.json` | v2 rulebook snapshot — read-only reference baseline |
+| `output_docs/<date>/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json` | Phase-1 client review decisions: certain / contextual / unresolved |
 | `output_docs/<date>/0_build_rulebook/category_config/category_classification.json` | REVENUE / EXPENSE / SKIP classification used by NOI verification |
 | `config/paths.py` | All file paths — single source of truth for directories and output locations |
 | `config/rulebook_runtime.py` | One-place switch for which runtime rulebook profile the downstream stages should use |
@@ -223,7 +235,8 @@ mapping_rulebook/
 ├── run_pipeline.py      Master runner for numbered stages
 ├── pipeline/           Main pipeline scripts (numbered by stage)
 │   ├── 0_build_rulebook/
-│   │   └── run_stage.py
+│   │   ├── run_stage.py
+│   │   └── build_client_review_rules.py
 │   ├── 1_mapping/
 │   │   └── run_stage.py
 │   ├── 2_noi_verification/

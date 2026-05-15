@@ -3,6 +3,7 @@ from datetime import date
 
 # Base project directory (this file lives at project_root/config/paths.py)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = PROJECT_ROOT.parent.parent
 
 # ── Data Directories (source Excel files) ────────────────────────────────────
 DATA_DIR              = PROJECT_ROOT / "data"
@@ -27,10 +28,12 @@ EXTRACTED_MAPPINGS_V2_DIR = BUILD_RULEBOOK_OUT_DIR / "extracted_mappings_v2"
 RULEBOOK_V1_OUTPUT_DIR    = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook_v1"
 RULEBOOK_V2_OUTPUT_DIR    = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook_v2"
 CATEGORY_CONFIG_OUT_DIR   = BUILD_RULEBOOK_OUT_DIR / "category_config"
+CLIENT_REVIEW_RULES_OUT_DIR = BUILD_RULEBOOK_OUT_DIR / "client_review_rules"
 
 RULEBOOK_V1_OUTPUT_PATH      = RULEBOOK_V1_OUTPUT_DIR / "mapping_rule_book.json"
 RULEBOOK_V2_OUTPUT_PATH      = RULEBOOK_V2_OUTPUT_DIR / "mapping_rule_book_v2.json"
 CATEGORY_CLASSIFICATION_PATH = CATEGORY_CONFIG_OUT_DIR / "category_classification.json"
+CLIENT_REVIEW_RULES_PATH     = CLIENT_REVIEW_RULES_OUT_DIR / "client_review_rulebook_phase1.json"
 
 # Step 1 — Mapping
 MAPPING_OUT_DIR    = OUTPUT_DOCS_DIR / "1_mapping"
@@ -54,6 +57,12 @@ RULEBOOK_EXCEL_PATH    = UTILS_OUT_DIR / "mapping_rule_book.xlsx"
 # Analysis (diagnostic scripts output)
 ANALYSIS_OUTPUT_DIR = OUTPUT_DOCS_DIR / "analysis"
 
+# Client-reviewed conflict workbook (phase 1 source for certain/contextual/unresolved)
+CLIENT_REVIEW_DOCS_DIR = DATA_DIR / "client_review_docs"
+CLIENT_REVIEW_CONFLICTS_FILE = (
+    CLIENT_REVIEW_DOCS_DIR / "conflict_sources_report_v2_J VM Notes.xlsx"
+)
+
 # ── Documentation ─────────────────────────────────────────────────────────────
 DOCS_DIR = PROJECT_ROOT / "docs"
 
@@ -63,6 +72,7 @@ for _d in [
     RULEBOOK_V1_OUTPUT_DIR,
     RULEBOOK_V2_OUTPUT_DIR,
     CATEGORY_CONFIG_OUT_DIR,
+    CLIENT_REVIEW_RULES_OUT_DIR,
     BLOCK_DETECTION_DIR,
     AUTO_MAPPED_DIR,
     AI_MAPPED_DIR,
@@ -73,5 +83,6 @@ for _d in [
     RESULTS_TO_EXCEL_DIR,
     AI_MAPPED_TO_EXCEL_DIR,
     ANALYSIS_OUTPUT_DIR,
+    CLIENT_REVIEW_DOCS_DIR,
 ]:
     _d.mkdir(parents=True, exist_ok=True)

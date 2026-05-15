@@ -15,6 +15,7 @@ No aggregation or analysis happens here — that is a later step.
 [One-time / Rulebook Build]  pipeline/0_build_rulebook/
   extract_mappings_v2  →  output_docs/0_build_rulebook/extracted_mappings_v2/
   build_rulebook_v2    →  output_docs/0_build_rulebook/mapping_rulebook_v2/
+  build_client_review_rules  →  output_docs/0_build_rulebook/client_review_rules/
   category_config      →  output_docs/0_build_rulebook/category_config/
 
 [Per file — Mapping]  pipeline/1_mapping/
@@ -52,6 +53,7 @@ mapping_rulebook/
 │   │   ├── create_mappings.py        v1 — build rulebook from Final_Mapping only (kept for reference)
 │   │   ├── extract_mappings_v2.py    v2 Step 1 — extract rows with auto/override/final per row
 │   │   ├── build_rulebook_v2.py      v2 Step 2 — conflict-resolved rulebook, override-priority logic
+│   │   ├── build_client_review_rules.py  Phase 1 — client-reviewed certain/contextual/unresolved
 │   │   ├── category_config.py        Classify each category as REVENUE / EXPENSE / SKIP
 │   │   └── run_stage.py              Stage 0 runner
 │   ├── 1_mapping/
@@ -82,6 +84,7 @@ mapping_rulebook/
 │
 ├── data/
 │   ├── input_T12_docs/               Raw vendor T12 .xlsx files (7 files — test set)
+│   ├── client_review_docs/           Local copy of the client-reviewed conflict workbook
 │   └── mapped_T12_docs/
 │       ├── t12_docs/                 6 older human-reviewed .xlsm files (batch 1)
 │       └── new_t12_docs/             13 newer human-reviewed .xlsm files (batch 2)
@@ -100,6 +103,7 @@ mapping_rulebook/
 │   │   ├── extracted_mappings_v2/    Per-file JSON from extract_mappings_v2 (one per .xlsm)
 │   │   ├── mapping_rulebook_v1/      mapping_rule_book.json from the v1 builder
 │   │   ├── mapping_rulebook_v2/      mapping_rule_book_v2.json + rulebook_v2_audit.json
+│   │   ├── client_review_rules/      client_review_rulebook_phase1.json
 │   │   └── category_config/          category_classification.json used by Stage 2
 │   ├── 1_mapping/
 │   │   ├── block_detection/          JSON from detect_blocks
@@ -277,6 +281,27 @@ python pipeline/0_build_rulebook/build_rulebook_v2.py
 ```
 **Input:** `output_docs/0_build_rulebook/extracted_mappings_v2/` + `db/mapping_rule_book_v2.json` (baseline, optional)
 **Output:** `output_docs/0_build_rulebook/mapping_rulebook_v2/mapping_rule_book_v2.json` + `rulebook_v2_audit.json`
+
+---
+
+#### `build_client_review_rules.py` — Phase 1 reviewed decisions
+
+Reads the client-reviewed conflict workbook and classifies the 94 reviewed conflict
+descriptions into three sections only:
+
+- `certain`
+- `contextual`
+- `unresolved`
+
+This phase intentionally does not read the 19 reviewed `.xlsm` mapping docs yet.
+The later `no_conflict` phase is kept separate so the client-reviewed decisions do
+not get mixed with historical extraction logic.
+
+```bash
+python pipeline/0_build_rulebook/build_client_review_rules.py
+```
+**Input:** `data/client_review_docs/conflict_sources_report_v2_J VM Notes.xlsx`
+**Output:** `output_docs/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json`
 
 ---
 
