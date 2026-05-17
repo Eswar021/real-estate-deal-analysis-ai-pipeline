@@ -122,6 +122,15 @@ if __name__ == "__main__":
         ("unresolved", unresolved),
     )
 
+    # Embed historical conflict context directly into unresolved entries so
+    # Stage 1 only needs to read the single runtime rulebook file.
+    for key, entry in unresolved.items():
+        conflict = historical_conflicts.get(key, {})
+        if conflict:
+            entry["historical_candidate_mappings"] = conflict.get("mappings", [])
+            entry["historical_statement_sides"] = conflict.get("statement_sides", [])
+            entry["historical_section_paths"] = conflict.get("section_paths", [])
+
     total_runtime_descriptions = (
         len(certain) +
         len(contextual) +

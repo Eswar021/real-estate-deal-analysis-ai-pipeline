@@ -32,6 +32,25 @@ GRAND_TOTAL_KEYWORDS = [
     "taxable income", "income after debt service",
 ]
 
+# ── Grand income total markers — the specific subtotal rows that signal the end
+#    of the income section and the start of the expense section.
+#    After one of these subtotals is seen, all subsequent data rows are expense.
+#    These are a strict subset of GRAND_TOTAL_KEYWORDS: only rows that reliably
+#    mark the income→expense boundary, not any mid-income sub-totals.
+GRAND_INCOME_TOTAL_MARKERS = frozenset({
+    "total income",            # Brownsburg, Pebble Brook 03-25
+    "total revenue",           # Carmel Woods
+    "effective gross income",  # Pebble Brook 09-25, Pointe Inverness, Willows
+    "total operating revenues",# Echo Park
+})
+
+# Marks the end of operating expenses — everything after is capex/below-NOI.
+# Only checked once income_phase_complete is True (guard against summary NOI
+# rows at the top of some files, e.g. Pebble Brook 03-25 row 12).
+GRAND_NOI_MARKERS = frozenset({
+    "net operating income",  # covers "Net Operating Income", "(Loss)", "Total Net Operating Income"
+})
+
 
 # ═══════════════════════════════════════════════════════════════
 #  FORMAT DETECTION
@@ -111,7 +130,9 @@ def _is_total_text(text):
     t = text.strip().lower()
     if t.startswith("total ") or t == "total":
         return True
-    if any(kw in t for kw in GRAND_TOTAL_KEYWORDS):
+    # Use word-boundary matching to avoid false positives like
+    # "cable/internet income" matching keyword "net income".
+    if any(re.search(r'\b' + re.escape(kw) + r'\b', t) for kw in GRAND_TOTAL_KEYWORDS):
         return True
     return False
 
@@ -150,13 +171,17 @@ def classify_row(ws, row, fmt):
             # Check B indentation: leading spaces = data, no leading spaces = header
             b_raw = str(b) if b else ""
             if b_raw.startswith("    "):
+                if _is_total_text(b_str):
+                    return "subtotal", b_str
                 return "data", b_str
             elif b_raw.startswith(" ") and b_str.upper() == b_str:
                 # Single-space + ALL CAPS = section header (Carmel Woods)
                 if _is_total_text(b_str):
                     return "subtotal", b_str
                 return "header", b_str
-            # Has code + has description = data by default
+            # Has code + has description = data by default, unless text is a total
+            if _is_total_text(b_str):
+                return "subtotal", b_str
             return "data", b_str
 
         if has_code and not b_str:
@@ -192,6 +217,11 @@ def classify_row(ws, row, fmt):
         # Subtotal: starts with "Total"
         if _is_total_text(a_str):
             return "subtotal", a_str
+
+        # Deep-indented rows without a code are data items (e.g. "Customer Support Team Salaries").
+        # Section headers always use shallower indentation (≤4 spaces) than data rows (6+ spaces).
+        if indent > 4 and a_str:
+            return "data", a_str
 
         # Header: text without code, not a total
         if a_str:
@@ -333,12 +363,23 @@ def classify_file(file_path):
     current_path = []
     pending_headers = []
     previous_non_empty_type = None
+    income_phase_complete = False  # flips once when grand income total subtotal is seen
+    capex_phase_complete  = False  # flips once when NOI subtotal is seen (after income flip)
 
     for row in range(start_row, ws.max_row + 1):
         row_type, description = classify_row(ws, row, fmt)
 
         if row_type == "empty":
             continue
+
+        if row_type == "subtotal":
+            desc_lower = description.strip().lower()
+            if not income_phase_complete:
+                if any(marker in desc_lower for marker in GRAND_INCOME_TOTAL_MARKERS):
+                    income_phase_complete = True
+            elif not capex_phase_complete:
+                if any(marker in desc_lower for marker in GRAND_NOI_MARKERS):
+                    capex_phase_complete = True
 
         if row_type == "header":
             if previous_non_empty_type == "header":
@@ -363,7 +404,15 @@ def classify_file(file_path):
             "section_context": current_section,
             "section_path": active_path,
         }
-        
+
+        if row_type == "data":
+            if capex_phase_complete:
+                classified_row["statement_side"] = "capex"
+            elif income_phase_complete:
+                classified_row["statement_side"] = "expense"
+            else:
+                classified_row["statement_side"] = "revenue"
+
         if row_type in ("data", "subtotal"):
             values = []
             for col in range(data_start_col, data_end_col + 1):

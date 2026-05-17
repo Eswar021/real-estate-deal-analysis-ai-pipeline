@@ -49,7 +49,8 @@ def run_stage_1(ai_limit: int | None = None) -> None:
         print(f"Saved results to {out_path}")
 
     print("\nStage 1b — map_blocks")
-    reverse_map = map_blocks.build_reverse_map(map_blocks.ACTIVE_RULEBOOK_PATH)
+    from config.rulebook_utils import load_rulebook
+    rulebook = load_rulebook(map_blocks.ACTIVE_RULEBOOK_PATH)
     detection_files = sorted(BLOCK_DETECTION_DIR.glob("*.json"))
     if not detection_files:
         raise FileNotFoundError(f"No JSON files found in {BLOCK_DETECTION_DIR}")
@@ -58,7 +59,7 @@ def run_stage_1(ai_limit: int | None = None) -> None:
         with open(json_file, "r") as fp:
             entry = json.load(fp)
 
-        mapped_entry = map_blocks.map_results(entry, reverse_map)
+        mapped_entry = map_blocks.map_results(entry, rulebook)
         out_path = AUTO_MAPPED_DIR / json_file.name
         with open(out_path, "w") as fp:
             json.dump(mapped_entry, fp, indent=2)

@@ -34,8 +34,6 @@ def run_stage_2() -> None:
     if not ai_mapped_files:
         raise FileNotFoundError(f"No files found in {AI_MAPPED_DIR}")
 
-    classification = compute_noi.load_classification()
-
     print("Stage 2a + 2b — compute_noi")
     for json_file in ai_mapped_files:
         with open(json_file) as f:
@@ -45,7 +43,7 @@ def run_stage_2() -> None:
         with open(ACTUAL_NOI_DIR / json_file.name, "w") as f:
             json.dump(actual_result, f, indent=2)
 
-        computed_result = compute_noi.compute_noi(file_data, classification)
+        computed_result = compute_noi.compute_noi(file_data)
         with open(COMPUTED_NOI_DIR / json_file.name, "w") as f:
             json.dump(computed_result, f, indent=2)
 

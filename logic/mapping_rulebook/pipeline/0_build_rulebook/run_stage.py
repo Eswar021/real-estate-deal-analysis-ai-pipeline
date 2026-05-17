@@ -39,8 +39,6 @@ def run_stage_0() -> None:
     if not built_output_path.exists():
         raise FileNotFoundError(f"Built rulebook output not found at {built_output_path}")
 
-    run_python_script(PROJECT_ROOT / "pipeline/0_build_rulebook/category_config.py")
-
 
 if __name__ == "__main__":
     run_stage_0()

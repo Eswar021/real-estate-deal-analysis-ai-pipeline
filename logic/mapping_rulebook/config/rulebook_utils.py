@@ -55,7 +55,7 @@ def get_rulebook_categories(rulebook: dict) -> list[str]:
     return sorted(categories)
 
 
-def get_rulebook_examples(rulebook: dict, max_categories: int = 10, max_examples_per_category: int = 3) -> dict[str, list[str]]:
+def get_rulebook_examples(rulebook: dict, max_examples_per_category: int = 3) -> dict[str, list[str]]:
     validate_rulebook(rulebook)
 
     by_category: dict[str, list[str]] = defaultdict(list)
@@ -76,7 +76,7 @@ def get_rulebook_examples(rulebook: dict, max_categories: int = 10, max_examples
                 by_category[section_rule["mapping"]].append(entry["row_description"])
 
     examples = {}
-    for category in sorted(by_category.keys())[:max_categories]:
+    for category in sorted(by_category.keys()):
         seen = []
         for desc in by_category[category]:
             if desc not in seen:

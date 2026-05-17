@@ -15,7 +15,6 @@ NEW_MAPPED_T12_DOCS_DIR = MAPPED_T12_DOCS_BASE / "new_t12_docs"
 # ── Database (read-only reference snapshots) ─────────────────────────────────
 DB_DIR                          = PROJECT_ROOT / "db"
 RULEBOOK_DB_PATH                = DB_DIR / "mapping_rule_book.json"
-CATEGORY_CLASSIFICATION_DB_PATH = DB_DIR / "category_classification.json"
 
 # ── Output Directories ────────────────────────────────────────────────────────
 _RUN_DATE = date.today().strftime("%Y_%m_%d")
@@ -26,17 +25,13 @@ BUILD_RULEBOOK_OUT_DIR      = OUTPUT_DOCS_DIR / "0_build_rulebook"
 REVIEWED_ROW_HISTORY_DIR    = BUILD_RULEBOOK_OUT_DIR / "reviewed_row_history"
 REVIEWED_ROW_HISTORY_PER_FILE_DIR = REVIEWED_ROW_HISTORY_DIR / "per_file"
 HISTORICAL_RULE_SUPPORT_DIR = BUILD_RULEBOOK_OUT_DIR / "historical_rule_support"
-SECTION_SIDE_SUPPORT_DIR    = BUILD_RULEBOOK_OUT_DIR / "section_side_support"
 RULEBOOK_OUTPUT_DIR         = BUILD_RULEBOOK_OUT_DIR / "mapping_rulebook"
-CATEGORY_CONFIG_OUT_DIR     = BUILD_RULEBOOK_OUT_DIR / "category_config"
 CLIENT_REVIEW_RULES_OUT_DIR = BUILD_RULEBOOK_OUT_DIR / "client_review_rules"
 
 REVIEWED_ROW_HISTORY_INDEX_PATH = REVIEWED_ROW_HISTORY_DIR / "reviewed_row_history_index.json"
 NO_CONFLICT_RULEBOOK_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "no_conflict_rulebook.json"
 HISTORICAL_CONFLICTS_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "historical_conflicts.json"
-SECTION_SIDE_SUPPORT_PATH       = SECTION_SIDE_SUPPORT_DIR / "section_side_support.json"
 RULEBOOK_OUTPUT_PATH            = RULEBOOK_OUTPUT_DIR / "mapping_rule_book.json"
-CATEGORY_CLASSIFICATION_PATH    = CATEGORY_CONFIG_OUT_DIR / "category_classification.json"
 CLIENT_REVIEW_RULES_PATH        = CLIENT_REVIEW_RULES_OUT_DIR / "client_review_rulebook_phase1.json"
 
 # Step 1 — Mapping
@@ -75,9 +70,7 @@ for _d in [
     REVIEWED_ROW_HISTORY_DIR,
     REVIEWED_ROW_HISTORY_PER_FILE_DIR,
     HISTORICAL_RULE_SUPPORT_DIR,
-    SECTION_SIDE_SUPPORT_DIR,
     RULEBOOK_OUTPUT_DIR,
-    CATEGORY_CONFIG_OUT_DIR,
     CLIENT_REVIEW_RULES_OUT_DIR,
     BLOCK_DETECTION_DIR,
     AUTO_MAPPED_DIR,

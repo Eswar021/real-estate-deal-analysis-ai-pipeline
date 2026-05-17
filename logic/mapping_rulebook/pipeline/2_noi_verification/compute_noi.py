@@ -7,17 +7,12 @@ Step 1 — Extract actual NOI:
   the numbers as-is.
 
 Step 2 — Compute NOI:
-  Reads the same ai_mapped JSON files and computes NOI from the mapped DATA rows.
-  For each DATA row, determines the final mapping and looks up its bucket
-  (REVENUE / EXPENSE / SKIP) from category_classification.json.
-
-  Final mapping logic (mirrors the Excel):
-    final_mapping = auto_mapping  if row was found in rulebook
-                    ai_suggested  if not found in rulebook but AI suggested one
-                    None          if neither (row is unclassified)
-
-Both steps run sequentially when this script is executed. Outputs go to separate
-folders so compare_noi.py can read them independently.
+  Reads the same ai_mapped JSON files and computes NOI from mapped DATA rows.
+  Uses statement_side set by detect_blocks to bucket each row:
+    revenue → add to NOI
+    expense → subtract from NOI
+    capex   → skip (below-NOI-line items)
+  Rows with no final mapping are excluded and reported as unclassified.
 
 Pipeline position:
   find_mapping (AI) → ai_mapped/
@@ -26,7 +21,6 @@ Pipeline position:
   compare_noi.py    → noi_verification/comparison/
 
 Input:  output_docs/<date>/1_mapping/ai_mapped/*.json
-        output_docs/<date>/0_build_rulebook/category_config/category_classification.json
 Output: output_docs/<date>/2_noi_verification/actual_noi/<filename>.json
         output_docs/<date>/2_noi_verification/computed_noi/<filename>.json
 """
@@ -42,7 +36,6 @@ from config.paths import (
     AI_MAPPED_DIR,
     ACTUAL_NOI_DIR,
     COMPUTED_NOI_DIR,
-    CATEGORY_CLASSIFICATION_PATH,
 )
 
 
@@ -116,11 +109,6 @@ def extract_actual_noi(file_data):
 #  STEP 2 — COMPUTE NOI FROM MAPPED ROWS
 # ═══════════════════════════════════════════════════════════════
 
-def load_classification():
-    with open(CATEGORY_CLASSIFICATION_PATH) as f:
-        return json.load(f)
-
-
 def get_final_mapping(row):
     """Determine the best available mapping for a DATA row."""
     if not row.get("not_found"):
@@ -128,10 +116,10 @@ def get_final_mapping(row):
     return row.get("ai_suggested_mapping")
 
 
-def compute_noi(file_data, classification):
+def compute_noi(file_data):
     """
     Compute NOI from mapped DATA rows in a single file.
-    Returns a result dict with month-by-month revenue, expenses, and computed NOI.
+    Uses statement_side from detect_blocks: revenue → add, expense → subtract, capex → skip.
     """
     column_headers = file_data.get("column_headers", [])
     n_cols = len(column_headers)
@@ -150,33 +138,23 @@ def compute_noi(file_data, classification):
         if not values:
             continue
 
-        final_mapping = get_final_mapping(row)
+        statement_side = row.get("statement_side")
 
+        if statement_side == "capex":
+            skipped_rows.append({
+                "row": row["row"],
+                "description": row["description"],
+                "category": get_final_mapping(row),
+            })
+            continue
+
+        final_mapping = get_final_mapping(row)
         if final_mapping is None:
             unclassified_rows.append({
                 "row": row["row"],
                 "description": row["description"],
                 "section_context": row.get("section_context"),
-                "final_mapping": None,
-            })
-            continue
-
-        bucket = classification.get(final_mapping, "UNCLASSIFIED")
-
-        if bucket == "SKIP":
-            skipped_rows.append({
-                "row": row["row"],
-                "description": row["description"],
-                "category": final_mapping,
-            })
-            continue
-
-        if bucket == "UNCLASSIFIED":
-            unclassified_rows.append({
-                "row": row["row"],
-                "description": row["description"],
-                "final_mapping": final_mapping,
-                "note": "Category exists but not in classification config",
+                "statement_side": statement_side,
             })
             continue
 
@@ -184,9 +162,9 @@ def compute_noi(file_data, classification):
             val = values[i]
             if not isinstance(val, (int, float)):
                 continue
-            if bucket == "REVENUE":
+            if statement_side == "revenue":
                 revenue_by_month[i] += val
-            elif bucket == "EXPENSE":
+            elif statement_side == "expense":
                 expenses_by_month[i] += val
 
     computed_noi_by_month = [
@@ -223,8 +201,6 @@ if __name__ == "__main__":
 
     print(f"Found {len(json_files)} file(s) in {AI_MAPPED_DIR}\n")
 
-    classification = load_classification()
-
     # ── Step 1: Extract actual NOI ────────────────────────────────────────────
     print("── Step 1: Extracting actual NOI ──────────────────────────────────")
     actual_results = {}
@@ -258,7 +234,7 @@ if __name__ == "__main__":
         with open(jfile) as f:
             file_data = json.load(f)
 
-        result = compute_noi(file_data, classification)
+        result = compute_noi(file_data)
 
         out_path = COMPUTED_NOI_DIR / jfile.name
         with open(out_path, "w") as f:
