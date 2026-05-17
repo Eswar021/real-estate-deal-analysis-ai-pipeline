@@ -75,10 +75,8 @@ The current build chain is:
 
 1. `build_client_review_rules.py`
 2. `extract_reviewed_row_history.py`
-3. `build_section_side_support.py`
-4. `build_historical_rule_support.py`
-5. `build_rulebook.py`
-6. `category_config.py`
+3. `build_historical_rule_support.py`
+4. `build_rulebook.py`
 
 The current runtime rulebook output is:
 

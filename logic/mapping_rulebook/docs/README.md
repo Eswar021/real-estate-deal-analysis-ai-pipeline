@@ -54,11 +54,6 @@ Support  extract_reviewed_row_history
                                 `.xlsm` files for later no_conflict / conflict work
                                 → output_docs/0_build_rulebook/reviewed_row_history/
 
-Support  build_section_side_support
-                                Learn section_path / section name -> statement side
-                                support from reviewed `.xlsm` history
-                                → output_docs/0_build_rulebook/section_side_support/
-
 Support  build_historical_rule_support
                                 Split the historical layer into:
                                 no_conflict + historical_conflicts
@@ -68,9 +63,6 @@ Support  build_rulebook
                                 Merge:
                                 certain + contextual + no_conflict + unresolved
                                 → output_docs/0_build_rulebook/mapping_rulebook/
-
-Step 0d  category_config        Classify each category as REVENUE / EXPENSE / SKIP
-                                → output_docs/0_build_rulebook/category_config/
 
 
 PER FILE (run for every new T12 file received)
