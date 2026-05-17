@@ -36,22 +36,25 @@ We are maintaining a clean, numbered T12 mapping pipeline under
 
 ```text
 logic/mapping_rulebook/
-├── config/
-│   ├── paths.py
-│   ├── rulebook_runtime.py
-│   ├── rulebook_utils.py
-│   └── agent_llm_config.py
-├── pipeline/
-│   ├── 0_build_rulebook/
-│   ├── 1_mapping/
-│   ├── 2_noi_verification/
-│   └── utils/
-├── llm/
+├── src/
+│   ├── config/
+│   │   ├── paths.py
+│   │   ├── rulebook_runtime.py
+│   │   ├── rulebook_utils.py
+│   │   └── agent_llm_config.py
+│   ├── llm/
+│   │   └── llm_client.py
+│   ├── pipeline/
+│   │   ├── 0_build_rulebook/
+│   │   ├── 1_mapping/
+│   │   ├── 2_noi_verification/
+│   │   ├── utils/
+│   │   └── run_pipeline.py
+│   └── analysis/
 ├── data/
 ├── db/             ← read-only snapshots only
 ├── output_docs/    ← all dated run outputs
-├── docs/
-└── archive/        ← reference only, never part of active flow
+└── docs/
 ```
 
 The active pipeline is:

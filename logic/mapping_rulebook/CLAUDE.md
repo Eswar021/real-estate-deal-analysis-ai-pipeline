@@ -10,23 +10,23 @@ and verifies the computed NOI matches the vendor's reported NOI.
 
 ```bash
 # Full pipeline
-python run_pipeline.py --stages 0,1,2
+python src/pipeline/run_pipeline.py --stages 0,1,2
 
 # Just mapping + NOI verification (most common)
-python run_pipeline.py --stages 1,2
+python src/pipeline/run_pipeline.py --stages 1,2
 
 # Limit AI calls per file while testing
-python run_pipeline.py --stages 1,2 --ai-limit 5
+python src/pipeline/run_pipeline.py --stages 1,2 --ai-limit 5
 
 # Individual stages
-python pipeline/0_build_rulebook/run_stage.py
-python pipeline/1_mapping/run_stage.py
-python pipeline/2_noi_verification/run_stage.py
+python src/pipeline/0_build_rulebook/run_stage.py
+python src/pipeline/1_mapping/run_stage.py
+python src/pipeline/2_noi_verification/run_stage.py
 
 # Utils (export to Excel for review)
-python pipeline/utils/auto_mapped_to_excel.py
-python pipeline/utils/ai_mapped_to_excel.py
-python pipeline/utils/convert_rulebook_to_excel.py
+python src/pipeline/utils/auto_mapped_to_excel.py
+python src/pipeline/utils/ai_mapped_to_excel.py
+python src/pipeline/utils/convert_rulebook_to_excel.py
 ```
 
 ---
@@ -34,17 +34,21 @@ python pipeline/utils/convert_rulebook_to_excel.py
 ## Architecture
 
 ```
-config/
-    paths.py              ← all paths/dirs, single source of truth
-    rulebook_runtime.py   ← active rulebook path + Stage 0 builder chain
-    rulebook_utils.py     ← load/validate/flatten rulebook helpers
-    agent_llm_config.py   ← model/provider selection per agent
-
-pipeline/
-    0_build_rulebook/     ← builds mapping_rule_book.json from client-reviewed data
-    1_mapping/            ← detect_blocks → map_blocks → find_mapping (AI fallback)
-    2_noi_verification/   ← compute_noi → compare_noi
-    utils/                ← export scripts, not part of main pipeline flow
+src/
+    config/
+        paths.py              ← all paths/dirs, single source of truth
+        rulebook_runtime.py   ← active rulebook path + Stage 0 builder chain
+        rulebook_utils.py     ← load/validate/flatten rulebook helpers
+        agent_llm_config.py   ← model/provider selection per agent
+    llm/
+        llm_client.py         ← LLM client wrapper (OpenAI / Gemini / LM Studio)
+    pipeline/
+        0_build_rulebook/     ← builds mapping_rule_book.json from client-reviewed data
+        1_mapping/            ← detect_blocks → map_blocks → find_mapping (AI fallback)
+        2_noi_verification/   ← compute_noi → compare_noi
+        utils/                ← export scripts, not part of main pipeline flow
+        run_pipeline.py       ← master stage runner
+    analysis/                 ← diagnostic notebooks, read-only
 
 data/input_T12_docs/      ← raw .xlsx files (read-only)
 db/                       ← read-only snapshots, never written to by pipeline
