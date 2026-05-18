@@ -4,11 +4,11 @@ T12 Mapping Pipeline — Master Runner
 Runs any combination of the numbered stages using the stage runners.
 
 Usage:
-    python run_pipeline.py --stages 0,1,2
-    python run_pipeline.py --stages 1,2
-    python run_pipeline.py --from-stage 0 --to-stage 2
-    python run_pipeline.py --from-stage 1 --to-stage 2
-    python run_pipeline.py --stages 1 --ai-limit 5
+    python src/pipeline/run_pipeline.py --stages 0,1,2
+    python src/pipeline/run_pipeline.py --stages 1,2
+    python src/pipeline/run_pipeline.py --from-stage 0 --to-stage 2
+    python src/pipeline/run_pipeline.py --from-stage 1 --to-stage 2
+    python src/pipeline/run_pipeline.py --stages 1 --ai-limit 5
 
 Notes:
     - There is no default stage selection. Pass the stage config explicitly.
@@ -22,17 +22,17 @@ import argparse
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.append(str(PROJECT_ROOT / "src"))
 
 from config.rulebook_runtime import get_active_rulebook_name
 from pipeline.runner_utils import run_python_script
 
 STAGE_RUNNERS = {
-    0: PROJECT_ROOT / "pipeline/0_build_rulebook/run_stage.py",
-    1: PROJECT_ROOT / "pipeline/1_mapping/run_stage.py",
-    2: PROJECT_ROOT / "pipeline/2_noi_verification/run_stage.py",
+    0: PROJECT_ROOT / "src/pipeline/0_build_rulebook/run_stage.py",
+    1: PROJECT_ROOT / "src/pipeline/1_mapping/run_stage.py",
+    2: PROJECT_ROOT / "src/pipeline/2_noi_verification/run_stage.py",
 }
 
 

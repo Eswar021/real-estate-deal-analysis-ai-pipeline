@@ -8,10 +8,10 @@ ACTIVE_RULEBOOK_PATH = RULEBOOK_OUTPUT_PATH
 RULEBOOK_BASELINE_DB_PATH = RULEBOOK_DB_PATH
 
 RULEBOOK_BUILDER_SCRIPTS = [
-    "pipeline/0_build_rulebook/build_client_review_rules.py",
-    "pipeline/0_build_rulebook/extract_reviewed_row_history.py",
-    "pipeline/0_build_rulebook/build_historical_rule_support.py",
-    "pipeline/0_build_rulebook/build_rulebook.py",
+    "src/pipeline/0_build_rulebook/build_client_review_rules.py",
+    "src/pipeline/0_build_rulebook/extract_reviewed_row_history.py",
+    "src/pipeline/0_build_rulebook/build_historical_rule_support.py",
+    "src/pipeline/0_build_rulebook/build_rulebook.py",
 ]
 
 

@@ -5,12 +5,12 @@ Runs the full Stage 1 mapping flow in order:
     detect_blocks -> map_blocks -> find_mapping
 
 Usage:
-    python pipeline/1_mapping/run_stage.py
-    python pipeline/1_mapping/run_stage.py --ai-limit 5
+    python src/pipeline/1_mapping/run_stage.py
+    python src/pipeline/1_mapping/run_stage.py --ai-limit 5
 
 Notes:
-    - The active runtime rulebook comes from config/rulebook_runtime.py.
-    - The AI model/provider comes from config/agent_llm_config.py.
+    - The active runtime rulebook comes from src/config/rulebook_runtime.py.
+    - The AI model/provider comes from src/config/agent_llm_config.py.
 """
 
 import argparse
@@ -18,11 +18,11 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CURRENT_DIR = Path(__file__).resolve().parent
 
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.append(str(PROJECT_ROOT / "src"))
 if str(CURRENT_DIR) not in sys.path:
     sys.path.append(str(CURRENT_DIR))
 

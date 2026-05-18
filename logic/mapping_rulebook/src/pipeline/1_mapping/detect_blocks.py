@@ -7,10 +7,9 @@ import glob
 import sys
 from pathlib import Path
 
-# Add project root to sys.path so we can import config
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.append(str(PROJECT_ROOT / "src"))
 
 from config.paths import (
     INPUT_T12_DOCS_DIR,

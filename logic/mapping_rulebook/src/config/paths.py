@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import date
 
 # Base project directory (this file lives at project_root/config/paths.py)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 REPO_ROOT = PROJECT_ROOT.parent.parent
 
 # ── Data Directories (source Excel files) ────────────────────────────────────

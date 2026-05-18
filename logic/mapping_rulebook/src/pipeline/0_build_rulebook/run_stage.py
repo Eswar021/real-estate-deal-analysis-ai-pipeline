@@ -4,7 +4,7 @@ Stage 0 Runner — Build Rulebook
 Runs the single current rulebook build flow for Stage 0.
 
 Usage:
-    python pipeline/0_build_rulebook/run_stage.py
+    python src/pipeline/0_build_rulebook/run_stage.py
 
 Notes:
     - The active rulebook path comes from config/rulebook_runtime.py.
@@ -14,9 +14,9 @@ Notes:
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.append(str(PROJECT_ROOT / "src"))
 
 from config.rulebook_runtime import (
     get_active_rulebook_name,

@@ -6,9 +6,9 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from langchain_core.prompts import PromptTemplate
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.append(str(PROJECT_ROOT / "src"))
 
 from config.paths import AUTO_MAPPED_DIR, AI_MAPPED_DIR, AI_MAPPING_LOGS_DIR
 from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path

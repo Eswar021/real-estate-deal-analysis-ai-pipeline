@@ -5,7 +5,7 @@ Runs the full Stage 2 verification flow in order:
     compute_noi logical substeps -> compare_noi
 
 Usage:
-    python pipeline/2_noi_verification/run_stage.py
+    python src/pipeline/2_noi_verification/run_stage.py
 
 Notes:
     - This runner batches the single-file logic exposed by compute_noi.py and compare_noi.py.
@@ -15,11 +15,11 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CURRENT_DIR = Path(__file__).resolve().parent
 
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "src") not in sys.path:
+    sys.path.append(str(PROJECT_ROOT / "src"))
 if str(CURRENT_DIR) not in sys.path:
     sys.path.append(str(CURRENT_DIR))
 
