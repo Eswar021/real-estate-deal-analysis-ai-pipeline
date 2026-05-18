@@ -40,19 +40,20 @@ CLIENT_REVIEW_RULES_PATH        = CLIENT_REVIEW_RULES_OUT_DIR / "client_review_r
 # Rulebook written to db/rulebooks/ (not output_docs/)
 RULEBOOK_DB_OUTPUT_PATH = DB_RULEBOOKS_DIR / f"mapping_rulebook_{_RUN_TIMESTAMP}.json"
 
-# ── Stage 1 — Mapping (paths used by manifest runner to compute manifest values) ──
-MAPPING_OUT_DIR      = OUTPUT_DOCS_DIR / "1_mapping"
-BLOCK_DETECTION_DIR  = MAPPING_OUT_DIR / "block_detection"
-ANNOTATED_BLOCKS_DIR = MAPPING_OUT_DIR / "annotated_blocks"
-AUTO_MAPPED_DIR      = MAPPING_OUT_DIR / "auto_mapped"
-AI_MAPPED_DIR        = MAPPING_OUT_DIR / "ai_mapped"
-AI_MAPPING_LOGS_DIR  = MAPPING_OUT_DIR / "ai_mapping_logs"
-
-# ── Stage 2 — NOI Verification ────────────────────────────────────────────────
-NOI_VERIFICATION_DIR = OUTPUT_DOCS_DIR / "2_noi_verification"
+# ── Stage 1 — Detection + NOI Verification ───────────────────────────────────
+DETECTION_OUT_DIR    = OUTPUT_DOCS_DIR / "1_detection"
+BLOCK_DETECTION_DIR  = DETECTION_OUT_DIR / "block_detection"
+ANNOTATED_BLOCKS_DIR = DETECTION_OUT_DIR / "annotated_blocks"
+NOI_VERIFICATION_DIR = DETECTION_OUT_DIR / "noi_verification"
 ACTUAL_NOI_DIR       = NOI_VERIFICATION_DIR / "actual_noi"
 COMPUTED_NOI_DIR     = NOI_VERIFICATION_DIR / "computed_noi"
 NOI_COMPARISON_DIR   = NOI_VERIFICATION_DIR / "comparison"
+
+# ── Stage 2 — Mapping ─────────────────────────────────────────────────────────
+MAPPING_OUT_DIR      = OUTPUT_DOCS_DIR / "2_mapping"
+AUTO_MAPPED_DIR      = MAPPING_OUT_DIR / "auto_mapped"
+AI_MAPPED_DIR        = MAPPING_OUT_DIR / "ai_mapped"
+AI_MAPPING_LOGS_DIR  = MAPPING_OUT_DIR / "ai_mapping_logs"
 
 # ── Utils (export / inspection tools) ────────────────────────────────────────
 UTILS_OUT_DIR          = OUTPUT_DOCS_DIR / "utils"

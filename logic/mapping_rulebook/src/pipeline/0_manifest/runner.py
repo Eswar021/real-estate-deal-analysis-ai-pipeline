@@ -95,24 +95,24 @@ def build_manifest() -> dict:
         },
         "l1": {
             "input_files": _collect_input_files(),
-            "ai": {
-                "provider": ai_cfg["provider"],
-                "model": ai_cfg["model"],
-                "temperature": ai_cfg["temperature"],
-            },
             "paths": {
-                "block_detection_dir": str(BLOCK_DETECTION_DIR),
+                "block_detection_dir":  str(BLOCK_DETECTION_DIR),
                 "annotated_blocks_dir": str(ANNOTATED_BLOCKS_DIR),
-                "auto_mapped_dir": str(AUTO_MAPPED_DIR),
-                "ai_mapped_dir": str(AI_MAPPED_DIR),
-                "ai_mapping_logs_dir": str(AI_MAPPING_LOGS_DIR),
+                "actual_noi_dir":       str(ACTUAL_NOI_DIR),
+                "computed_noi_dir":     str(COMPUTED_NOI_DIR),
+                "noi_comparison_dir":   str(NOI_COMPARISON_DIR),
             },
         },
         "l2": {
+            "ai": {
+                "provider":    ai_cfg["provider"],
+                "model":       ai_cfg["model"],
+                "temperature": ai_cfg["temperature"],
+            },
             "paths": {
-                "actual_noi_dir": str(ACTUAL_NOI_DIR),
-                "computed_noi_dir": str(COMPUTED_NOI_DIR),
-                "noi_comparison_dir": str(NOI_COMPARISON_DIR),
+                "auto_mapped_dir":      str(AUTO_MAPPED_DIR),
+                "ai_mapped_dir":        str(AI_MAPPED_DIR),
+                "ai_mapping_logs_dir":  str(AI_MAPPING_LOGS_DIR),
             },
         },
     }

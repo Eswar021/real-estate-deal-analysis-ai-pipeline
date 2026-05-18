@@ -371,7 +371,18 @@ def classify_file(file_path):
         if row_type == "empty":
             continue
 
+        # For subtotals: capture statement_side using the PRE-FLIP phase state,
+        # then update the phase flags. This ensures the grand income total subtotal
+        # (e.g. "Effective Gross Income") gets statement_side="revenue", not "expense".
+        subtotal_side = None
         if row_type == "subtotal":
+            if capex_phase_complete:
+                subtotal_side = "capex"
+            elif income_phase_complete:
+                subtotal_side = "expense"
+            else:
+                subtotal_side = "revenue"
+
             desc_lower = description.strip().lower()
             if not income_phase_complete:
                 if any(marker in desc_lower for marker in GRAND_INCOME_TOTAL_MARKERS):
@@ -411,6 +422,8 @@ def classify_file(file_path):
                 classified_row["statement_side"] = "expense"
             else:
                 classified_row["statement_side"] = "revenue"
+        elif row_type == "subtotal":
+            classified_row["statement_side"] = subtotal_side
 
         if row_type in ("data", "subtotal"):
             values = []

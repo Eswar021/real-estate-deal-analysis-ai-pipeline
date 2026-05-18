@@ -13,9 +13,9 @@ Usage:
 Notes:
     - There is no default stage selection. Pass the stage config explicitly.
     - Stage numbering matches the folder naming:
-        0 = manifest  (writes current_manifest.json + dated run_manifest.json)
-        1 = mapping
-        2 = noi_verification
+        0 = manifest   (writes current_manifest.json + dated run_manifest.json)
+        1 = detection  (detect_blocks → annotate_totals → compute_noi → compare_noi)
+        2 = mapping    (map_blocks → find_mapping)
     - Stages 1 and 2 read all paths from current_manifest.json — no date recomputation.
     - To run only stages 1+2, a manifest from a prior Stage 0 run must exist.
 """
@@ -32,8 +32,8 @@ from pipeline.runner_utils import run_python_script
 
 STAGE_RUNNERS = {
     0: PROJECT_ROOT / "src/pipeline/0_manifest/runner.py",
-    1: PROJECT_ROOT / "src/pipeline/1_mapping/run_stage.py",
-    2: PROJECT_ROOT / "src/pipeline/2_noi_verification/run_stage.py",
+    1: PROJECT_ROOT / "src/pipeline/1_detection/run_stage.py",
+    2: PROJECT_ROOT / "src/pipeline/2_mapping/run_stage.py",
 }
 
 
@@ -70,7 +70,7 @@ def run_pipeline(stages: list[int], ai_limit: int | None = None) -> None:
         runner_path = STAGE_RUNNERS[stage]
         runner_args: list[str] = []
 
-        if stage == 1 and ai_limit is not None:
+        if stage == 2 and ai_limit is not None:
             runner_args.extend(["--ai-limit", str(ai_limit)])
 
         print(f"\n=== Stage {stage} ===")
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         "--ai-limit",
         type=int,
         default=None,
-        help="Optional per-file limit forwarded to the Stage 1 AI mapping runner.",
+        help="Optional per-file limit forwarded to the Stage 2 AI mapping runner.",
     )
     args = parser.parse_args()
 

@@ -43,13 +43,16 @@ logic/mapping_rulebook/
 │   ├── pipeline/
 │   │   ├── 0_manifest/         ← Stage 0: writes current_manifest.json
 │   │   │   └── runner.py
-│   │   ├── 1_mapping/          ← Stage 1: detect → annotate → map → AI
+│   │   ├── 1_detection/        ← Stage 1: detect → annotate → compute NOI → compare NOI
 │   │   │   ├── detect_blocks.py
 │   │   │   ├── annotate_totals.py
+│   │   │   ├── compute_noi.py
+│   │   │   ├── compare_noi.py
+│   │   │   └── run_stage.py
+│   │   ├── 2_mapping/          ← Stage 2: auto-map → AI fallback
 │   │   │   ├── map_blocks.py
 │   │   │   ├── find_mapping.py
 │   │   │   └── run_stage.py
-│   │   ├── 2_noi_verification/ ← Stage 2: compute_noi → compare_noi
 │   │   ├── utils/
 │   │   └── run_pipeline.py
 │   └── analysis/
@@ -60,8 +63,13 @@ logic/mapping_rulebook/
 │   ├── current_manifest.json   ← always-latest pointer, overwritten each Stage 0 run
 │   └── <timestamp>/            ← per-run output dir
 │       ├── run_manifest.json   ← frozen snapshot for this run
-│       ├── 1_mapping/
-│       └── 2_noi_verification/
+│       ├── 1_detection/
+│       │   ├── block_detection/
+│       │   ├── annotated_blocks/
+│       │   └── noi_verification/
+│       └── 2_mapping/
+│           ├── auto_mapped/
+│           └── ai_mapped/
 └── docs/
 ```
 
@@ -69,8 +77,8 @@ The active pipeline is:
 
 ```text
 Stage 0: write run manifest (picks latest rulebook from db/rulebooks/)
-Stage 1: detect rows → annotate totals → auto-map → AI fallback
-Stage 2: compute NOI → compare NOI
+Stage 1: detect rows → annotate totals → compute NOI → compare NOI
+Stage 2: auto-map rows → AI fallback for unmapped rows
 ```
 
 `src/build_rulebook/` is a separate tool — run it manually when new .xlsm files arrive.
@@ -97,28 +105,36 @@ The pipeline does not run it; Stage 0 (manifest) just picks the latest file from
 
 Fails hard if `db/rulebooks/` is empty.
 
-### Stage 1 — Mapping
+### Stage 1 — Detection + NOI Verification
 
 Sub-step order in `run_stage.py`:
 
-1. `detect_blocks.py`     → `block_detection_dir/`
-2. `annotate_totals.py`   → `annotated_blocks_dir/`  (adds is_total_revenue/expense/noi flags)
-3. `map_blocks.py`        → `auto_mapped_dir/`        (reads from annotated_blocks_dir)
-4. `find_mapping.py`      → `ai_mapped_dir/`          (AI fallback for unmapped rows)
+1. `detect_blocks.py`    → `block_detection_dir/`
+2. `annotate_totals.py`  → `annotated_blocks_dir/`  (adds is_total_revenue/expense/noi flags)
+3. `compute_noi.py`      → `actual_noi_dir/` + `computed_noi_dir/`
+4. `compare_noi.py`      → `noi_comparison_dir/`
 
 Important:
 
 - `detect_blocks.py` is the only Stage 1 script that reads raw `.xlsx` files
 - After block detection, all downstream steps work from JSON artifacts only
+- `compute_noi.py` uses `statement_side` directly — no mapping required
+- All paths come from `manifest["l1"]["paths"]`
+
+### Stage 2 — Mapping
+
+Sub-step order in `run_stage.py`:
+
+1. `map_blocks.py`   → `auto_mapped_dir/`  (reads from annotated_blocks_dir)
+2. `find_mapping.py` → `ai_mapped_dir/`   (AI fallback for unmapped rows)
+
+Important:
+
+- Reads input from `manifest["l1"]["paths"]["annotated_blocks_dir"]` (Stage 1 output)
 - `map_blocks.py` receives the rulebook dict directly from the manifest (no file load)
 - `find_mapping.py` receives `rulebook` and `ai_mapping_logs_dir` as parameters
-
-### Stage 2 — NOI Verification
-
-1. `compute_noi.py`
-2. `compare_noi.py`
-
-Keep these as simple executable scripts.
+- AI config comes from `manifest["l2"]["ai"]`
+- All output paths from `manifest["l2"]["paths"]`
 
 ---
 
