@@ -1,14 +1,17 @@
 """
-map_blocks.py — Step 2 of the pipeline
+map_blocks.py — Stage 1c
 
-Reads the block_detection_results.json (output of detect_blocks),
-looks up each data row's description in the mapping rulebook,
-and produces mapped_block_results.json with added mapping info.
+Reads annotated block-detection JSON, looks up each data row's description
+in the mapping rulebook, and produces auto-mapped JSON with mapping info added.
 
-Pipeline:
-  detect_blocks.py → block_detection_results.json
-  map_blocks.py    → mapped_block_results.json   (this script)
-  results_to_excel.py → Excel files
+Reads:
+    manifest["l1"]["paths"]["annotated_blocks_dir"]  (per-file JSON)
+    manifest["rulebook"]                             (passed in directly)
+
+Writes:
+    manifest["l1"]["paths"]["auto_mapped_dir"]       (per-file JSON)
+
+Does not call an LLM.
 """
 
 import json
@@ -19,12 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.append(str(PROJECT_ROOT / "src"))
 
-from config.paths import BLOCK_DETECTION_DIR, AUTO_MAPPED_DIR
-from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
-from config.rulebook_utils import load_rulebook, normalize_lookup_key
-
-ACTIVE_RULEBOOK_PATH = get_active_rulebook_path()
-ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
+from config.rulebook_utils import normalize_lookup_key
 
 
 def match_contextual_rule(entry, row):
@@ -159,20 +157,30 @@ def map_results(entry, rulebook):
 
 
 if __name__ == "__main__":
-    rulebook = load_rulebook(ACTIVE_RULEBOOK_PATH)
+    from config.paths import MANIFEST_PATH
 
-    summary = rulebook.get("summary", {})
+    if not MANIFEST_PATH.exists():
+        raise FileNotFoundError(f"No manifest at {MANIFEST_PATH}. Run Stage 0 first.")
+
+    with open(MANIFEST_PATH, "r") as f:
+        manifest = json.load(f)
+
+    rulebook = manifest["rulebook"]
+    annotated_blocks_dir = Path(manifest["l1"]["paths"]["annotated_blocks_dir"])
+    auto_mapped_dir = Path(manifest["l1"]["paths"]["auto_mapped_dir"])
+    auto_mapped_dir.mkdir(parents=True, exist_ok=True)
+
+    summary_rb = rulebook.get("summary", {})
     print(
-        f"Rulebook loaded ({ACTIVE_RULEBOOK_NAME}): "
-        f"certain={summary.get('certain', 0)}, "
-        f"contextual={summary.get('contextual', 0)}, "
-        f"no_conflict={summary.get('no_conflict', 0)}, "
-        f"unresolved={summary.get('unresolved', 0)}"
+        f"Rulebook: certain={len(rulebook.get('certain', {}))}, "
+        f"contextual={len(rulebook.get('contextual', {}))}, "
+        f"no_conflict={len(rulebook.get('no_conflict', {}))}, "
+        f"unresolved={len(rulebook.get('unresolved', {}))}"
     )
-    print(f"  Source: {ACTIVE_RULEBOOK_PATH}\n")
 
-    json_files = sorted(list(BLOCK_DETECTION_DIR.glob("*.json")))
-    print(f"Found {len(json_files)} file(s) in block_detection_results")
+    json_files = sorted(annotated_blocks_dir.glob("*.json"))
+    if not json_files:
+        raise FileNotFoundError(f"No JSON files found in {annotated_blocks_dir}")
 
     for f in json_files:
         with open(f, "r") as fp:
@@ -184,8 +192,8 @@ if __name__ == "__main__":
         print(f"  {mapped_entry['file']}")
         print(f"    Data: {s['data_rows']} | Mapped: {s['mapped']} | Unmapped: {s['unmapped']}")
 
-        out_path = AUTO_MAPPED_DIR / f.name
+        out_path = auto_mapped_dir / f.name
         with open(out_path, "w") as fp:
             json.dump(mapped_entry, fp, indent=2)
 
-    print(f"\nSaved mapped results → {AUTO_MAPPED_DIR}")
+    print(f"\nSaved mapped results → {auto_mapped_dir}")

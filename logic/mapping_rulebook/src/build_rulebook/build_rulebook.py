@@ -14,15 +14,15 @@ The runtime rulebook keeps four sections:
 - unresolved
 
 Usage:
-    python pipeline/0_build_rulebook/build_rulebook.py
+    python src/build_rulebook/build_rulebook.py
 
 Input:
-    output_docs/<date>/0_build_rulebook/client_review_rules/client_review_rulebook_phase1.json
-    output_docs/<date>/0_build_rulebook/historical_rule_support/no_conflict_rulebook.json
-    output_docs/<date>/0_build_rulebook/historical_rule_support/historical_conflicts.json
+    output_docs/<timestamp>/build_rulebook/client_review_rules/client_review_rulebook_phase1.json
+    output_docs/<timestamp>/build_rulebook/historical_rule_support/no_conflict_rulebook.json
+    output_docs/<timestamp>/build_rulebook/historical_rule_support/historical_conflicts.json
 
 Output:
-    output_docs/<date>/0_build_rulebook/mapping_rulebook/mapping_rule_book.json
+    db/rulebooks/mapping_rulebook_<timestamp>.json
 """
 
 import json
@@ -30,7 +30,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.append(str(PROJECT_ROOT / "src"))
 
@@ -39,7 +39,7 @@ from config.paths import (
     HISTORICAL_CONFLICTS_PATH,
     NO_CONFLICT_RULEBOOK_PATH,
     REPO_ROOT,
-    RULEBOOK_OUTPUT_PATH,
+    RULEBOOK_DB_OUTPUT_PATH,
 )
 
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
         "unresolved": unresolved,
     }
 
-    with open(RULEBOOK_OUTPUT_PATH, "w") as f:
+    with open(RULEBOOK_DB_OUTPUT_PATH, "w") as f:
         json.dump(merged_rulebook, f, indent=2)
 
     print("Built runtime rulebook")
@@ -194,4 +194,4 @@ if __name__ == "__main__":
     print(f"  No-conflict:   {len(no_conflict)}")
     print(f"  Unresolved:    {len(unresolved)}")
     print(f"  Total:         {total_runtime_descriptions}")
-    print(f"Saved: {RULEBOOK_OUTPUT_PATH}")
+    print(f"Saved: {RULEBOOK_DB_OUTPUT_PATH}")

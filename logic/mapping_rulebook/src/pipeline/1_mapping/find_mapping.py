@@ -1,3 +1,23 @@
+"""
+find_mapping.py — Stage 1d (AI fallback)
+
+Processes all unmapped non-capex rows using the LLM and updates the
+auto-mapped JSON in place. Capex rows are skipped — they are excluded
+from NOI regardless of category.
+
+Reads:
+    manifest["l1"]["paths"]["auto_mapped_dir"]     (per-file JSON)
+    manifest["rulebook"]                           (passed in directly)
+    manifest["l1"]["ai"]                           (provider/model config)
+    manifest["l1"]["paths"]["ai_mapping_logs_dir"] (passed in directly)
+
+Writes:
+    manifest["l1"]["paths"]["ai_mapped_dir"]       (per-file JSON)
+    manifest["l1"]["paths"]["ai_mapping_logs_dir"] (prompt/response logs)
+
+Calls an LLM (OpenAI via LangChain structured output).
+"""
+
 import json
 import sys
 import time
@@ -10,14 +30,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.append(str(PROJECT_ROOT / "src"))
 
-from config.paths import AUTO_MAPPED_DIR, AI_MAPPED_DIR, AI_MAPPING_LOGS_DIR
-from config.rulebook_runtime import get_active_rulebook_name, get_active_rulebook_path
 from config.agent_llm_config import MAPPING_AI_AGENT
-from config.rulebook_utils import get_rulebook_categories, get_rulebook_examples, load_rulebook
+from config.rulebook_utils import get_rulebook_categories, get_rulebook_examples
 from llm.llm_client import make_llm
-
-ACTIVE_RULEBOOK_PATH = get_active_rulebook_path()
-ACTIVE_RULEBOOK_NAME = get_active_rulebook_name()
 
 # GPT-5-nano TPM limit is 200K. Each call is ~2,200 tokens input.
 # 5 workers × ~4s per call ≈ 75 calls/min, staying safely under the cap.
@@ -37,15 +52,6 @@ class AISuggestedMapping(BaseModel):
     reasoning: str = Field(
         description="Brief reasoning for why this mapping was chosen."
     )
-
-
-# ── Rulebook helpers ──────────────────────────────────────────────────────────
-def load_rulebook_categories(rulebook_path=ACTIVE_RULEBOOK_PATH):
-    return get_rulebook_categories(load_rulebook(rulebook_path))
-
-
-def get_context_for_section(section_context, rulebook_path=ACTIVE_RULEBOOK_PATH):
-    return get_rulebook_examples(load_rulebook(rulebook_path))
 
 
 # ── Pipeline setup ────────────────────────────────────────────────────────────
@@ -122,16 +128,14 @@ def _process_single_row(row, file_name, column_headers, valid_categories_str, ma
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
-def run_ai_mapping(file_data, limit=None):
+def run_ai_mapping(file_data, rulebook, ai_mapping_logs_dir, limit=None):
     """
     Processes all unmapped non-capex rows in a file dict in parallel.
-    Capex rows (statement_side="capex") are skipped — they are excluded from
-    NOI regardless of category, so AI mapping adds no value for them.
     Updates rows in-place and returns the updated file_data dict.
     """
-    categories = load_rulebook_categories()
+    categories = get_rulebook_categories(rulebook)
     valid_categories_str = "\n".join([f"- {c}" for c in categories])
-    mapping_examples_str = json.dumps(get_context_for_section(""), indent=2)
+    mapping_examples_str = json.dumps(get_rulebook_examples(rulebook), indent=2)
 
     prompt_template, pipeline = create_ai_mapping_pipeline()
 
@@ -146,7 +150,6 @@ def run_ai_mapping(file_data, limit=None):
     if limit:
         unmapped_rows = unmapped_rows[:limit]
 
-    print(f"\nUsing rulebook ({ACTIVE_RULEBOOK_NAME}): {ACTIVE_RULEBOOK_PATH}")
     print(f"Processing {len(unmapped_rows)} unmapped rows for {file_name} ({MAX_WORKERS} workers)...")
 
     if not unmapped_rows:
@@ -167,7 +170,7 @@ def run_ai_mapping(file_data, limit=None):
             run_logs.append(future.result())
 
     if run_logs:
-        log_file_path = AI_MAPPING_LOGS_DIR / f"{Path(file_name).stem}_logs.json"
+        log_file_path = Path(ai_mapping_logs_dir) / f"{Path(file_name).stem}_logs.json"
         with open(log_file_path, "w") as f:
             json.dump(run_logs, f, indent=2)
         print(f"Saved logs to {log_file_path}")
@@ -176,14 +179,27 @@ def run_ai_mapping(file_data, limit=None):
 
 
 if __name__ == "__main__":
-    file_path = AUTO_MAPPED_DIR / "Willows of Coventry T12 11-25.json"
+    from config.paths import MANIFEST_PATH
+
+    if not MANIFEST_PATH.exists():
+        raise FileNotFoundError(f"No manifest at {MANIFEST_PATH}. Run Stage 0 first.")
+
+    with open(MANIFEST_PATH, "r") as f:
+        manifest = json.load(f)
+
+    rulebook = manifest["rulebook"]
+    auto_mapped_dir = Path(manifest["l1"]["paths"]["auto_mapped_dir"])
+    ai_mapped_dir = Path(manifest["l1"]["paths"]["ai_mapped_dir"])
+    ai_mapping_logs_dir = Path(manifest["l1"]["paths"]["ai_mapping_logs_dir"])
+
+    file_path = auto_mapped_dir / "Willows of Coventry T12 11-25.json"
 
     with open(file_path, "r") as fp:
         file_data = json.load(fp)
 
-    updated_data = run_ai_mapping(file_data)
+    updated_data = run_ai_mapping(file_data, rulebook, ai_mapping_logs_dir)
 
-    out_path = AI_MAPPED_DIR / file_path.name
+    out_path = ai_mapped_dir / file_path.name
     with open(out_path, "w") as fp:
         json.dump(updated_data, fp, indent=2)
     print(f"Saved AI mapped results to {out_path}")

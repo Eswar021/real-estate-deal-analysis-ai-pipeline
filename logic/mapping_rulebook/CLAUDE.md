@@ -9,17 +9,20 @@ and verifies the computed NOI matches the vendor's reported NOI.
 ## How to Run
 
 ```bash
-# Full pipeline
+# Build rulebook (run once when new reviewed .xlsm files arrive)
+python src/build_rulebook/run.py
+
+# Full pipeline (manifest + mapping + NOI verification)
 python src/pipeline/run_pipeline.py --stages 0,1,2
 
-# Just mapping + NOI verification (most common)
+# Just mapping + NOI verification (reuses current_manifest.json from last Stage 0)
 python src/pipeline/run_pipeline.py --stages 1,2
 
 # Limit AI calls per file while testing
 python src/pipeline/run_pipeline.py --stages 1,2 --ai-limit 5
 
 # Individual stages
-python src/pipeline/0_build_rulebook/run_stage.py
+python src/pipeline/0_manifest/runner.py
 python src/pipeline/1_mapping/run_stage.py
 python src/pipeline/2_noi_verification/run_stage.py
 
@@ -35,25 +38,51 @@ python src/pipeline/utils/convert_rulebook_to_excel.py
 
 ```
 src/
+    build_rulebook/           ← one-time tool: builds db/rulebooks/ from .xlsm reviews
+        run.py                ← entry point: python src/build_rulebook/run.py
+        build_rulebook.py     ← merges support artifacts → db/rulebooks/mapping_rulebook_<ts>.json
+        build_client_review_rules.py
+        extract_reviewed_row_history.py
+        build_historical_rule_support.py
     config/
         paths.py              ← all paths/dirs, single source of truth
-        rulebook_runtime.py   ← active rulebook path + Stage 0 builder chain
+        rulebook_runtime.py   ← build_rulebook script list + output path
         rulebook_utils.py     ← load/validate/flatten rulebook helpers
         agent_llm_config.py   ← model/provider selection per agent
     llm/
         llm_client.py         ← LLM client wrapper (OpenAI / Gemini / LM Studio)
     pipeline/
-        0_build_rulebook/     ← builds mapping_rule_book.json from client-reviewed data
-        1_mapping/            ← detect_blocks → map_blocks → find_mapping (AI fallback)
-        2_noi_verification/   ← compute_noi → compare_noi
+        0_manifest/           ← Stage 0: writes current_manifest.json + dated run_manifest.json
+        1_mapping/            ← Stage 1: detect_blocks → annotate_totals → map_blocks → find_mapping
+        2_noi_verification/   ← Stage 2: compute_noi → compare_noi
         utils/                ← export scripts, not part of main pipeline flow
         run_pipeline.py       ← master stage runner
     analysis/                 ← diagnostic notebooks, read-only
 
 data/input_T12_docs/      ← raw .xlsx files (read-only)
-db/                       ← read-only snapshots, never written to by pipeline
-output_docs/{date}/       ← all run outputs, date-stamped
+db/rulebooks/             ← versioned rulebook snapshots (written by src/build_rulebook/)
+output_docs/              ← all run outputs
+    current_manifest.json ← always-latest pointer (overwritten each Stage 0 run)
+    <timestamp>/          ← per-run output dir (e.g. 2026_05_18_1430/)
+        run_manifest.json ← frozen snapshot for this run
+        1_mapping/...
+        2_noi_verification/...
 ```
+
+---
+
+## Manifest-Driven Pipeline
+
+`output_docs/current_manifest.json` is the single config source for stages 1 and 2.
+It is written by Stage 0 (`0_manifest/runner.py`) and embeds:
+- Full rulebook contents (`rulebook` key)
+- All input file paths (`l1.input_files`)
+- AI provider/model config (`l1.ai`)
+- All output directory paths (`l1.paths`, `l2.paths`)
+- Run metadata (run_id, output_base, rulebook_source)
+
+Stages 1 and 2 read everything from `MANIFEST_PATH` — they never recompute date-stamped paths.
+This fixes the date-rollover bug where running stages the next day failed with FileNotFoundError.
 
 ---
 
@@ -62,6 +91,7 @@ output_docs/{date}/       ← all run outputs, date-stamped
 **Stage 1 JSON row fields (keep stable):**
 - `row`, `type`, `description`, `section_context`, `section_path`, `values`
 - `statement_side` — `"revenue"` / `"expense"` / `"capex"`, set by detect_blocks
+- `is_total_revenue`, `is_total_expense`, `is_noi` — boolean flags, set by annotate_totals
 - `mapping`, `not_found`, `mapping_source`
 - `ai_suggested_mapping`, `ai_confidence`, `ai_reasoning` — added by find_mapping
 
@@ -100,7 +130,7 @@ Row types: `data` / `subtotal` / `header` / `empty`
 - **Don't add error handling for things that can't happen.** Trust internal guarantees.
 - **Don't hardcode paths** — always use `config/paths.py`.
 - **Don't scatter model selection** — always use `config/agent_llm_config.py`.
-- **db/ is read-only.** Stage 0 writes to output_docs/ only.
+- **db/ is read-only for the pipeline.** `src/build_rulebook/` writes to `db/rulebooks/`.
 - **Stage 1 only touches raw .xlsx in detect_blocks.** Downstream stages work from JSON only.
 
 ---
@@ -109,9 +139,10 @@ Row types: `data` / `subtotal` / `header` / `empty`
 
 - Import from `archive/` or old analysis notebooks
 - Reintroduce multiple active rulebook versions into the runtime path
-- Write Stage 0 outputs into `db/`
+- Make pipeline stages write to `db/` (only `src/build_rulebook/` does)
 - Make downstream stages reopen raw Excel files
 - Add `except: pass` or silent error swallowing
 - Add hidden keyword heuristics in Stage 1 mapping without being asked
 - Change stage folder numbering (0, 1, 2) — the numbers are how this is discussed
 - Add backwards-compatibility shims for removed code — just delete it cleanly
+- Hardcode paths — stages 1 and 2 must read all paths from the manifest

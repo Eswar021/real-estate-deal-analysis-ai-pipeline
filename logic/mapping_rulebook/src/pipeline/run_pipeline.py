@@ -13,9 +13,11 @@ Usage:
 Notes:
     - There is no default stage selection. Pass the stage config explicitly.
     - Stage numbering matches the folder naming:
-        0 = build_rulebook
+        0 = manifest  (writes current_manifest.json + dated run_manifest.json)
         1 = mapping
         2 = noi_verification
+    - Stages 1 and 2 read all paths from current_manifest.json — no date recomputation.
+    - To run only stages 1+2, a manifest from a prior Stage 0 run must exist.
 """
 
 import argparse
@@ -26,11 +28,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.append(str(PROJECT_ROOT / "src"))
 
-from config.rulebook_runtime import get_active_rulebook_name
 from pipeline.runner_utils import run_python_script
 
 STAGE_RUNNERS = {
-    0: PROJECT_ROOT / "src/pipeline/0_build_rulebook/run_stage.py",
+    0: PROJECT_ROOT / "src/pipeline/0_manifest/runner.py",
     1: PROJECT_ROOT / "src/pipeline/1_mapping/run_stage.py",
     2: PROJECT_ROOT / "src/pipeline/2_noi_verification/run_stage.py",
 }
@@ -63,10 +64,7 @@ def resolve_stages(args) -> list[int]:
 
 
 def run_pipeline(stages: list[int], ai_limit: int | None = None) -> None:
-    active_rulebook = get_active_rulebook_name()
-
     print(f"Running stages: {stages}")
-    print(f"Active runtime rulebook: {active_rulebook}")
 
     for stage in stages:
         runner_path = STAGE_RUNNERS[stage]
