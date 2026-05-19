@@ -1,6 +1,26 @@
 # Mapping Rulebook Decisions
 
-Short decision log for active structural choices in `logic/mapping_rulebook/`.
+---
+
+## 2026-05-19 — Manifest-Driven Pipeline + Detection/Mapping Split
+
+Decision:
+
+- Move `build_rulebook` out of the pipeline into `src/build_rulebook/` (run manually when new `.xlsm` files arrive)
+- Add Stage 0 (`0_manifest/runner.py`) that writes `current_manifest.json` embedding the full rulebook, all paths, and AI config
+- Split `1_mapping/` into `1_detection/` (detect + annotate + NOI verify) and `2_mapping/` (rulebook map + AI fallback)
+- Stages 1 and 2 read all paths and config from `current_manifest.json` — no date-stamped path computation in stages
+- Add `annotate_totals.py` between detect_blocks and compute_noi to stamp `is_total_revenue`, `is_total_expense`, `is_noi` flags
+- Split detect_blocks format logic into per-format modules under `1_detection/formats/`
+
+Why:
+
+- Date rollover bug: stages computing `date.today()` at import time failed when run the next day
+- NOI verification belongs to detection (uses `statement_side` directly, before mapping) — not to a separate stage
+- Per-format modules let format-specific detection logic change without affecting other formats
+- Annotated flags surface the revenue/expense/NOI phase boundaries to downstream UI consumers without re-running detect_blocks keywords
+
+Short decision log for active structural choices in `app/t12_pipeline/`.
 
 ---
 
@@ -8,7 +28,7 @@ Short decision log for active structural choices in `logic/mapping_rulebook/`.
 
 Decision:
 
-- keep active technical documentation under `logic/mapping_rulebook/docs/`
+- keep active technical documentation under `app/t12_pipeline/docs/`
 - keep broader project meeting materials and client-shared artifacts under `master_docs/`
 
 Why:

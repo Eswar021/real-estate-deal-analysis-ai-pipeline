@@ -450,7 +450,7 @@ html_template = """<!DOCTYPE html>
 </html>
 """
 
-with open("/Users/manikantamb/_MyFiles/Work_/Freelancing/Shivam_Excel_AI_Automation/logic/output/The_Jeff_on_10th_Report_Styled.html", "w") as f:
+with open("/Users/manikantamb/_MyFiles/Work_/Freelancing/Shivam_Excel_AI_Automation/app/intial_swot_pdf_prototype/output/The_Jeff_on_10th_Report_Styled.html", "w") as f:
     f.write(html_template)
 
 print("Beautiful HTML created.")

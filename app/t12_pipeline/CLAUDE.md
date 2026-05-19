@@ -114,20 +114,12 @@ Lookup order in map_blocks: certain -> contextual -> no_conflict -> unresolved (
 
 ---
 
-## Block Detection Logic (detect_blocks.py)
+## Block Detection Logic
 
-Three file formats: `code_in_a_desc_in_b`, `embedded_code_in_a`, `no_code`
-
-Row types: `data` / `subtotal` / `header` / `empty`
-
-`statement_side` is assigned structurally via a two-flag state machine:
-- Flip `income_phase_complete` when a subtotal matches grand income total markers
-  (`total income`, `total revenue`, `effective gross income`, `total operating revenues`)
-- Flip `capex_phase_complete` when a subtotal contains `net operating income`
-  (only checked after income flip — guards against summary rows at top of some files)
-- Data rows before income flip -> `revenue`, after -> `expense`, after NOI flip -> `capex`
-- Subtotal rows get statement_side from phase state BEFORE the flip (so EGI subtotal = "revenue")
-- Capex rows are excluded from all mapping and NOI computation
+Three formats: `code_in_a_desc_in_b`, `embedded_code_in_a`, `no_code` — per-format classifiers in `1_detection/formats/`.
+Row types: `data` / `subtotal` / `header` / `empty`.
+`statement_side` via two-flag state machine: revenue → expense (at EGI subtotal) → capex (at NOI subtotal).
+Subtotal rows get statement_side from state BEFORE the flip. Full decision trees: `docs/detection_logic/`.
 
 ---
 

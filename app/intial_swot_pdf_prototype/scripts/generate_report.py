@@ -187,7 +187,7 @@ Current operating sentiment for The Jeff on 10th cannot be determined based on t
 - [ ] Validate physical assumptions (e.g. ceiling height) missing in the payload.
 """
 
-output_md_path = "/Users/manikantamb/_MyFiles/Work_/Freelancing/Shivam_Excel_AI_Automation/logic/output/The_Jeff_on_10th_Report.md"
+output_md_path = "/Users/manikantamb/_MyFiles/Work_/Freelancing/Shivam_Excel_AI_Automation/app/intial_swot_pdf_prototype/output/The_Jeff_on_10th_Report.md"
 
 with open(output_md_path, "w") as f:
     f.write(markdown_content)

@@ -1,6 +1,6 @@
-# Mapping Rulebook — Codex Instructions
+# T12 Pipeline — Codex Instructions
 
-This file is for work under `logic/mapping_rulebook/`.
+This file is for work under `app/t12_pipeline/`.
 Follow everything here before generating code for this pipeline.
 
 ## Read First
@@ -8,10 +8,6 @@ Follow everything here before generating code for this pipeline.
 Before planning or changing any stage:
 
 1. Read `docs/README.md`
-
-If you are changing stage contracts, runner behavior, or output locations, also read:
-
-2. `docs/CONTEXT.md`
 
 If you need older chat context, use these as reference only:
 
@@ -25,7 +21,7 @@ Do not treat archived notes as the active source of truth.
 ## Project Architecture
 
 ```text
-logic/mapping_rulebook/
+app/t12_pipeline/
 ├── src/
 │   ├── build_rulebook/         ← one-time tool, NOT part of the pipeline
 │   │   ├── run.py
@@ -174,8 +170,8 @@ Important:
 Keep these folders and stage numbers:
 
 - `0_manifest`
-- `1_mapping`
-- `2_noi_verification`
+- `1_detection`
+- `2_mapping`
 
 ---
 
@@ -252,7 +248,7 @@ Rules:
 Preserve prompt/response logging under:
 
 ```text
-output_docs/<timestamp>/1_mapping/ai_mapping_logs/
+output_docs/<timestamp>/2_mapping/ai_mapping_logs/
 ```
 
 ---

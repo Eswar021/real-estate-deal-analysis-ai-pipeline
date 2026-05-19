@@ -1,5 +1,10 @@
 # T12 Mapping Pipeline — Context & Reference
 
+> **ARCHIVED — 2026-05-15 snapshot, no longer maintained.**
+> This file reflects the old pipeline structure (`0_build_rulebook`, `1_mapping`, `2_noi_verification`).
+> The current architecture is documented in `CLAUDE.md`, `AGENTS.md`, and `docs/README.md`.
+> The Three T12 File Formats and Statement Side Assignment sections below are still accurate.
+
 Automated pipeline that reads raw Trailing-12-Month (T12) financial Excel files from property sellers,
 classifies every row, maps each line item to Oakdale Capital's canonical chart-of-accounts categories,
 and produces styled Excel reports for human review.
