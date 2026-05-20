@@ -86,9 +86,14 @@ def run_stage_2(ai_limit: int | None = None) -> None:
         with open(json_file) as fp:
             file_data = json.load(fp)
 
-        updated_data = find_mapping.run_ai_mapping(
-            file_data, rulebook, ai_mapping_logs_dir, limit=ai_limit
+        updated_data, run_logs = find_mapping.run_ai_mapping(
+            file_data, rulebook, limit=ai_limit
         )
+        if run_logs:
+            log_path = ai_mapping_logs_dir / f"{json_file.stem}_logs.json"
+            with open(log_path, "w") as f:
+                json.dump(run_logs, f, indent=2)
+            print(f"  Logs:  {log_path.name}")
         out_path = ai_mapped_dir / json_file.name
         with open(out_path, "w") as fp:
             json.dump(updated_data, fp, indent=2)

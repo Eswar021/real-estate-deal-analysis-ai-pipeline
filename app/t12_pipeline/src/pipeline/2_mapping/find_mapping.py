@@ -8,12 +8,10 @@ from NOI regardless of category.
 Reads:
     manifest["l1"]["paths"]["auto_mapped_dir"]     (per-file JSON)
     manifest["rulebook"]                           (passed in directly)
-    manifest["l1"]["ai"]                           (provider/model config)
-    manifest["l1"]["paths"]["ai_mapping_logs_dir"] (passed in directly)
+    manifest["l2"]["ai"]                           (provider/model config)
 
-Writes:
-    manifest["l1"]["paths"]["ai_mapped_dir"]       (per-file JSON)
-    manifest["l1"]["paths"]["ai_mapping_logs_dir"] (prompt/response logs)
+Returns:
+    (updated_file_data, run_logs) — caller writes logs and output JSON to disk
 
 Calls an LLM (OpenAI via LangChain structured output).
 """
@@ -128,10 +126,11 @@ def _process_single_row(row, file_name, column_headers, valid_categories_str, ma
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
-def run_ai_mapping(file_data, rulebook, ai_mapping_logs_dir, limit=None):
+def run_ai_mapping(file_data, rulebook, limit=None):
     """
     Processes all unmapped non-capex rows in a file dict in parallel.
-    Updates rows in-place and returns the updated file_data dict.
+    Updates rows in-place and returns (updated_file_data, run_logs).
+    The caller is responsible for writing run_logs to disk.
     """
     categories = get_rulebook_categories(rulebook)
     valid_categories_str = "\n".join([f"- {c}" for c in categories])
@@ -153,7 +152,7 @@ def run_ai_mapping(file_data, rulebook, ai_mapping_logs_dir, limit=None):
     print(f"Processing {len(unmapped_rows)} unmapped rows for {file_name} ({MAX_WORKERS} workers)...")
 
     if not unmapped_rows:
-        return file_data
+        return file_data, []
 
     run_logs = []
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -169,13 +168,7 @@ def run_ai_mapping(file_data, rulebook, ai_mapping_logs_dir, limit=None):
         for future in as_completed(futures):
             run_logs.append(future.result())
 
-    if run_logs:
-        log_file_path = Path(ai_mapping_logs_dir) / f"{Path(file_name).stem}_logs.json"
-        with open(log_file_path, "w") as f:
-            json.dump(run_logs, f, indent=2)
-        print(f"Saved logs to {log_file_path}")
-
-    return file_data
+    return file_data, run_logs
 
 
 if __name__ == "__main__":
@@ -197,7 +190,13 @@ if __name__ == "__main__":
     with open(file_path, "r") as fp:
         file_data = json.load(fp)
 
-    updated_data = run_ai_mapping(file_data, rulebook, ai_mapping_logs_dir)
+    updated_data, run_logs = run_ai_mapping(file_data, rulebook)
+
+    if run_logs:
+        log_path = ai_mapping_logs_dir / f"{file_path.stem}_logs.json"
+        with open(log_path, "w") as f:
+            json.dump(run_logs, f, indent=2)
+        print(f"Saved logs to {log_path}")
 
     out_path = ai_mapped_dir / file_path.name
     with open(out_path, "w") as fp:
