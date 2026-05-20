@@ -13,8 +13,6 @@ if str(PROJECT_ROOT / "src") not in sys.path:
 if str(CURRENT_DIR) not in sys.path:
     sys.path.append(str(CURRENT_DIR))
 
-from config.paths import INPUT_T12_DOCS_DIR, BLOCK_DETECTION_DIR
-
 # ── Account code patterns (used for format detection + data-start-row search) ──
 ACCT_CODE_PATTERN     = re.compile(r'^\d{4}-\d{2,4}$')
 EMBEDDED_CODE_PATTERN = re.compile(r'^\s*\d{4}(\s*-\s*\d*\s*-?\s*)')
@@ -325,6 +323,7 @@ def print_classification(result):
 
 
 if __name__ == "__main__":
+    from config.paths import INPUT_T12_DOCS_DIR, BLOCK_DETECTION_DIR
     files = sorted([str(f) for f in INPUT_T12_DOCS_DIR.glob("*.xlsx")
                     if not f.name.startswith("~$")])
     print(f"Found {len(files)} files\n")

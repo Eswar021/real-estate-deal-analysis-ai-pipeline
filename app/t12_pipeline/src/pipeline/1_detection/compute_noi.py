@@ -33,9 +33,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.append(str(PROJECT_ROOT / "src"))
 
-from config.paths import MANIFEST_PATH
-
-
 # ═══════════════════════════════════════════════════════════════
 #  STEP 1 — EXTRACT ACTUAL NOI
 # ═══════════════════════════════════════════════════════════════
@@ -167,6 +164,7 @@ def compute_noi(file_data):
 
 
 if __name__ == "__main__":
+    from config.paths import MANIFEST_PATH
     if not MANIFEST_PATH.exists():
         raise FileNotFoundError(f"No manifest at {MANIFEST_PATH}. Run Stage 0 first.")
 

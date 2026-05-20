@@ -30,8 +30,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.append(str(PROJECT_ROOT / "src"))
 
-from config.paths import MANIFEST_PATH
-
 GRAND_INCOME_TOTAL_MARKERS = frozenset({
     "total income",
     "total revenue",
@@ -97,10 +95,18 @@ def annotate_file(entry: dict) -> dict:
         if side == "expense":
             last_expense_subtotal_idx = i
 
-    # Fallback: if no keyword match for total_expense, use the last expense
-    # subtotal before the first NOI row.
-    if not expense_keyword_indices and last_expense_subtotal_idx is not None:
-        first_noi = noi_indices[0] if noi_indices else len(rows)
+    first_noi = noi_indices[0] if noi_indices else len(rows)
+
+    if len(expense_keyword_indices) > 1:
+        # Multiple keyword matches — keep only the last one before NOI row.
+        # Intermediate subtotals (e.g. "total controllable expenses") are not the grand total.
+        valid = [i for i in expense_keyword_indices if i < first_noi]
+        for i in expense_keyword_indices:
+            rows[i]["is_total_expense"] = False
+        if valid:
+            rows[valid[-1]]["is_total_expense"] = True
+    elif not expense_keyword_indices and last_expense_subtotal_idx is not None:
+        # Fallback: no keyword match — use the last expense subtotal before NOI.
         if last_expense_subtotal_idx < first_noi:
             rows[last_expense_subtotal_idx]["is_total_expense"] = True
 
@@ -128,6 +134,7 @@ def annotate_all(block_detection_dir: Path, annotated_blocks_dir: Path) -> None:
 
 
 if __name__ == "__main__":
+    from config.paths import MANIFEST_PATH
     if not MANIFEST_PATH.exists():
         raise FileNotFoundError(
             f"No manifest at {MANIFEST_PATH}. Run Stage 0 first."

@@ -23,14 +23,18 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.append(str(PROJECT_ROOT / "src"))
 
-from config.paths import MANIFEST_PATH
-
 TOLERANCE_DOLLARS = 1.0
-TOLERANCE_PERCENT = 0.001
+TOLERANCE_PERCENT = 0.01
+
+# Set STRICT = True for exact comparison (fails on any cent difference).
+# Set STRICT = False to allow TOLERANCE_DOLLARS / TOLERANCE_PERCENT slack.
+STRICT = True
 
 
 def _within_tolerance(actual, computed):
-    diff = abs(actual - computed)
+    diff = abs(round(actual, 2) - round(computed, 2))
+    if STRICT:
+        return diff == 0, round(diff, 2), 0
     threshold = max(TOLERANCE_DOLLARS, abs(actual) * TOLERANCE_PERCENT)
     return diff <= threshold, round(diff, 2), round(threshold, 2)
 
@@ -152,6 +156,7 @@ def compare(actual_data, computed_data):
 
 
 if __name__ == "__main__":
+    from config.paths import MANIFEST_PATH
     if not MANIFEST_PATH.exists():
         raise FileNotFoundError(f"No manifest at {MANIFEST_PATH}. Run Stage 0 first.")
 
