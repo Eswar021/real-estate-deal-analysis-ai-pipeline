@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Oakdale Capital | Home{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mb-4">
+  <div class="col-12 col-lg-8 text-center">
+    <h1 class="h3 fw-bold mb-1">Deal Analysis Tools</h1>
+    <p class="text-muted">Select a pipeline to get started.</p>
+  </div>
+</div>
+
+<div class="row justify-content-center g-4">
+
+  <!-- T12 Mapping -->
+  <div class="col-12 col-md-5">
+    <div class="card h-100 shadow-sm tool-card">
+      <div class="card-body d-flex flex-column p-4">
+        <div class="mb-3">
+          <span class="badge bg-success mb-2">Active</span>
+          <h5 class="card-title fw-bold mb-1">T12 Mapping</h5>
+          <p class="card-text text-muted small">
+            Upload a Trailing-12-Month Excel file, map every line item to Oakdale's
+            chart of accounts, and verify NOI automatically.
+          </p>
+        </div>
+        <div class="mt-auto">
+          <a href="{% url 't12_upload' %}" class="btn btn-dark w-100">Go to T12 Mapping</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SWOT Analysis (future) -->
+  <div class="col-12 col-md-5">
+    <div class="card h-100 shadow-sm tool-card disabled-card">
+      <div class="card-body d-flex flex-column p-4">
+        <div class="mb-3">
+          <span class="badge bg-secondary mb-2">Coming Soon</span>
+          <h5 class="card-title fw-bold mb-1 text-muted">SWOT Analysis</h5>
+          <p class="card-text text-muted small">
+            Generate investment decision reports with property scoring,
+            location analysis, and risk register — coming in a future release.
+          </p>
+        </div>
+        <div class="mt-auto">
+          <button class="btn btn-outline-secondary w-100" disabled>Not Available Yet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
