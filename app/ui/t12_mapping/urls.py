@@ -1,8 +1,14 @@
-from django.urls import path
-from . import views
+"""
+t12_mapping/urls.py — aggregates page URLs.
+
+This is the one place to see the whole T12 flow. Each include() points to
+a self-contained page module under pages/.
+"""
+
+from django.urls import include, path
+
 
 urlpatterns = [
-    path("",                                  views.home,           name="home"),
-    path("t12/",                              views.upload,         name="t12_upload"),
-    path("t12/<str:upload_id>/subtotals/",    views.subtotals_stub, name="t12_subtotals"),
+    path("", include("t12_mapping.pages.upload.urls")),
+    path("", include("t12_mapping.pages.noi_verification.urls")),
 ]

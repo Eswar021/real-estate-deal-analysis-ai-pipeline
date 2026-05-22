@@ -37,8 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'landing',
     't12_mapping',
 ]
+
+# Workflow apps that use the pages/<page>/templates/ convention.
+# Add new workflow names here (e.g. 'swot_analysis') and template discovery
+# below picks them up automatically.
+WORKFLOW_APPS = ['t12_mapping']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -52,10 +58,21 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+_TEMPLATE_DIRS = [BASE_DIR / 'templates']
+
+# Auto-discover per-page templates: <workflow>/pages/<page>/templates/<page>/...
+for _workflow in WORKFLOW_APPS:
+    _pages_root = BASE_DIR / _workflow / 'pages'
+    if _pages_root.is_dir():
+        for _page in _pages_root.iterdir():
+            _tpl = _page / 'templates'
+            if _tpl.is_dir():
+                _TEMPLATE_DIRS.append(_tpl)
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': _TEMPLATE_DIRS,
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -121,6 +138,3 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # Uploaded files and pipeline outputs
 MEDIA_ROOT = BASE_DIR / 'storage'
 MEDIA_URL = '/storage/'
-
-# T12 pipeline source root — used by pipeline_bridge to add to sys.path
-T12_PIPELINE_SRC = BASE_DIR.parent / 't12_pipeline' / 'src'

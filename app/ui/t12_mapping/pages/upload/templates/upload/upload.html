@@ -16,7 +16,6 @@
         <form method="post" enctype="multipart/form-data" novalidate>
           {% csrf_token %}
 
-          <!-- Upload Document (first so JS can read filename before property name) -->
           <div class="mb-4">
             <label for="t12_file" class="form-label fw-semibold text-uppercase small">Upload Document</label>
             <input
@@ -32,7 +31,6 @@
             <div class="form-text text-muted">.xlsx or .xls files only</div>
           </div>
 
-          <!-- Property Name (auto-filled from filename, editable) -->
           <div class="mb-4">
             <label for="property_name" class="form-label fw-semibold text-uppercase small">Property Address / Name</label>
             <input
@@ -48,7 +46,6 @@
             {% endif %}
           </div>
 
-          <!-- Actions -->
           <div class="d-flex justify-content-between align-items-center pt-2">
             <a href="/" class="btn btn-link text-muted text-decoration-none">Exit</a>
             <button type="submit" class="btn btn-dark px-5">Parse File</button>

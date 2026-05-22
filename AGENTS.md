@@ -1,16 +1,16 @@
 # Repo Instructions
 
-This repository has two main tracks:
+This repository has three main tracks:
 
-- `app/t12_pipeline/`
-- `app/intial_swot_pdf_prototype/`
+- `app/t12_pipeline/`  — T12 mapping pipeline (Python, batch)
+- `app/ui/`            — Django UI wrapping the T12 pipeline
+- `app/intial_swot_pdf_prototype/`  — SWOT PDF prototype
 
-If the task touches the T12 mapping pipeline under `app/t12_pipeline/`,
-read and follow:
+Scoped agent instruction files — read the relevant one before planning or
+implementing changes:
 
-- `app/t12_pipeline/AGENTS.md`
-
-before planning or implementing changes.
+- `app/t12_pipeline/AGENTS.md` for any pipeline work
+- `app/ui/AGENTS.md` for any Django UI work
 
 There is currently no equivalent scoped agent instruction file for the SWOT
 track.
