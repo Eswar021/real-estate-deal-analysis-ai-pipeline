@@ -20,46 +20,54 @@ Do not treat archived notes as the active source of truth.
 
 ## Project Architecture
 
+Packaged as a proper Python package. Install once: `pip install -e ./app/t12_pipeline`.
+All entry points are `python -m`. No `sys.path` manipulation anywhere.
+
 ```text
 app/t12_pipeline/
+├── pyproject.toml              ← declares the t12_pipeline package
 ├── src/
-│   ├── build_rulebook/         ← one-time tool, NOT part of the pipeline
-│   │   ├── run.py
-│   │   ├── build_rulebook.py
-│   │   ├── build_client_review_rules.py
-│   │   ├── extract_reviewed_row_history.py
-│   │   └── build_historical_rule_support.py
-│   ├── config/
-│   │   ├── paths.py
-│   │   ├── rulebook_runtime.py
-│   │   ├── rulebook_utils.py
-│   │   └── agent_llm_config.py
-│   ├── llm/
-│   │   └── llm_client.py
-│   ├── pipeline/
-│   │   ├── 0_manifest/         ← Stage 0: writes current_manifest.json
-│   │   │   └── runner.py
-│   │   ├── 1_detection/        ← Stage 1: detect → annotate → compute NOI → compare NOI
-│   │   │   ├── detect_blocks.py
-│   │   │   ├── annotate_totals.py
-│   │   │   ├── compute_noi.py
-│   │   │   ├── compare_noi.py
-│   │   │   └── run_stage.py
-│   │   ├── 2_mapping/          ← Stage 2: auto-map → AI fallback
-│   │   │   ├── map_blocks.py
-│   │   │   ├── find_mapping.py
-│   │   │   └── run_stage.py
-│   │   ├── utils/
-│   │   └── run_pipeline.py
-│   └── analysis/
+│   ├── t12_pipeline/           ← installable package root
+│   │   ├── build_rulebook/     ← one-time tool, NOT part of the per-file pipeline
+│   │   │   ├── run.py          ← entry: python -m t12_pipeline.build_rulebook.run
+│   │   │   ├── build_rulebook.py
+│   │   │   ├── build_client_review_rules.py
+│   │   │   ├── extract_reviewed_row_history.py
+│   │   │   └── build_historical_rule_support.py
+│   │   ├── config/
+│   │   │   ├── paths.py
+│   │   │   ├── rulebook_runtime.py
+│   │   │   ├── rulebook_utils.py
+│   │   │   └── agent_llm_config.py
+│   │   ├── llm/
+│   │   │   └── llm_client.py
+│   │   ├── pipeline/
+│   │   │   ├── manifest/       ← Stage 0: writes current_manifest.json
+│   │   │   │   └── runner.py
+│   │   │   ├── detection/      ← Stage 1: detect → annotate → compute NOI → compare NOI
+│   │   │   │   ├── detect_blocks.py
+│   │   │   │   ├── annotate_totals.py
+│   │   │   │   ├── compute_noi.py
+│   │   │   │   ├── compare_noi.py
+│   │   │   │   ├── corrections.py
+│   │   │   │   └── run_stage.py
+│   │   │   ├── mapping/        ← Stage 2: auto-map → AI fallback
+│   │   │   │   ├── map_blocks.py
+│   │   │   │   ├── find_mapping.py
+│   │   │   │   └── run_stage.py
+│   │   │   ├── utils/
+│   │   │   ├── runner_utils.py ← run_python_module(): `python -m` subprocess wrapper
+│   │   │   └── run_pipeline.py ← master stage runner
+│   │   └── __init__.py
+│   └── analysis/               ← diagnostic notebooks, NOT in the package
 ├── data/
 ├── db/
-│   └── rulebooks/              ← versioned rulebooks written by src/build_rulebook/
+│   └── rulebooks/              ← versioned rulebooks written by t12_pipeline.build_rulebook
 ├── output_docs/
 │   ├── current_manifest.json   ← always-latest pointer, overwritten each Stage 0 run
 │   └── <timestamp>/            ← per-run output dir
 │       ├── run_manifest.json   ← frozen snapshot for this run
-│       ├── 1_detection/
+│       ├── 1_detection/        ← output folders keep stage numbers (semantic, not Python import paths)
 │       │   ├── block_detection/
 │       │   ├── annotated_blocks/
 │       │   └── noi_verification/
@@ -68,6 +76,11 @@ app/t12_pipeline/
 │           └── ai_mapped/
 └── docs/
 ```
+
+Source folders (`detection/`, `mapping/`, `manifest/`) dropped their digit
+prefix because Python identifiers can't start with a digit. The stage
+numbers (0, 1, 2) still appear in `STAGE_MODULES` (run_pipeline.py),
+in `output_docs/<ts>/` subfolders, and in conversation.
 
 The active pipeline is:
 
@@ -276,4 +289,6 @@ Keep docstrings factual and short.
 - Add `except: pass`
 - Add hidden keyword heuristics in Stage 1 without being asked
 - Hardcode paths in stage runners (read from manifest instead)
-- Change stage numbering or folder names casually
+- Reintroduce digit-prefixed source-folder names (`0_manifest`, `1_detection`, `2_mapping`) — Python can't import them
+- Add `sys.path.append(...)` blocks back into modules — the package is pip-installed
+- Change stage numbering or folder names beyond the existing convention

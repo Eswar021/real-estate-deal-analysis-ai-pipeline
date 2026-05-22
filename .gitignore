@@ -6,6 +6,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Editable install metadata
+*.egg-info/
+
 # macOS
 .DS_Store
 
