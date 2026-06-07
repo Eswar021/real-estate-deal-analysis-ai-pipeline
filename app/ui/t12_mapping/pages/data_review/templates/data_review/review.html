@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}T12 Mapping | Map Categories{% endblock %}
+
+{% block content %}
+<style>
+  /* Page-local: sticky header + footer, scrollable body in between. */
+  .data-review-scroll {
+    max-height: calc(100vh - 220px);
+    overflow: auto;
+  }
+  .data-review-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f8f9fa;          /* matches Bootstrap .table-light */
+    box-shadow: inset 0 -1px 0 #dee2e6;
+  }
+  .data-review-scroll tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #f8f9fa;
+    box-shadow: inset 0 1px 0 #dee2e6;
+  }
+  /* Coloured tfoot rows (Calculated / Original) keep their bg under the sticky layer. */
+  .data-review-scroll tfoot tr.table-success td { background: #d1e7dd; }
+  .data-review-scroll tfoot tr.table-info td    { background: #cff4fc; }
+</style>
+
+<div class="container-fluid px-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h2 class="h4 fw-bold mb-1">Financial Analytics | Map Categories</h2>
+      <p class="text-muted small mb-0">{{ file_name }}</p>
+    </div>
+    {% if summary.any_diff_nonzero %}
+      <span class="badge bg-warning text-dark fs-6 px-3 py-2">NOI Difference Detected</span>
+    {% else %}
+      <span class="badge bg-success fs-6 px-3 py-2">NOI Matches ✓</span>
+    {% endif %}
+  </div>
+
+  {% if save_error %}
+  <div class="alert alert-danger small mb-3">Save error: {{ save_error }}</div>
+  {% endif %}
+
+  <div class="data-review-scroll">
+    <table class="table table-sm table-bordered align-middle mb-0" style="font-size: 0.8rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:28px;">#</th>
+          <th style="min-width:200px;">T12 Row Description</th>
+          <th style="min-width:200px;">Mapped Category</th>
+          <th style="width:80px;" class="text-center">Flip Sign</th>
+          {% for col in summary.column_headers %}
+            <th class="text-end" style="min-width:90px;">{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="{% if row.is_header %}table-secondary{% elif row.is_final_subtotal %}table-primary{% elif row.is_subtotal %}table-light{% elif row.is_unmapped %}table-danger{% elif row.is_ai_only and not row.is_user_override %}table-warning{% endif %}">
+          <td class="text-muted small">{{ row.row }}</td>
+          <td class="{% if not row.is_data %}fw-semibold{% endif %}">{{ row.description }}</td>
+          <td>
+            {% if row.is_data %}
+            <form method="post" id="form-row-{{ row.row }}">
+              {% csrf_token %}
+              <input type="hidden" name="row_number" value="{{ row.row }}">
+              <input type="hidden" name="flip_sign" value="{% if row.flip_sign %}1{% else %}0{% endif %}" id="flip-{{ row.row }}">
+              <select name="new_category" class="form-select form-select-sm category-select" data-row="{{ row.row }}">
+                <option value="">— select —</option>
+                {% for cat in categories %}
+                  <option value="{{ cat }}" {% if cat == row.effective_mapping %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+              </select>
+              {% if row.is_user_override and row.original_mapping %}
+                <button type="button"
+                        class="btn btn-link btn-sm p-0 mt-1 small revert-btn text-decoration-none"
+                        data-row="{{ row.row }}"
+                        data-original="{{ row.original_mapping }}"
+                        title="Restore the system-detected mapping">
+                  ↺ Revert to: {{ row.original_mapping }}
+                </button>
+              {% endif %}
+            </form>
+            {% else %}
+              <span class="fst-italic small text-muted">{{ row.type_label }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if row.is_data %}
+              <input type="checkbox" class="form-check-input flip-toggle" data-row="{{ row.row }}" {% if row.flip_sign %}checked{% endif %}>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% for v in row.values %}
+            <td class="text-end font-monospace {% if not row.is_data %}fw-semibold{% endif %}">
+              {% if v == None or v == "" %}
+                <span class="text-muted">—</span>
+              {% else %}
+                {{ v|floatformat:0 }}
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="100" class="text-center text-muted py-3">No rows.</td></tr>
+        {% endfor %}
+      </tbody>
+
+      <tfoot class="table-light">
+        <tr class="fw-bold">
+          <td colspan="4" class="text-end">Net Rental Income (Revenue)</td>
+          {% for v in summary.net_rental_income %}
+            <td class="text-end font-monospace">{{ v|floatformat:0 }}</td>
+          {% endfor %}
+        </tr>
+        <tr class="fw-bold table-success">
+          <td colspan="4" class="text-end">Calculated NOI</td>
+          {% for v in summary.calculated_noi %}
+            <td class="text-end font-monospace">{{ v|floatformat:0 }}</td>
+          {% endfor %}
+        </tr>
+        <tr class="fw-bold table-info">
+          <td colspan="4" class="text-end">Original NOI (vendor-reported)</td>
+          {% for v in summary.original_noi %}
+            <td class="text-end font-monospace">
+              {% if v == None %}<span class="text-muted">—</span>{% else %}{{ v|floatformat:0 }}{% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        <tr class="fw-bold">
+          <td colspan="4" class="text-end">NOI Difference</td>
+          {% for v in summary.noi_difference %}
+            <td class="text-end font-monospace">
+              {% if v == None %}
+                <span class="text-muted">—</span>
+              {% elif v == 0 %}
+                <span class="text-success">0</span>
+              {% else %}
+                <span class="text-danger">{{ v|floatformat:0 }}</span>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-3 mb-4">
+    <a href="{% url 'noi_verify' upload_id=upload_id %}" class="btn btn-outline-secondary">← Back to NOI Verification</a>
+    <div class="text-muted small">
+      <span class="badge bg-secondary me-1">header</span>
+      <span class="badge bg-primary me-1">final subtotal</span>
+      <span class="badge bg-light text-dark border me-1">subtotal</span>
+      <span class="badge bg-danger me-1">unmapped</span>
+      <span class="badge bg-warning text-dark me-1">AI suggestion</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Category dropdown change submits its row's form.
+  document.querySelectorAll('.category-select').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      document.getElementById('form-row-' + this.dataset.row).submit();
+    });
+  });
+
+  // Flip-sign checkbox writes "1"/"0" into the hidden input and submits.
+  document.querySelectorAll('.flip-toggle').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      document.getElementById('flip-' + this.dataset.row).value = this.checked ? '1' : '0';
+      document.getElementById('form-row-' + this.dataset.row).submit();
+    });
+  });
+
+  // "Revert to: <original>" clears the user override by submitting new_category=""
+  // The view treats empty as "clear final_mapping", so the next render shows the
+  // rulebook hit or AI suggestion in the dropdown again.
+  document.querySelectorAll('.revert-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const row = this.dataset.row;
+      const sel = document.querySelector('select.category-select[data-row="' + row + '"]');
+      sel.value = '';
+      document.getElementById('form-row-' + row).submit();
+    });
+  });
+</script>
+{% endblock %}

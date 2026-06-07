@@ -3,6 +3,7 @@
 {% block title %}T12 Mapping | NOI Verification{% endblock %}
 
 {% block content %}
+<div class="container">
 <div class="row justify-content-center">
   <div class="col-12 col-lg-9">
 
@@ -117,8 +118,10 @@
       <div class="d-flex justify-content-between align-items-center">
         <a href="{% url 't12_upload' %}" class="btn btn-outline-secondary">Upload Another File</a>
         <div class="d-flex gap-2">
-          <button type="submit" class="btn btn-outline-dark px-4">Recompute NOI</button>
-          <button type="button" class="btn btn-dark px-4" disabled title="Coming soon">
+          <button type="submit" name="action" value="recompute" class="btn btn-outline-dark px-4">Recompute NOI</button>
+          <button type="submit" name="action" value="continue"
+                  id="continue-btn"
+                  class="btn btn-dark px-4">
             Save &amp; Continue &rarr;
           </button>
         </div>
@@ -126,7 +129,18 @@
 
     </form>
 
+    <div id="continue-spinner" class="d-none mt-4 alert alert-info">
+      <div class="d-flex align-items-center">
+        <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+        <div>
+          <strong>Mapping in progress…</strong>
+          <div class="small text-muted">Running rulebook lookup and AI classification for each line item. This typically takes 30-90 seconds — please don't close this page.</div>
+        </div>
+      </div>
+    </div>
+
   </div>
+</div>
 </div>
 
 <script>
@@ -138,6 +152,16 @@
       document.getElementById(rowId).textContent = opt.value;
       document.getElementById(amtId).textContent = '$' + parseInt(opt.dataset.amount).toLocaleString();
     });
+  });
+
+  // Show "Mapping in progress" spinner only when Save & Continue submits.
+  // Use the submitter (the actually-clicked button) so Recompute is unaffected.
+  document.querySelector('form').addEventListener('submit', function (e) {
+    if (e.submitter && e.submitter.id === 'continue-btn') {
+      document.getElementById('continue-spinner').classList.remove('d-none');
+      // Defer disabling until after the submission is in flight.
+      setTimeout(() => { e.submitter.disabled = true; }, 50);
+    }
   });
 </script>
 {% endblock %}
