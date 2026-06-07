@@ -29,7 +29,7 @@ from t12_pipeline.llm.llm_client import make_llm
 
 # GPT-5-nano TPM limit is 200K. Each call is ~2,200 tokens input.
 # 5 workers × ~4s per call ≈ 75 calls/min, staying safely under the cap.
-MAX_WORKERS = 5
+MAX_WORKERS = 15
 _RETRY_DELAYS = [1, 2, 4]  # seconds between retries on 429
 
 
@@ -104,17 +104,17 @@ def _process_single_row(row, file_name, column_headers, valid_categories_str, ma
             row["ai_confidence"] = result.confidence
             row["ai_reasoning"] = result.reasoning
             log_entry["llm_raw_output"] = result.model_dump()
-            print(f"  row {row['row']}: '{row.get('description')}' -> {result.suggested_category} ({result.confidence})")
+            print(f"  row {row['row']}: '{row.get('description')}' -> {result.suggested_category} ({result.confidence})", flush=True)
             break
         except Exception as e:
             if "429" in str(e) and attempt < len(_RETRY_DELAYS):
-                print(f"  row {row['row']}: rate limited, retrying in {_RETRY_DELAYS[attempt]}s...")
+                print(f"  row {row['row']}: rate limited, retrying in {_RETRY_DELAYS[attempt]}s...", flush=True)
                 continue
             row["ai_suggested_mapping"] = None
             row["ai_confidence"] = None
             row["ai_reasoning"] = str(e)
             log_entry["error"] = str(e)
-            print(f"  row {row['row']}: ERROR - {e}")
+            print(f"  row {row['row']}: ERROR - {e}", flush=True)
             break
 
     return log_entry
@@ -144,7 +144,7 @@ def run_ai_mapping(file_data, rulebook, limit=None):
     if limit:
         unmapped_rows = unmapped_rows[:limit]
 
-    print(f"Processing {len(unmapped_rows)} unmapped rows for {file_name} ({MAX_WORKERS} workers)...")
+    print(f"Processing {len(unmapped_rows)} unmapped rows for {file_name} ({MAX_WORKERS} workers)...", flush=True)
 
     if not unmapped_rows:
         return file_data, []
