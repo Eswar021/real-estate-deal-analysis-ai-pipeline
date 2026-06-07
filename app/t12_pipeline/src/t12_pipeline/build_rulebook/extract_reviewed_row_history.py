@@ -18,8 +18,7 @@ Usage:
     python pipeline/0_build_rulebook/extract_reviewed_row_history.py
 
 Input:
-    data/mapped_T12_docs/t12_docs/*.xlsm
-    data/mapped_T12_docs/new_t12_docs/*.xlsm
+    data/mapped_T12_docs/*.xlsm
 
 Output:
     output_docs/<date>/0_build_rulebook/reviewed_row_history/per_file/<filename>.json
@@ -34,7 +33,6 @@ import openpyxl
 
 from t12_pipeline.config.paths import (
     MAPPED_T12_DOCS_DIR,
-    NEW_MAPPED_T12_DOCS_DIR,
     REPO_ROOT,
     REVIEWED_ROW_HISTORY_INDEX_PATH,
     REVIEWED_ROW_HISTORY_PER_FILE_DIR,
@@ -285,14 +283,11 @@ def build_history_index(per_file_results):
 
 
 if __name__ == "__main__":
-    xlsm_files = (
-        sorted(MAPPED_T12_DOCS_DIR.glob("*.xlsm")) +
-        sorted(NEW_MAPPED_T12_DOCS_DIR.glob("*.xlsm"))
-    )
+    xlsm_files = sorted(MAPPED_T12_DOCS_DIR.glob("*.xlsm"))
     xlsm_files = [f for f in xlsm_files if not f.name.startswith("~$")]
 
     if not xlsm_files:
-        raise FileNotFoundError("No reviewed .xlsm files found in mapped_T12_docs directories")
+        raise FileNotFoundError(f"No reviewed .xlsm files found in {MAPPED_T12_DOCS_DIR}")
 
     print(f"Found {len(xlsm_files)} reviewed xlsm source file(s)\n")
 
@@ -303,6 +298,7 @@ if __name__ == "__main__":
         per_file_results.append(result)
 
         out_path = REVIEWED_ROW_HISTORY_PER_FILE_DIR / file_path.with_suffix(".json").name
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w") as f:
             json.dump(result, f, indent=2)
 
@@ -315,6 +311,7 @@ if __name__ == "__main__":
 
     history_index = build_history_index(per_file_results)
 
+    REVIEWED_ROW_HISTORY_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REVIEWED_ROW_HISTORY_INDEX_PATH, "w") as f:
         json.dump(history_index, f, indent=2)
 

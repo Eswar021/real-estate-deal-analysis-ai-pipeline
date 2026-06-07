@@ -32,6 +32,7 @@ from datetime import datetime
 from pathlib import Path
 
 from t12_pipeline.config.paths import (
+    AUTO_ASSIGNED_CONFLICTS_PATH,
     CLIENT_REVIEW_RULES_PATH,
     HISTORICAL_CONFLICTS_PATH,
     NO_CONFLICT_RULEBOOK_PATH,
@@ -140,12 +141,13 @@ if __name__ == "__main__":
 
     no_conflict = {}
     conflicts = {}
+    auto_assigned_keys: list[str] = []
 
     review_bucket_counts = {
         "certain": 0,
         "contextual": 0,
         "unresolved": 0,
-        "not_in_review": 0,
+        "not_in_review": 0,  # informational: how many of "unresolved" were auto-routed
     }
 
     for key, entry in sorted(history_descriptions.items()):
@@ -156,12 +158,24 @@ if __name__ == "__main__":
             continue
 
         client_review_info = client_review_lookup.get(key)
-        conflicts[key] = build_conflict_entry(entry, client_review_info)
 
-        if client_review_info:
-            review_bucket_counts[client_review_info["bucket"]] += 1
-        else:
+        if client_review_info is None:
+            # Auto-route: conflict description isn't in the client review workbook yet.
+            # Treat it as 'unresolved' so the build can proceed; AI fallback will handle
+            # it at runtime. Track the key so we write a list for the client to review.
+            client_review_info = {
+                "bucket": "unresolved",
+                "entry": {
+                    "auto_assigned": True,
+                    "reason": "not in client conflict review workbook — auto-routed to unresolved",
+                    "candidate_mappings": entry["mappings"],
+                },
+            }
+            auto_assigned_keys.append(key)
             review_bucket_counts["not_in_review"] += 1
+
+        conflicts[key] = build_conflict_entry(entry, client_review_info)
+        review_bucket_counts[client_review_info["bucket"]] += 1
 
     no_conflict_payload = {
         "schema_version": "v3_historical_support",
@@ -192,15 +206,51 @@ if __name__ == "__main__":
         "conflicts": conflicts,
     }
 
+    NO_CONFLICT_RULEBOOK_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(NO_CONFLICT_RULEBOOK_PATH, "w") as f:
         json.dump(no_conflict_payload, f, indent=2)
 
     with open(HISTORICAL_CONFLICTS_PATH, "w") as f:
         json.dump(historical_conflicts_payload, f, indent=2)
 
+    auto_assigned_payload = {
+        "schema_version": "v3_auto_assigned",
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "note": (
+            "These conflict descriptions were found in the .xlsm history with multiple "
+            "mappings but are NOT in the client conflict review workbook "
+            "(conflict_sources_report). They were auto-routed to 'unresolved' so the "
+            "build wouldn't fail; AI fallback handles them at runtime. The client "
+            "should review each one and explicitly categorize it as certain / "
+            "contextual / unresolved in the conflict review workbook."
+        ),
+        "summary": {"total_auto_assigned": len(auto_assigned_keys)},
+        "auto_assigned": [
+            {
+                "description": key,
+                "candidate_mappings": conflicts[key]["mappings"],
+                "statement_sides": conflicts[key]["statement_sides"],
+                "occurrence_count": conflicts[key]["occurrence_count"],
+                "files_seen": conflicts[key]["files_seen"],
+            }
+            for key in auto_assigned_keys
+        ],
+    }
+
+    with open(AUTO_ASSIGNED_CONFLICTS_PATH, "w") as f:
+        json.dump(auto_assigned_payload, f, indent=2)
+
     print("Built historical rule support")
     print(f"  No-conflict descriptions:   {len(no_conflict)}")
     print(f"  Conflict descriptions:      {len(conflicts)}")
     print(f"  Review bucket counts:       {review_bucket_counts}")
+    if auto_assigned_keys:
+        print(
+            f"  ⚠ {len(auto_assigned_keys)} conflict(s) auto-routed to 'unresolved' "
+            f"(client should review):"
+        )
+        for key in auto_assigned_keys:
+            print(f"      • {key}")
     print(f"Saved: {NO_CONFLICT_RULEBOOK_PATH}")
     print(f"Saved: {HISTORICAL_CONFLICTS_PATH}")
+    print(f"Saved: {AUTO_ASSIGNED_CONFLICTS_PATH}")

@@ -347,6 +347,7 @@ def main() -> None:
     groups = load_review_groups(CLIENT_REVIEW_CONFLICTS_FILE)
     rulebook = classify_groups(groups)
 
+    CLIENT_REVIEW_RULES_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(CLIENT_REVIEW_RULES_PATH, "w") as f:
         json.dump(rulebook, f, indent=2)
 

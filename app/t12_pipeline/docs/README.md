@@ -105,8 +105,7 @@ python src/pipeline/utils/convert_rulebook_to_excel.py
 | Folder | Contents | Count |
 |---|---|---|
 | `data/input_T12_docs/` | Raw vendor T12 `.xlsx` files to process | 7 (test set) |
-| `data/mapped_T12_docs/t12_docs/` | Human-reviewed `.xlsm` files (batch 1) | 6 |
-| `data/mapped_T12_docs/new_t12_docs/` | Human-reviewed `.xlsm` files (batch 2) | 13 |
+| `data/mapped_T12_docs/` | Human-reviewed `.xlsm` files (training set for the rulebook) | 19 |
 | `data/client_review_docs/` | Local copy of the client-reviewed conflict workbook | 1 |
 
 The 19 `.xlsm` files are the training data for the rulebook — reviewed and corrected by a human analyst.

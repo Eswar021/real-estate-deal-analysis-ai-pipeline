@@ -105,9 +105,19 @@ if __name__ == "__main__":
 
     certain = client_review["certain"]
     contextual = client_review["contextual"]
-    unresolved = client_review["unresolved"]
+    unresolved = dict(client_review["unresolved"])  # mutable copy — we may add auto-routed entries
     no_conflict = no_conflict_payload["no_conflict"]
     historical_conflicts = historical_conflicts_payload["conflicts"]
+
+    # Merge auto-routed conflicts (descriptions found in .xlsm history but not in the
+    # client conflict review workbook) into the unresolved bucket. They were tagged in
+    # build_historical_rule_support with client_review_entry.auto_assigned=True so we
+    # can lift them here. AI fallback handles them at runtime; the client should
+    # review the list in auto_assigned_unresolved.json and categorize them properly.
+    for key, conflict in historical_conflicts.items():
+        review_entry = conflict.get("client_review_entry") or {}
+        if review_entry.get("auto_assigned") and key not in unresolved:
+            unresolved[key] = dict(review_entry)
 
     validate_conflict_links(historical_conflicts)
     validate_no_overlap(
@@ -180,6 +190,7 @@ if __name__ == "__main__":
         "unresolved": unresolved,
     }
 
+    RULEBOOK_DB_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(RULEBOOK_DB_OUTPUT_PATH, "w") as f:
         json.dump(merged_rulebook, f, indent=2)
 

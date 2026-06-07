@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -8,9 +9,7 @@ REPO_ROOT = PROJECT_ROOT.parent.parent
 # ── Data Directories (source Excel files) ────────────────────────────────────
 DATA_DIR              = PROJECT_ROOT / "data"
 INPUT_T12_DOCS_DIR    = DATA_DIR / "input_T12_docs"
-MAPPED_T12_DOCS_BASE  = DATA_DIR / "mapped_T12_docs"
-MAPPED_T12_DOCS_DIR   = MAPPED_T12_DOCS_BASE / "t12_docs"
-NEW_MAPPED_T12_DOCS_DIR = MAPPED_T12_DOCS_BASE / "new_t12_docs"
+MAPPED_T12_DOCS_DIR   = DATA_DIR / "mapped_T12_docs"
 
 # ── Database ──────────────────────────────────────────────────────────────────
 DB_DIR                = PROJECT_ROOT / "db"
@@ -21,7 +20,7 @@ OUTPUT_DOCS_BASE_DIR  = PROJECT_ROOT / "output_docs"
 MANIFEST_PATH         = OUTPUT_DOCS_BASE_DIR / "current_manifest.json"
 
 # ── Per-run Output Root ───────────────────────────────────────────────────────
-_RUN_TIMESTAMP = datetime.now().strftime("%Y_%m_%d_%H%M")
+_RUN_TIMESTAMP = os.environ.get("T12_RUN_TIMESTAMP") or datetime.now().strftime("%Y_%m_%d_%H%M")
 OUTPUT_DOCS_DIR = OUTPUT_DOCS_BASE_DIR / _RUN_TIMESTAMP
 
 # ── Build-rulebook intermediates (audit trail) ────────────────────────────────
@@ -35,6 +34,7 @@ CLIENT_REVIEW_RULES_OUT_DIR = BUILD_RULEBOOK_OUT_DIR / "client_review_rules"
 REVIEWED_ROW_HISTORY_INDEX_PATH = REVIEWED_ROW_HISTORY_DIR / "reviewed_row_history_index.json"
 NO_CONFLICT_RULEBOOK_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "no_conflict_rulebook.json"
 HISTORICAL_CONFLICTS_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "historical_conflicts.json"
+AUTO_ASSIGNED_CONFLICTS_PATH    = HISTORICAL_RULE_SUPPORT_DIR / "auto_assigned_unresolved.json"
 CLIENT_REVIEW_RULES_PATH        = CLIENT_REVIEW_RULES_OUT_DIR / "client_review_rulebook_phase1.json"
 
 # Rulebook written to db/rulebooks/ (not output_docs/)
