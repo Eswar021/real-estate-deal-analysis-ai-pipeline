@@ -98,10 +98,6 @@ Rows are colour-coded so attention-needing items pop:
 
 Analyst overrides are saved per row (no "Save All" button needed). The system preserves the original recommendation, so clearing an override restores it — no data loss.
 
-### Step 5 — Analytics *(next phase)*
-
-A future page will present visual analytics — charts, multi-year comparison, deal scoring — built on the now-clean mapped data.
-
 ---
 
 ## How the system learns: the rulebook
@@ -174,16 +170,3 @@ When new reviewed files arrive:
 1. Engineer drops the new `.xlsm` files into the training folder.
 2. Engineer runs the rulebook builder (~30 seconds).
 3. The next analyst upload automatically uses the updated rulebook — no restart, no UI change.
-
----
-
-## What's coming next
-
-- **Analytics page** — visual summaries, multi-property comparison, deal scoring built on the mapped data.
-- **Rent roll support** — currently only T12 income statements are processed; rent rolls (per-unit lease data) are the natural next extension.
-- **Multi-user access** — currently a single-user tool; multi-user accounts with per-user upload history will be added when the team rolls it out beyond the initial pilot.
-- **Cloud deployment** — the system runs locally today; production hosting on managed Django + Postgres + S3 is one configuration change away.
-
----
-
-*For technical detail (file artifacts, internal stages, code references), see [`WORKFLOW.md`](./WORKFLOW.md).*
