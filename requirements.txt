@@ -1,0 +1,12 @@
+# Top-level dependencies for the deployed Django app.
+# Install the pipeline package in editable mode (its dependencies come from
+# its pyproject.toml [project.dependencies] block).
+
+-e ./app/t12_pipeline
+
+# Django + production stack
+django>=5.0,<6.0
+gunicorn>=21.0
+whitenoise>=6.6
+dj-database-url>=2.1
+psycopg[binary]>=3.1

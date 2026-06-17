@@ -1,13 +1,15 @@
+import os
+
 MAPPING_AI_AGENT = "mapping_ai_agent"
 DEFAULT_AGENT_NAME = MAPPING_AI_AGENT
 
 AGENT_LLM_CONFIGS: dict[str, dict[str, object]] = {
     MAPPING_AI_AGENT: {
-        "provider": "openai",
-        "model": "gpt-5-nano",
-        "temperature": 0.15,
+        "provider": os.environ.get("OPENAI_PROVIDER", "openai"),
+        "model": os.environ.get("OPENAI_MODEL", "gpt-5-nano"),
+        "temperature": float(os.environ.get("OPENAI_TEMPERATURE", "0.15")),
         "api_key_env": "OPENAI_API_KEY_AI_MAPPING",
-        "notes": "Used by pipeline/1_mapping/find_mapping.py for unmapped row categorization.",
+        "notes": "Used by pipeline/mapping/find_mapping.py for unmapped row categorization.",
     },
 }
 
