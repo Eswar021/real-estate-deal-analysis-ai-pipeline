@@ -28,4 +28,6 @@ archive/
 master_docs/
 
 # Claude Code local data
-.claude/staticfiles/
+.claude/
+
+staticfiles/

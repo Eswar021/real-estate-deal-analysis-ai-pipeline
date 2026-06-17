@@ -35,6 +35,7 @@ REVIEWED_ROW_HISTORY_INDEX_PATH = REVIEWED_ROW_HISTORY_DIR / "reviewed_row_histo
 NO_CONFLICT_RULEBOOK_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "no_conflict_rulebook.json"
 HISTORICAL_CONFLICTS_PATH       = HISTORICAL_RULE_SUPPORT_DIR / "historical_conflicts.json"
 AUTO_ASSIGNED_CONFLICTS_PATH    = HISTORICAL_RULE_SUPPORT_DIR / "auto_assigned_unresolved.json"
+AUTO_ASSIGNED_CONFLICTS_XLSX    = HISTORICAL_RULE_SUPPORT_DIR / "auto_assigned_unresolved.xlsx"
 CLIENT_REVIEW_RULES_PATH        = CLIENT_REVIEW_RULES_OUT_DIR / "client_review_rulebook_phase1.json"
 
 # Rulebook written to db/rulebooks/ (not output_docs/)

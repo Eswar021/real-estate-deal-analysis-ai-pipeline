@@ -283,17 +283,24 @@ def build_history_index(per_file_results):
 
 
 if __name__ == "__main__":
-    xlsm_files = sorted(MAPPED_T12_DOCS_DIR.glob("*.xlsm"))
-    xlsm_files = [f for f in xlsm_files if not f.name.startswith("~$")]
+    # Pick up both .xlsm and .xlsx — some training files arrive without macros.
+    # The Excel parser doesn't care about the extension; only the structure matters.
+    training_files = sorted(
+        list(MAPPED_T12_DOCS_DIR.glob("*.xlsm"))
+        + list(MAPPED_T12_DOCS_DIR.glob("*.xlsx"))
+    )
+    training_files = [f for f in training_files if not f.name.startswith("~$")]
 
-    if not xlsm_files:
-        raise FileNotFoundError(f"No reviewed .xlsm files found in {MAPPED_T12_DOCS_DIR}")
+    if not training_files:
+        raise FileNotFoundError(
+            f"No reviewed .xlsm/.xlsx files found in {MAPPED_T12_DOCS_DIR}"
+        )
 
-    print(f"Found {len(xlsm_files)} reviewed xlsm source file(s)\n")
+    print(f"Found {len(training_files)} reviewed source file(s)\n")
 
     per_file_results = []
 
-    for file_path in xlsm_files:
+    for file_path in training_files:
         result = extract_file(file_path)
         per_file_results.append(result)
 
