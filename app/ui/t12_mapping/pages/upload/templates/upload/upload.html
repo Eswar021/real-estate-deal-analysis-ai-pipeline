@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}T12 Mapping | Upload File{% endblock %}
+
+{% block content %}
+<div class="container">
+<div class="row justify-content-center">
+  <div class="col-12 col-md-7 col-lg-6">
+
+    <div class="mb-4">
+      <h2 class="h4 fw-bold mb-1">Upload Files to Parse</h2>
+      <p class="text-muted small">Required Fields</p>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-4">
+            <label for="t12_file" class="form-label fw-semibold text-uppercase small">Upload Document</label>
+            <input
+              type="file"
+              id="t12_file"
+              name="t12_file"
+              class="form-control {% if errors.t12_file %}is-invalid{% endif %}"
+              accept=".xlsx,.xls"
+            >
+            {% if errors.t12_file %}
+              <div class="invalid-feedback">{{ errors.t12_file }}</div>
+            {% endif %}
+            <div class="form-text text-muted">.xlsx or .xls files only</div>
+          </div>
+
+          <div class="mb-4">
+            <label for="property_name" class="form-label fw-semibold text-uppercase small">Property Address / Name</label>
+            <input
+              type="text"
+              id="property_name"
+              name="property_name"
+              class="form-control {% if errors.property_name %}is-invalid{% endif %}"
+              placeholder="Auto-filled from file name"
+              value="{{ property_name|default:'' }}"
+            >
+            {% if errors.property_name %}
+              <div class="invalid-feedback">{{ errors.property_name }}</div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center pt-2">
+            <a href="/" class="btn btn-link text-muted text-decoration-none">Exit</a>
+            <button type="submit" class="btn btn-dark px-5">Parse File</button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+  document.getElementById('t12_file').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const stem = file.name.replace(/\.[^/.]+$/, '');
+    const nameField = document.getElementById('property_name');
+    if (!nameField.value) {
+      nameField.value = stem;
+    }
+  });
+</script>
+{% endblock %}

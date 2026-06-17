@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}T12 Mapping | NOI Verification{% endblock %}
+
+{% block content %}
+<div class="container">
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h2 class="h4 fw-bold mb-1">Financial Analytics | NOI Verification</h2>
+        <p class="text-muted small mb-0">{{ file_name }}</p>
+      </div>
+      {% if noi_pass %}
+        <span class="badge bg-success fs-6 px-3 py-2">NOI PASS ✓</span>
+      {% else %}
+        <span class="badge bg-danger fs-6 px-3 py-2">NOI FAIL ✗</span>
+      {% endif %}
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-4">
+        <div class="card text-center shadow-sm">
+          <div class="card-body py-3">
+            <div class="h5 fw-bold mb-0">{{ row_count }}</div>
+            <div class="text-muted small">Rows Detected</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="card text-center shadow-sm">
+          <div class="card-body py-3">
+            <div class="h5 fw-bold mb-0">${{ actual_noi|floatformat:0 }}</div>
+            <div class="text-muted small">Actual NOI</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="card text-center shadow-sm">
+          <div class="card-body py-3">
+            <div class="h5 fw-bold mb-0">${{ computed_noi|floatformat:0 }}</div>
+            <div class="text-muted small">Computed NOI</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if not noi_pass %}
+    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+      <svg xmlns="http://www.w3.org/2000/svg" class="me-2 flex-shrink-0" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+      </svg>
+      <span>Caution: Total Revenue minus Total Expense does not equal NOI. Confirm the correct rows are selected below.</span>
+    </div>
+    {% endif %}
+
+    {% if recompute_error %}
+    <div class="alert alert-danger mb-4">Recompute error: {{ recompute_error }}</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4" style="width:130px">Subtotal</th>
+                <th>Original Row Header</th>
+                <th class="text-center" style="width:90px">Row #</th>
+                <th class="text-end pe-4" style="width:150px">Total Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ks in key_subtotals %}
+              <tr>
+                <td class="ps-4">
+                  {% if ks.flag == "is_total_revenue" %}
+                    <span class="badge bg-primary">Total Revenue</span>
+                  {% elif ks.flag == "is_total_expense" %}
+                    <span class="badge bg-warning text-dark">Total Expense</span>
+                  {% else %}
+                    <span class="badge bg-success">NOI</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <select
+                    class="form-select form-select-sm subtotal-select"
+                    name="{{ ks.field_name }}"
+                    data-row-cell="row-{{ ks.flag }}"
+                    data-amount-cell="amount-{{ ks.flag }}"
+                  >
+                    {% for opt in all_subtotals %}
+                    <option
+                      value="{{ opt.row }}"
+                      data-amount="{{ opt.total_amount|floatformat:0 }}"
+                      {% if opt.row == ks.row %}selected{% endif %}
+                    >
+                      Row {{ opt.row }} — {{ opt.description }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="text-center" id="row-{{ ks.flag }}">{{ ks.row }}</td>
+                <td class="text-end pe-4" id="amount-{{ ks.flag }}">${{ ks.total_amount|floatformat:0 }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-3">No key subtotals detected.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center">
+        <a href="{% url 't12_upload' %}" class="btn btn-outline-secondary">Upload Another File</a>
+        <div class="d-flex gap-2">
+          <button type="submit" name="action" value="recompute" class="btn btn-outline-dark px-4">Recompute NOI</button>
+          <button type="submit" name="action" value="continue"
+                  id="continue-btn"
+                  class="btn btn-dark px-4">
+            Save &amp; Continue &rarr;
+          </button>
+        </div>
+      </div>
+
+    </form>
+
+    <div id="continue-spinner" class="d-none mt-4 alert alert-info">
+      <div class="d-flex align-items-center">
+        <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+        <div>
+          <strong>Mapping in progress…</strong>
+          <div class="small text-muted">Running rulebook lookup and AI classification for each line item. This typically takes 30-90 seconds — please don't close this page.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+  document.querySelectorAll('.subtotal-select').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      const opt    = this.options[this.selectedIndex];
+      const rowId  = this.dataset.rowCell;
+      const amtId  = this.dataset.amountCell;
+      document.getElementById(rowId).textContent = opt.value;
+      document.getElementById(amtId).textContent = '$' + parseInt(opt.dataset.amount).toLocaleString();
+    });
+  });
+
+  // Show "Mapping in progress" spinner only when Save & Continue submits.
+  // Use the submitter (the actually-clicked button) so Recompute is unaffected.
+  document.querySelector('form').addEventListener('submit', function (e) {
+    if (e.submitter && e.submitter.id === 'continue-btn') {
+      document.getElementById('continue-spinner').classList.remove('d-none');
+      // Defer disabling until after the submission is in flight.
+      setTimeout(() => { e.submitter.disabled = true; }, 50);
+    }
+  });
+</script>
+{% endblock %}

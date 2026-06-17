@@ -1,0 +1,258 @@
+# Mapping Rulebook Decisions
+
+---
+
+## 2026-05-19 — Manifest-Driven Pipeline + Detection/Mapping Split
+
+Decision:
+
+- Move `build_rulebook` out of the pipeline into `src/build_rulebook/` (run manually when new `.xlsm` files arrive)
+- Add Stage 0 (`0_manifest/runner.py`) that writes `current_manifest.json` embedding the full rulebook, all paths, and AI config
+- Split `1_mapping/` into `1_detection/` (detect + annotate + NOI verify) and `2_mapping/` (rulebook map + AI fallback)
+- Stages 1 and 2 read all paths and config from `current_manifest.json` — no date-stamped path computation in stages
+- Add `annotate_totals.py` between detect_blocks and compute_noi to stamp `is_total_revenue`, `is_total_expense`, `is_noi` flags
+- Split detect_blocks format logic into per-format modules under `1_detection/formats/`
+
+Why:
+
+- Date rollover bug: stages computing `date.today()` at import time failed when run the next day
+- NOI verification belongs to detection (uses `statement_side` directly, before mapping) — not to a separate stage
+- Per-format modules let format-specific detection logic change without affecting other formats
+- Annotated flags surface the revenue/expense/NOI phase boundaries to downstream UI consumers without re-running detect_blocks keywords
+
+Short decision log for active structural choices in `app/t12_pipeline/`.
+
+---
+
+## 2026-05-15 — Documentation Paths
+
+Decision:
+
+- keep active technical documentation under `app/t12_pipeline/docs/`
+- keep broader project meeting materials and client-shared artifacts under `master_docs/`
+
+Why:
+
+- technical docs should live next to the code they describe
+- large meeting and client files should stay separated from the code-facing docs
+- the split makes it clearer which docs are operational versus archival
+
+---
+
+## 2026-05-15 — Coding Style
+
+Decision:
+
+- keep core stage logic simple
+- prefer single-item or single-file functions
+- use `__main__` blocks as temporary manual harnesses during development
+- build dedicated runners later instead of prematurely hiding the workflow
+
+Why:
+
+- this makes the pipeline easier to inspect while the logic is still evolving
+- failures become easier to localize
+- the code stays understandable without over-abstracting too early
+
+---
+
+## 2026-05-15 — Fail Hard Inside Stages
+
+Decision:
+
+- do not add broad silent fallbacks inside the core mapping stages
+
+Why:
+
+- this pipeline affects accounting outputs and NOI verification
+- silent fallback behavior can hide real mapping mistakes
+- obvious failure is preferred during development and audit-oriented iteration
+
+---
+
+## 2026-05-15 — Numbered Pipeline Folders Stay
+
+Decision:
+
+- preserve numbered stage folders such as `0_build_rulebook`, `1_mapping`, and `2_noi_verification`
+
+Why:
+
+- the numbers immediately communicate execution order
+- they make docs, audits, and runner planning easier to follow
+- they reduce ambiguity when discussing "what comes before what"
+
+---
+
+## 2026-05-15 — Manual Rulebook A/B Testing Is Allowed
+
+Decision:
+
+- during development, rulebook A/B testing should be controlled from one central config file: `config/rulebook_runtime.py`
+
+Why:
+
+- the current need is to compare mapping behavior and downstream NOI verification between rulebook versions
+- one central switch is simpler and safer than editing multiple downstream files
+
+Follow-up:
+
+- when a dedicated runner is introduced, rulebook selection should become an explicit runner parameter instead of a config-only workflow
+
+---
+
+## 2026-05-15 — Agent Model Selection Is Centralized
+
+Decision:
+
+- keep agent → provider/model selection in `config/agent_llm_config.py`
+
+Why:
+
+- the mapping agent should not hardcode its model inside stage logic
+- future agents can be added without rewriting `llm_client.py`
+- model changes become a config update instead of a code-edit sweep
+
+---
+
+## 2026-05-15 — Stage 2 Has Two Executable Scripts Today
+
+Decision:
+
+- keep Stage 2 as two executable scripts for now:
+  - `compute_noi.py`
+  - `compare_noi.py`
+- keep the logical "extract actual NOI" substep inside `compute_noi.py`
+
+Why:
+
+- this matches the current development style
+- the substeps are closely related and easier to inspect together right now
+- a separate orchestration runner can split or sequence them later if needed
+
+---
+
+## 2026-05-15 — Thin Runners Over Heavy Refactors
+
+Decision:
+
+- keep the existing single-item stage modules as the source of truth for logic
+- add thin stage runners for `0_build_rulebook`, `1_mapping`, and `2_noi_verification`
+- add one master runner that sequences the stage runners instead of moving logic into a new framework
+
+Why:
+
+- this preserves the current inspectable, fail-hard module style
+- orchestration becomes reusable without hiding the raw stage code
+- later runner changes can happen without rewriting the core business logic
+
+---
+
+## 2026-05-15 — Stage Selection Must Be Explicit
+
+Decision:
+
+- the master runner must not assume default stages
+- every pipeline run must pass either `--stages` or both `--from-stage` and `--to-stage`
+
+Why:
+
+- explicit run scope makes testing safer
+- it removes ambiguity about whether a run is partial or end-to-end
+- this matches the repo's preference for visible, intentional execution
+
+---
+
+## 2026-05-15 — Stage 0 Writes To Output Only
+
+Decision:
+
+- Stage 0 builders write rulebooks and category classification only under `output_docs/`
+- `db/` stays read-only from the pipeline's point of view
+
+Why:
+
+- build artifacts should stay versioned by run date
+- runtime testing should use the current build outputs directly
+- reference snapshots in `db/` should not be overwritten by routine pipeline runs
+
+---
+
+## 2026-05-15 — Client Review And Historical XLSM Extraction Stay Separate
+
+Decision:
+
+- keep the client-reviewed conflict workbook build separate from the 19 reviewed `.xlsm` history extraction
+- first build `certain / contextual / unresolved` from the reviewed client workbook
+- separately extract historical row context from the `.xlsm` files before building `no_conflict`
+
+Why:
+
+- this avoids mixing two different sources of truth too early
+- client-reviewed decisions should stay explicit and inspectable
+- the later `no_conflict` builder can work from a clean historical extraction artifact instead of reparsing spreadsheets every time
+
+---
+
+## 2026-05-15 — V3 Rulebook Is Built Separately Before Runtime Integration
+
+Decision:
+
+- build the new sectioned v3 rulebook as a separate Stage 0 artifact first
+- do not switch the active runtime profile to v3 until `map_blocks.py` and later mapping logic are updated to read the new structure
+
+Why:
+
+- the current runtime still expects the older flat `category -> [descriptions]` rulebook shape
+- forcing v3 into the runtime too early would break the existing mapping stage
+- keeping v3 separate lets us validate the new structure before changing downstream consumers
+
+---
+
+## 2026-05-15 — V3 Is Now The Active Runtime Profile
+
+Decision:
+
+- switch `config/rulebook_runtime.py` to the `v3` profile
+- keep the Stage 1 output contract stable while adding only non-breaking metadata fields
+
+Why:
+
+- `map_blocks.py`, `find_mapping.py`, and `category_config.py` now understand the v3 shape
+- this lets the pipeline use the new lookup order without rewriting downstream stages
+- downstream JSON consumers still receive the same core fields (`mapping`, `not_found`, row values, summaries)
+
+---
+
+## 2026-05-15 — Statement-Side Inference Uses Only Built Support
+
+Decision:
+
+- Stage 1 should infer `revenue / expense / capex / other` using layered context:
+  - exact `section_path`
+  - nearest section name
+  - top section name
+- raw block-detection output should keep a `section_path` field, not only one `section_context`
+- if exact learned support does not match, keep the row unresolved and let the AI stage handle it later
+
+Why:
+
+- the new v3 contextual rules depend on better section awareness
+- the reviewed `.xlsm` history already gives us stable section-to-side patterns
+- Stage 1 should consume Stage 0 outputs, not add a second layer of guesswork
+
+---
+
+## 2026-05-15 — Active Runtime Uses One Current Rulebook
+
+Decision:
+
+- remove version-switching from the active runtime path
+- keep one current rulebook build chain in `config/rulebook_runtime.py`
+- keep one current runtime artifact at `output_docs/<date>/0_build_rulebook/mapping_rulebook/mapping_rule_book.json`
+
+Why:
+
+- the live pipeline should be simple to reason about
+- multiple-version runtime branches add noise without helping the current build flow
+- older experimental scripts can remain as references, but the production path should stay singular
