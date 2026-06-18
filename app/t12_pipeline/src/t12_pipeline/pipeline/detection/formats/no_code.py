@@ -4,11 +4,12 @@ Format: no_code
 Col A contains everything (description only, no account codes).
 Classification is purely indentation-based.
 
-Row classification rules:
-  - Text matches a grand-total keyword or starts with "Total" → SUBTOTAL
-  - indent >= 2                                               → DATA
-  - indent == 0 AND has numeric values in data columns        → SUBTOTAL  (computed grand total)
-  - indent == 0, no numbers                                   → HEADER
+Row classification rules (checked in order):
+  - Text matches "Total ..." / grand-total keyword            → SUBTOTAL
+  - indent >= 2 + has values in data cols                     → DATA
+  - indent >= 2 + no values                                   → HEADER (structural marker)
+  - indent == 0 + has numeric values                          → SUBTOTAL  (computed grand total)
+  - indent == 0 + no numbers                                  → HEADER
 """
 
 import re
@@ -27,6 +28,14 @@ def _has_numeric_data(ws, row, start_col=2, end_col=16):
     for col in range(start_col, end_col + 1):
         v = ws.cell(row=row, column=col).value
         if isinstance(v, (int, float)) and v != 0:
+            return True
+    return False
+
+
+def _has_any_cell(ws, row, start_col=2, end_col=16):
+    """True if any monthly column has a value (literal zeros count, blanks don't)."""
+    for col in range(start_col, end_col + 1):
+        if ws.cell(row=row, column=col).value is not None:
             return True
     return False
 
@@ -57,6 +66,10 @@ def classify_row(ws, row):
         return "subtotal", a_str
 
     if indent >= 2:
+        # Structural rule: indented row with no values in any monthly column
+        # = section header (rare). A real data row always has at least one cell value.
+        if not _has_any_cell(ws, row):
+            return "header", a_str
         return "data", a_str
 
     # indent=0 + has numbers + no "Total" = computed grand total
