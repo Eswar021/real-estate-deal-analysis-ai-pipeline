@@ -4,12 +4,15 @@ Format: code_in_a_desc_in_b
 Col A holds a pure account code (e.g. 5120-01 or 5120-9999).
 Col B holds the description (e.g. "    Gross Possible Rent").
 
-Row classification rules:
-  - Code ends in 9999            → SUBTOTAL  (section total code)
-  - Code + B has 4-space indent  → DATA      (indented = line item)
-  - Code + B has 1-space + CAPS  → HEADER    (Carmel Woods section header style)
-  - No code in A, B has text     → SUBTOTAL  (computed row, no account code)
-  - Text in A, B empty           → HEADER    (section name in A only)
+Row classification rules (checked in order):
+  - Code ends in 9999                                       → SUBTOTAL
+  - Description matches "Total ..." / grand-total keyword   → SUBTOTAL
+  - Code + description + no values in monthly cols          → HEADER   (structural marker)
+  - Code + B has 4-space indent                             → DATA
+  - Code + ALL CAPS description (any indent)                → HEADER   (e.g. Carmel "EXPENSES")
+  - Code + anything else                                    → DATA
+  - No code in A, B has text                                → SUBTOTAL  (computed row)
+  - Text in A, B empty                                      → HEADER    (section name in A only)
 """
 
 import re
@@ -31,6 +34,14 @@ def _has_numeric_data(ws, row, start_col=3, end_col=16):
     for col in range(start_col, end_col + 1):
         v = ws.cell(row=row, column=col).value
         if isinstance(v, (int, float)) and v != 0:
+            return True
+    return False
+
+
+def _has_any_cell(ws, row, start_col=3, end_col=16):
+    """True if any monthly column has a value (literal zeros count, blanks don't)."""
+    for col in range(start_col, end_col + 1):
+        if ws.cell(row=row, column=col).value is not None:
             return True
     return False
 
@@ -60,18 +71,31 @@ def classify_row(ws, row):
         if SUBTOTAL_CODE_PATTERN.match(a_str):
             return "subtotal", b_str
 
-        b_raw = str(b) if b else ""
-        if b_raw.startswith("    "):
-            if _is_total_text(b_str):
-                return "subtotal", b_str
-            return "data", b_str
-        elif b_raw.startswith(" ") and b_str.upper() == b_str:
-            # Single-space + ALL CAPS = section header (Carmel Woods style)
-            if _is_total_text(b_str):
-                return "subtotal", b_str
-            return "header", b_str
+        # Subtotals can use "Total ..." / grand-total keywords without a -9999 code.
+        # Check this BEFORE the no-values rule so a "Total X" row with empty cells
+        # is still classified as subtotal, not header.
         if _is_total_text(b_str):
             return "subtotal", b_str
+
+        # Structural rule: code + description + no values in monthly columns =
+        # section header. Catches Carmel rows 50/51/52 ("5000-0000 EXPENSES")
+        # with zero indent + ALL CAPS + all blank monthly cells. Reliable
+        # because a real data row always has at least one cell value.
+        if not _has_any_cell(ws, row, start_col=3):
+            return "header", b_str
+
+        b_raw = str(b) if b else ""
+        if b_raw.startswith("    "):
+            return "data", b_str
+
+        # ALL CAPS description = section header. Previously required a leading
+        # space in col B; loosened because some files (Carmel) write section
+        # headers flush-left. Subtotal cases were filtered above (-9999 codes
+        # and "Total ..." text), so any ALL CAPS row reaching here is a
+        # structural header. Audited zero regressions across supported files.
+        if b_str.upper() == b_str and any(c.isalpha() for c in b_str):
+            return "header", b_str
+
         return "data", b_str
 
     if has_code and not b_str:
