@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 
 {% block title %}T12 Mapping | NOI Verification{% endblock %}
 
@@ -31,7 +32,7 @@
       <div class="col-6 col-md-4">
         <div class="card text-center shadow-sm">
           <div class="card-body py-3">
-            <div class="h5 fw-bold mb-0">${{ actual_noi|floatformat:0 }}</div>
+            <div class="h5 fw-bold mb-0">${{ actual_noi|floatformat:"2"|intcomma }}</div>
             <div class="text-muted small">Actual NOI</div>
           </div>
         </div>
@@ -39,7 +40,7 @@
       <div class="col-12 col-md-4">
         <div class="card text-center shadow-sm">
           <div class="card-body py-3">
-            <div class="h5 fw-bold mb-0">${{ computed_noi|floatformat:0 }}</div>
+            <div class="h5 fw-bold mb-0">${{ computed_noi|floatformat:"2"|intcomma }}</div>
             <div class="text-muted small">Computed NOI</div>
           </div>
         </div>
@@ -94,7 +95,7 @@
                     {% for opt in all_subtotals %}
                     <option
                       value="{{ opt.row }}"
-                      data-amount="{{ opt.total_amount|floatformat:0 }}"
+                      data-amount="{{ opt.total_amount|floatformat:'2' }}"
                       {% if opt.row == ks.row %}selected{% endif %}
                     >
                       Row {{ opt.row }} — {{ opt.description }}
@@ -103,7 +104,7 @@
                   </select>
                 </td>
                 <td class="text-center" id="row-{{ ks.flag }}">{{ ks.row }}</td>
-                <td class="text-end pe-4" id="amount-{{ ks.flag }}">${{ ks.total_amount|floatformat:0 }}</td>
+                <td class="text-end pe-4" id="amount-{{ ks.flag }}">${{ ks.total_amount|floatformat:"2"|intcomma }}</td>
               </tr>
               {% empty %}
               <tr>
@@ -150,7 +151,7 @@
       const rowId  = this.dataset.rowCell;
       const amtId  = this.dataset.amountCell;
       document.getElementById(rowId).textContent = opt.value;
-      document.getElementById(amtId).textContent = '$' + parseInt(opt.dataset.amount).toLocaleString();
+      document.getElementById(amtId).textContent = '$' + parseFloat(opt.dataset.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     });
   });
 
