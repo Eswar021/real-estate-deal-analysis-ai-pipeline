@@ -31,10 +31,16 @@ GRAND_NOI_MARKERS = frozenset({
 def detect_format(ws):
     """
     Detect file format by sampling the first 60 rows.
-    Returns: 'code_in_a_desc_in_b' | 'embedded_code_in_a' | 'no_code'
+    Returns: 'code_in_a_desc_in_b' | 'embedded_code_in_a' | 'no_code' | 'unknown'
+
+    Returns 'unknown' when the file doesn't match any of our three supported
+    formats — no silent fallback. The caller (classify_file) raises an
+    explicit error so the UI can tell the user the file uses an unsupported
+    layout instead of producing a vacuous all-zero detection result.
     """
-    code_in_a_count    = 0
-    embedded_code_count = 0
+    code_in_a_count        = 0
+    embedded_code_count    = 0
+    indented_text_in_a_cnt = 0  # 2+ leading spaces in col A — the no_code signature
 
     for row in range(1, min(ws.max_row + 1, 60)):
         a = ws.cell(row=row, column=1).value
@@ -44,13 +50,17 @@ def detect_format(ws):
                 code_in_a_count += 1
             elif EMBEDDED_CODE_PATTERN.match(a_stripped):
                 embedded_code_count += 1
+            elif a_stripped and a.startswith("  "):
+                indented_text_in_a_cnt += 1
 
     if code_in_a_count >= 5:
         return "code_in_a_desc_in_b"
     elif embedded_code_count >= 3:
         return "embedded_code_in_a"
-    else:
+    elif indented_text_in_a_cnt >= 5:
         return "no_code"
+    else:
+        return "unknown"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -94,6 +104,18 @@ def classify_file(file_path):
     ws = wb.active
 
     fmt = detect_format(ws)
+
+    if fmt == "unknown":
+        wb.close()
+        raise ValueError(
+            f"This T12 file uses a layout we don't recognize yet "
+            f"({os.path.basename(file_path)}). Our parser supports three formats: "
+            f"account codes in column A, embedded codes in column A "
+            f"(e.g. '5100 Description'), or indented descriptions in column A. "
+            f"This file appears to use a different layout (the descriptions and "
+            f"values may live in other columns). Please share it with your contact "
+            f"so support can be added."
+        )
 
     # Load the format-specific row classifier.
     # Each module in formats/ exposes classify_row(ws, row) → (row_type, description).
