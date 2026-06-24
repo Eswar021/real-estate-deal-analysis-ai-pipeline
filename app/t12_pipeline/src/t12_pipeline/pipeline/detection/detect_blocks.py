@@ -12,16 +12,11 @@ EMBEDDED_CODE_PATTERN = re.compile(r'^\s*\d{4}(\s*-\s*\d*\s*-?\s*)')
 # These mark the income→expense and expense→capex phase boundaries.
 # Every format uses the same state machine; only the row-classification
 # logic (which lives in formats/) is format-specific.
-GRAND_INCOME_TOTAL_MARKERS = frozenset({
-    "total income",             # Brownsburg, Pebble Brook 03-25
-    "total revenue",            # Carmel Woods
-    "effective gross income",   # Pebble Brook 09-25, Pointe Inverness, Willows
-    "total operating revenues", # Echo Park
-})
-
-GRAND_NOI_MARKERS = frozenset({
-    "net operating income",  # covers "(Loss)", "Total Net Operating Income", etc.
-})
+# Keywords live in keywords.py — single source of truth shared with annotate_totals.
+from t12_pipeline.pipeline.detection.keywords import (
+    GRAND_INCOME_TOTAL_MARKERS,
+    GRAND_NOI_MARKERS,
+)
 
 
 # ═══════════════════════════════════════════════════════════════

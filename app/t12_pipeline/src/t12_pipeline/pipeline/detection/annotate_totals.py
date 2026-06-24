@@ -25,24 +25,12 @@ import json
 import re
 from pathlib import Path
 
-GRAND_INCOME_TOTAL_MARKERS = frozenset({
-    "total income",
-    "total revenue",
-    "effective gross income",
-    "total operating revenues",
-})
-
-GRAND_NOI_MARKERS = frozenset({
-    "net operating income",
-})
-
-GRAND_EXPENSE_MARKERS = frozenset({
-    "total expenses",
-    "total operating expenses",
-    "total controllable expenses",
-    "total expense",
-    "total operating costs",
-})
+# Keywords live in keywords.py — single source of truth shared with detect_blocks.
+from t12_pipeline.pipeline.detection.keywords import (
+    GRAND_INCOME_TOTAL_MARKERS,
+    GRAND_NOI_MARKERS,
+    GRAND_EXPENSE_MARKERS,
+)
 
 _NOI_WORD_RE = re.compile(r"\bnet operating income\b", re.IGNORECASE)
 
