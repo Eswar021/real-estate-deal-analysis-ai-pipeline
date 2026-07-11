@@ -1,28 +1,32 @@
 """
 t12_mapping/pipeline_bridge.py
 
-Thin wrapper that calls the t12_pipeline detection AND mapping functions
-and persists each stage output via the storage abstraction (so dev=local
-FS, prod=S3 is a one-line settings change).
+Thin wrapper that runs the t12_pipeline anchor-first parser AND the mapping stage,
+persisting each stage output via the storage abstraction (dev=local FS, prod=S3).
 
-The t12_pipeline package is installed in editable mode
-(`pip install -e ./app/t12_pipeline`) — no sys.path manipulation needed.
+Detection is now the anchor-first pipeline (pipeline/parsing/run_parse.parse_file);
+its result is mapped to the legacy annotated_blocks / comparison shapes via
+legacy_adapter, so the UI pages and the mapping stage (Stage 3) are unchanged.
+`apply_and_recompute` doubles as the anchor-confirmation step (the user sets the
+revenue / expense / NOI rows), re-classifying without re-calling the AI.
+
+The t12_pipeline package is installed in editable mode (`pip install -e ./app/t12_pipeline`).
 """
 
 import json
+from pathlib import Path
 
 from shared import storage
 
 from t12_pipeline.config.paths import DB_RULEBOOKS_DIR
 from t12_pipeline.config.rulebook_utils import get_rulebook_categories
-from t12_pipeline.pipeline.detection.detect_blocks import classify_file
-from t12_pipeline.pipeline.detection.annotate_totals import annotate_file
-from t12_pipeline.pipeline.detection.compute_noi import compute_noi, extract_actual_noi
-from t12_pipeline.pipeline.detection.compare_noi import compare
-from t12_pipeline.pipeline.detection.corrections import (
-    apply_corrections,
-    recompute_noi as _recompute_noi,
-)
+from t12_pipeline.pipeline.parsing.run_parse import parse_file
+from t12_pipeline.pipeline.parsing.extract import extract_row_signals_dynamic  # noqa: F401 (kept for parity)
+from t12_pipeline.pipeline.parsing.anchor_lock import apply_anchor_overrides
+from t12_pipeline.pipeline.parsing.classify import classify_rows
+from t12_pipeline.pipeline.parsing.sections import assign_sections
+from t12_pipeline.pipeline.parsing.noi import verify_noi
+from t12_pipeline.pipeline.parsing import legacy_adapter as la
 from t12_pipeline.pipeline.mapping.map_blocks import map_results
 from t12_pipeline.pipeline.mapping.find_mapping import run_ai_mapping
 
@@ -39,58 +43,79 @@ def _load_latest_rulebook() -> dict:
         return json.load(f)
 
 
-def run_detection(upload_id, xlsx_local_path) -> dict:
-    """
-    Runs the full detection stage on a single Excel file.
+def _restore_cell_grid(cg: dict) -> dict:
+    """Restore integer column keys after a JSON round-trip."""
+    for row in cg["rows"]:
+        row["cells"] = {int(k): v for k, v in row["cells"].items()}
+    return cg
 
-    Steps:
-        1. classify_file  → block_detection.json
-        2. annotate_file  → annotated_blocks.json
-        3. extract_actual_noi + compute_noi → actual_noi.json, computed_noi.json
-        4. compare        → comparison.json
 
-    Returns the comparison dict so the view can display PASS/FAIL and totals.
-    """
-    detection = classify_file(str(xlsx_local_path))
-    storage.write_json(upload_id, "block_detection.json", detection)
-
-    annotated = annotate_file(detection)
-    storage.write_json(upload_id, "annotated_blocks.json", annotated)
-
-    actual   = extract_actual_noi(annotated)
-    computed = compute_noi(annotated)
-    storage.write_json(upload_id, "actual_noi.json",   actual)
-    storage.write_json(upload_id, "computed_noi.json", computed)
-
-    comparison = compare(actual, computed)
-    storage.write_json(upload_id, "comparison.json", comparison)
-
+def _persist(upload_id, res, file_name) -> dict:
+    """Write the legacy-shaped stage files (for the UI + mapping) plus the anchor-first
+    state (for re-classification without re-running the AI). Returns the comparison."""
+    comparison = la.to_comparison(res, file_name)
+    storage.write_json(upload_id, "annotated_blocks.json", la.to_annotated(res, file_name))
+    storage.write_json(upload_id, "comparison.json",       comparison)
+    storage.write_json(upload_id, "actual_noi.json",       la.to_actual_noi(res))
+    storage.write_json(upload_id, "anchor_lock.json",      res["anchor_lock"])
+    storage.write_json(upload_id, "parse_state.json",
+                       {"format": res["format"], "final_map": res["final_map"],
+                        "signal_rows": res["signal_rows"]})
+    storage.write_json(upload_id, "cell_grid.json", res["cell_grid"])
     return comparison
 
 
+def run_detection(upload_id, xlsx_local_path) -> dict:
+    """Anchor-first parse of one Excel file: format detect → resolve columns → extract
+    → anchor lock → classify + override → section → NOI verify → (diagnosis loop on
+    fail). Persists the legacy stage files + anchor-first state. Returns the comparison
+    dict so the view can show PASS/FAIL, totals, and the anchor status."""
+    res = parse_file(str(xlsx_local_path))
+    return _persist(upload_id, res, Path(xlsx_local_path).name)
+
+
 def apply_and_recompute(upload_id, corrections: dict) -> tuple[dict, dict]:
+    """Confirm/override the R / E / NOI anchors and re-classify + re-verify — WITHOUT
+    re-running the AI (reuses the saved structure map + signal rows).
+
+    corrections = {"total_revenue_row": int|None, "total_expense_row": int|None,
+                   "noi_row": int|None}
+
+    Persists the corrected annotated_blocks + comparison. Returns (annotated, comparison).
     """
-    Apply user corrections to the saved annotated_blocks and recompute NOI.
+    state = storage.read_json(upload_id, "parse_state.json")
+    cell_grid = _restore_cell_grid(storage.read_json(upload_id, "cell_grid.json"))
+    final_map = dict(state["final_map"])
+    final_map["revenue_end_row"] = corrections.get("total_revenue_row")
+    final_map["expense_end_row"] = corrections.get("total_expense_row")
+    final_map["noi_row"]         = corrections.get("noi_row")
 
-    corrections = {
-        "total_revenue_row": int | None,
-        "total_expense_row": int | None,
-        "noi_row":           int | None,
-    }
+    classified = apply_anchor_overrides(classify_rows(state["signal_rows"], final_map), final_map)
+    assign_sections(classified, final_map)
+    noi = verify_noi(classified, cell_grid, final_map)
 
-    PERSISTS the corrected annotated_blocks and the new comparison back to
-    storage so a page refresh shows the latest state.
+    res = {"format": state["format"], "final_map": final_map, "classified": classified,
+           "noi": noi, "cell_grid": cell_grid,
+           "anchor_lock": {"status": "MANUAL", "method": "manual",
+                           "anchors": {"revenue_end_row": final_map["revenue_end_row"],
+                                       "expense_end_row": final_map["expense_end_row"],
+                                       "noi_row": final_map["noi_row"]}}}
+    file_name = storage.read_json(upload_id, "comparison.json").get("file", "")
+    annotated = la.to_annotated(res, file_name)
+    comparison = la.to_comparison(res, file_name)
+    storage.write_json(upload_id, "annotated_blocks.json", annotated)
+    storage.write_json(upload_id, "comparison.json",       comparison)
+    storage.write_json(upload_id, "parse_state.json", {**state, "final_map": final_map})
+    return annotated, comparison
 
-    Returns (corrected_entry, comparison_dict).
-    """
-    annotated = storage.read_json(upload_id, "annotated_blocks.json")
-    corrected = apply_corrections(annotated, corrections)
-    result    = _recompute_noi(corrected)
 
-    storage.write_json(upload_id, "annotated_blocks.json", corrected)
-    storage.write_json(upload_id, "comparison.json",       result["comparison"])
-
-    return corrected, result["comparison"]
+# Alias for the new UI naming — same action (set the 3 anchors, re-verify).
+def confirm_anchors(upload_id, anchors: dict) -> tuple[dict, dict]:
+    return apply_and_recompute(upload_id, {
+        "total_revenue_row": anchors.get("revenue_end_row"),
+        "total_expense_row": anchors.get("expense_end_row"),
+        "noi_row":           anchors.get("noi_row"),
+    })
 
 
 def load_annotated_blocks(upload_id) -> dict:
@@ -101,25 +126,17 @@ def load_comparison(upload_id) -> dict:
     return storage.read_json(upload_id, "comparison.json")
 
 
+def load_anchor_lock(upload_id) -> dict:
+    return storage.read_json(upload_id, "anchor_lock.json")
+
+
 # ═══════════════════════════════════════════════════════════════════════
-#  Stage 2 — Mapping (rulebook lookup + AI fallback)
+#  Stage 2 — Mapping (rulebook lookup + AI fallback)  — UNCHANGED
 # ═══════════════════════════════════════════════════════════════════════
 
 def run_mapping(upload_id) -> dict:
-    """
-    Runs the full mapping stage on an already-corrected annotated_blocks entry.
-
-    Steps:
-        1. map_results       → auto_mapped.json   (rulebook lookup)
-        2. run_ai_mapping    → ai_mapped.json     (AI fallback for not_found rows)
-        3. ai_mapping_logs.json — per-row prompt/response audit trail
-
-    Synchronous. Takes 30-180s for a typical T12 depending on how many rows
-    fall to the AI fallback (5 workers × ~3s/call).
-
-    Returns the ai_mapped dict so the caller can display a summary.
-    Raises any exception from the pipeline directly — caller handles errors.
-    """
+    """Runs the full mapping stage on the (corrected) annotated_blocks entry.
+    Synchronous; 30-180s depending on how many rows fall to the AI fallback."""
     import time
     t0 = time.time()
     print(f"[bridge] Stage 2 starting for upload {upload_id}", flush=True)
