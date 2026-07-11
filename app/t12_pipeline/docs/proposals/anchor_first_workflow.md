@@ -3,7 +3,9 @@
 **Status:** under discussion — the client's 3-stage redesign, plus one addition on our
 side (the AI structure agent as an anchor-candidate source). The *current* pipeline
 diagram still lives in [t12_parsing_proposal.md](./t12_parsing_proposal.md); this file
-shows what it would become if we adopt the anchor-first design. Nothing here is built yet.
+shows what it would become if we adopt the anchor-first design.
+
+**Build status (2026-07-11):** Phase 1 (unknown branch) is **implemented and tested** in the notebook — a new `Module 9b` anchor lock (`lock_anchors`, driven by `anchor_keywords.json`), the `apply_anchor_overrides` fact-override after Module 10, Module 11 reduced to a positional tag from the locked anchors, and the feedback loop constrained so it can't touch locked rows. On the 7-file unknown set: **6 auto-lock to the correct anchors and reconcile with no feedback loop; Eleven11 flags GATE (4 valid triples — genuinely ambiguous) and still reconciles.** Phase 2 (known branch) is not built yet.
 
 ---
 
