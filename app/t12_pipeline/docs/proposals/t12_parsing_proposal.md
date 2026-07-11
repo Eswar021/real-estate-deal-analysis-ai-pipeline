@@ -19,21 +19,19 @@ flowchart TD
     Detect -->|high score<br/>KNOWN| KCols[Resolve columns from the format template<br/>description / value / month-header known]
     Detect -->|low / no score<br/>UNKNOWN| AIStruct[AI Structure Agent — Claude Opus<br/>reads the RAW grid → resolves columns<br/>+ nominates candidate R / E / NOI rows<br/>+ subsection hierarchy]
 
-    KCols --> Anchor
-    AIStruct --> Anchor
+    KCols --> Extract
+    AIStruct --> Extract
 
-    Anchor{{"Stage 1 — Lock R / E / NOI anchors<br/>keywords + AI nominate candidates<br/>R − E = NOI arithmetic decides, month-by-month, tol max($1, 0.5%)<br/>one triple → auto-lock · no NOI row → derive"}}
+    Extract[Dynamic feature extractor — ONE for ALL formats<br/>reads cell_grid through the resolved columns<br/>emits the per-row signal vector + monthly values]
+    Extract --> Anchor
+
+    Anchor{{"Stage 1 — Lock R / E / NOI anchors<br/>keywords + AI nominate candidates<br/>R − E = NOI decides, month-by-month, tol max($1, 0.5%)<br/>one triple → auto-lock · typo / no-row → derive"}}
     Anchor -->|zero / multiple / ambiguous| Gate[/Manual gate — raw file rendered as a sheet<br/>candidates + arithmetic evidence · click-any-row · live re-verify/]
     Anchor -->|clean lock| Locked[(Locked anchors →<br/>revenue / expense / capex regions)]
     Gate --> Locked
 
-    Locked -->|KNOWN| EA[Layer 2 — Format A / B / C … N<br/>feature derivation]
-    Locked -->|UNKNOWN| ED[Layer 2 — Dynamic feature derivation<br/>driven by the structure map<br/>emits the raw per-row signal pool]
-
-    EA --> Classify
-    ED --> Classify
-
-    Classify[Classification — normalized signal-match, 7-class<br/>UNBIASED: score = fraction of a class's signals satisfied<br/>arithmetic-verified facts OVERRIDE the score<br/>runs INSIDE the locked regions] --> NOI{NOI verification<br/>our DATA-row sums vs vendor totals<br/>per month AND total}
+    Locked --> Classify[Classification — normalized signal-match, 7-class<br/>UNBIASED: score = fraction of a class's signals satisfied<br/>arithmetic-verified facts OVERRIDE the score<br/>runs INSIDE the locked regions]
+    Classify --> NOI{NOI verification<br/>our DATA-row sums vs vendor totals<br/>per month AND total}
 
     NOI -->|FAIL| Diagnose[AI Failure Diagnosis — Claude Opus<br/>reclassifies rows only; anchors are locked,<br/>so the NOI target can't move]
     NOI -->|PASS| Conf{Every row<br/>high-confidence?<br/>planned}
@@ -48,7 +46,7 @@ flowchart TD
 
 > **`cell_grid` is the single source of truth.** Layer 1 reads the Excel exactly once and dumps it losslessly; **format detection, every Layer 2 extractor, and the render-for-agent step all read `cell_grid`** — nothing reopens the workbook.
 >
-> Every Layer 2 extractor — the per-format ones (A, B, C … N) and the dynamic one — emits the **same feature schema**, so the single classifier downstream sees one consistent vector regardless of which branch produced it.
+> **One extractor for every format.** Known and unknown files run the **same dynamic feature extractor** — it just reads `cell_grid` through the columns it is given (a *template* map for known formats, the AI map for unknown). So there is a single feature schema and a single classifier downstream, regardless of format.
 
 ---
 
@@ -58,13 +56,13 @@ flowchart TD
 
 **Layer 1 — Raw extraction (the only time we touch Excel).** One module reads the workbook and dumps its **used range** losslessly into `cell_grid` — a plain, JSON-serializable list of row records. It captures everything a cell holds: `value`, `formula`, `data_type`, `number_format`, `font` (bold / italic / underline / size / color), `alignment` (horizontal / indent), `fill`, `border` (the top-border "sum line" is a real subtotal cue), plus worksheet-level facts like `merged_ranges` (critical for TREE layouts) and `hidden_rows`. To be truly lossless it may read the file twice internally — once `data_only=True` for cached values, once `data_only=False` for formulas — but that's still Excel touched in exactly one stage. **The  used range means the last row/column with content, not Excel's million-row maximum** (guard against a phantom `max_row`). Every module after this works from `cell_grid`; nothing reopens the workbook — mirroring the existing pipeline's "Stage 1 reads the xlsx once, everything downstream is JSON."
 
-**Layer 2 — Feature derivation.** Each extractor (per-format or dynamic) reads `cell_grid` and *adds* the derived signals — `description`, `whitespace_depth`, `all_caps`, `total_keyword`, `has_values`, `arithmetic_sum_of_above`, etc. The raw facts stay; the derived fields accumulate on top. Data grows downstream and is never truncated (a row record keeps its `raw_cells`, gains signals here, gains a `class` at classification, gains `statement_side` at section assignment).
+**Layer 2 — Feature derivation (one dynamic extractor).** A single dynamic extractor reads `cell_grid` through the resolved columns and *adds* the derived signals — `description`, `whitespace_depth`, `all_caps`, `total_keyword`, `is_metric`, `top_border`, `has_values`, `arithmetic_sum_of_above`, etc. The raw facts stay; the derived fields accumulate on top. Data grows downstream and is never truncated (a row record keeps its cells, gains signals here, gains a `class` at classification, gains `section` from the locked anchors).
 
 **Format detection (scoring-based).** Reading `cell_grid`, we scan the first ~60 rows and extract **position-agnostic** signals — patterns counted anywhere, without assuming where anything lives: code-pattern prevalence (dash / dot / colon / MRI style), how spread out the first text cell is across columns, merged-cell density, leading-whitespace prevalence. Each known format is scored against this profile. High score → known; low or no score → unknown. Because these signals don't assume cell positions, we can detect the format *before* we know where the data is (no chicken-and-egg).
 
 **Stage 1 — Anchor lock (before any classification).** Once the columns are known — from the format template (known branch) or the AI structure agent (unknown branch) — we lock the three anchors first. Keyword lists (`anchor_keywords.json`: grand / intermediate / exclusion + split-pairs) **and** the AI nominate candidate revenue / expense / NOI rows; the arithmetic `R − E = NOI` test, month-by-month within tolerance `max($1, 0.5%)`, decides which triple is real. Keywords only *nominate*; the math *decides*. Exactly one passing triple → **auto-lock**. Zero, multiple, or a genuinely novel phrasing → the **raw file is shown to the user** with each candidate's arithmetic verdict, and they confirm the three rows (a novel phrasing they pick is promoted back into the keyword list). No NOI row at all → derive `N = R − E` and flag it `derived`. The locked anchors define the revenue / expense / capex regions for everything downstream — which is why there's no separate section-assignment step later. This also kills the keyword-collision bug (e.g. a "Net Operating Income" row *and* a "…after Debt" row both matching): the after-debt row misses `R − E = N` by the debt service, so the math rejects it automatically.
 
-**Known branch — route to the format's own extractor.** When detection matches a known format with high confidence, the file is routed to that format's dedicated signal-extraction module (Format A → extractor A, Format B → extractor B, and so on). Each known format keeps its own extractor for now — they can be consolidated later, but separate modules are easier to reason about and tune per format. Every one of them emits the same feature schema.
+**Known branch — a template map, then the shared extractor.** When detection matches a known format, we build a small **template structure map** from that format's fixed layout (which columns hold the description, the values, the month header) — no AI call needed. The **same dynamic extractor** then reads `cell_grid` through those columns. (Early on each format had its own extractor; those have been **unified** — the dynamic extractor does the same job driven by a column map, and it is the only one that emits the full current signal set, so known and unknown files are identical from extraction onward.)
 
 **Unknown branch — AI structure agent, then dynamic extraction.** When no known format scores high enough, the file goes to the AI Structure Agent, which returns a strict-JSON **structure map** in two tiers:
 
