@@ -7,6 +7,7 @@ use them, and updates the Django UI. The bridge facade already isolates the UI, 
 UI churn is contained.
 
 **What we have vs. what's missing**
+
 - Have: the full algorithm (format detect → column resolve → dynamic extract →
   anchor lock → classify + fact override → section → NOI → diagnosis/loop),
   `anchor_keywords.json`, and a clean bridge seam.
@@ -21,22 +22,22 @@ UI churn is contained.
 Put the ported code in a **new** `src/t12_pipeline/pipeline/parsing/` subpackage
 (don't clobber the old `detection/` until the bridge is switched over).
 
-| Notebook cell / functions | → `src` module |
-| --- | --- |
-| M3: `extract_cell_grid`, `gcell`, `gvalue`, `grid_row_map`, `load_cell_grid` | `parsing/cell_grid.py` |
-| M4: `detect_format` (+ signatures/thresholds) | `parsing/format_detect.py` |
-| M5–7: `has_total_keyword`, `total_keyword_hit`, `_apply_arithmetic`, `detect_value_columns`, `CODE_COL/DESC_COL/EMB_DESC_COL/NOCODE_DESC_COL` | `parsing/signals.py` (+ reuse `detection/keywords.py`) |
-| M8a: `run_structure_agent`, `StructureMap`, `render_grid_for_agent`, prompt | `parsing/structure_agent.py` |
-| M8b: `build_final_map`, `validate_subsections`; `build_known_map`, `_detect_known_layout` | `parsing/structure_map.py` |
-| M9: `extract_row_signals_dynamic` | `parsing/extract.py` |
-| M9b: `lock_anchors`, `nominate_anchors`, `_expense_units`, `_triple_holds`, derive, `apply_anchor_overrides` | `parsing/anchor_lock.py` |
-| M10: `CLASS_SIGNALS`, `SIGNAL_FUNCS`, `classify_rows`, `reconcile_leaf_data`, `explain_scores` | `parsing/classify.py` |
-| M11: `assign_sections` | `parsing/sections.py` (or fold into `classify.py`) |
-| M12: `verify_noi` | `parsing/noi.py` |
-| M13: `run_diagnosis_agent`, schemas, prompt | `parsing/diagnosis.py` |
-| M14: `run_feedback_loop`, `apply_corrections` | `parsing/feedback.py` |
-| Orchestrator `run_pipeline` | `parsing/run_parse.py` (the stage runner) |
-| `anchor_keywords.json` | `config/anchor_keywords.json` (loaded via `config.paths`) |
+| Notebook cell / functions                                                                                                                               | →`src` module                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| M3:`extract_cell_grid`, `gcell`, `gvalue`, `grid_row_map`, `load_cell_grid`                                                                   | `parsing/cell_grid.py`                                      |
+| M4:`detect_format` (+ signatures/thresholds)                                                                                                          | `parsing/format_detect.py`                                  |
+| M5–7:`has_total_keyword`, `total_keyword_hit`, `_apply_arithmetic`, `detect_value_columns`, `CODE_COL/DESC_COL/EMB_DESC_COL/NOCODE_DESC_COL` | `parsing/signals.py` (+ reuse `detection/keywords.py`)    |
+| M8a:`run_structure_agent`, `StructureMap`, `render_grid_for_agent`, prompt                                                                        | `parsing/structure_agent.py`                                |
+| M8b:`build_final_map`, `validate_subsections`; `build_known_map`, `_detect_known_layout`                                                        | `parsing/structure_map.py`                                  |
+| M9:`extract_row_signals_dynamic`                                                                                                                      | `parsing/extract.py`                                        |
+| M9b:`lock_anchors`, `nominate_anchors`, `_expense_units`, `_triple_holds`, derive, `apply_anchor_overrides`                                   | `parsing/anchor_lock.py`                                    |
+| M10:`CLASS_SIGNALS`, `SIGNAL_FUNCS`, `classify_rows`, `reconcile_leaf_data`, `explain_scores`                                                 | `parsing/classify.py`                                       |
+| M11:`assign_sections`                                                                                                                                 | `parsing/sections.py` (or fold into `classify.py`)        |
+| M12:`verify_noi`                                                                                                                                      | `parsing/noi.py`                                            |
+| M13:`run_diagnosis_agent`, schemas, prompt                                                                                                            | `parsing/diagnosis.py`                                      |
+| M14:`run_feedback_loop`, `apply_corrections`                                                                                                        | `parsing/feedback.py`                                       |
+| Orchestrator`run_pipeline`                                                                                                                            | `parsing/run_parse.py` (the stage runner)                   |
+| `anchor_keywords.json`                                                                                                                                | `config/anchor_keywords.json` (loaded via `config.paths`) |
 
 **Conventions to enforce while porting** (src `CLAUDE.md`): no `sys.path`; all paths
 via `config.paths`; all model selection via `config.agent_llm_config` (not direct
@@ -49,15 +50,15 @@ via `config.paths`; all model selection via `config.agent_llm_config` (not direc
 Mirror the notebook's `workflow_output/<file>/NN_*.json` as the per-run outputs the
 bridge reads/writes. New contract replaces the old detection files:
 
-| New stage file | Replaces (old) |
-| --- | --- |
-| `03_cell_grid.json` | — |
-| `04_format.json` | — |
-| `10_final_map.json` (AI or template map) | — |
-| `10b_anchor_lock.json` (status, candidates, evidence, locked) | — |
-| `12_classified.json` (class + section + confidence per row) | `annotated_blocks.json` |
-| `14_noi.json` (per-month + total) | `noi_comparison.json` |
-| `15_diagnosis.json` / `16_feedback.json` | — |
+| New stage file                                                  | Replaces (old)            |
+| --------------------------------------------------------------- | ------------------------- |
+| `03_cell_grid.json`                                           | —                        |
+| `04_format.json`                                              | —                        |
+| `10_final_map.json` (AI or template map)                      | —                        |
+| `10b_anchor_lock.json` (status, candidates, evidence, locked) | —                        |
+| `12_classified.json` (class + section + confidence per row)   | `annotated_blocks.json` |
+| `14_noi.json` (per-month + total)                             | `noi_comparison.json`   |
+| `15_diagnosis.json` / `16_feedback.json`                    | —                        |
 
 Wire these into the manifest/paths so stages read from `MANIFEST_PATH`, like the
 existing pipeline (no date-stamped path recomputation).

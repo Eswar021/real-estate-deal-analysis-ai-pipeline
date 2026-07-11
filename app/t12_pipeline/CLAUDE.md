@@ -98,6 +98,7 @@ names, and in conversation ("Stage 0", "Stage 1", "Stage 2").
 
 `output_docs/current_manifest.json` is the single config source for stages 1 and 2.
 It is written by Stage 0 (`0_manifest/runner.py`) and embeds:
+
 - Full rulebook contents (`rulebook` key)
 - All input file paths (`l1.input_files`)
 - All Stage 1 output dirs (`l1.paths`: block_detection, annotated_blocks, actual_noi, computed_noi, noi_comparison)
@@ -115,15 +116,18 @@ Stage 2 reads its input from `l1.paths.annotated_blocks_dir` (Stage 1 output).
 ## Stage Contracts
 
 **Detection output JSON row fields (keep stable):**
+
 - `row`, `type`, `description`, `section_context`, `section_path`, `values`
 - `statement_side` — `"revenue"` / `"expense"` / `"capex"`, set by detect_blocks
 - `is_total_revenue`, `is_total_expense`, `is_noi` — boolean flags, set by annotate_totals
 
 **Mapping output row fields (added by Stage 2):**
+
 - `mapping`, `not_found`, `mapping_source`
 - `ai_suggested_mapping`, `ai_confidence`, `ai_reasoning` — added by find_mapping
 
 **Rulebook shape:**
+
 ```json
 { "certain": {}, "contextual": {}, "no_conflict": {}, "unresolved": {} }
 ```
@@ -146,10 +150,12 @@ Subtotal rows get statement_side from state BEFORE the flip. Full decision trees
 Stage 1 computes and verifies NOI without mapping — uses `statement_side` directly.
 
 `compute_noi.py` produces two files per T12:
+
 - `actual_noi`: vendor's reported NOI from the `is_noi` subtotal row
 - `computed_noi`: row-method sum (revenue rows - expense rows), plus `is_total_revenue` subtotal anchor
 
 `compare_noi.py` runs two verification layers:
+
 1. **NOI check**: row-method computed NOI vs vendor's actual NOI (within $1 or 0.1%)
 2. **Revenue accuracy**: row-method revenue vs vendor's EGI (`is_total_revenue` subtotal)
 3. **Expense accuracy**: implied expense (EGI - actual_noi) vs row-method expense sum
