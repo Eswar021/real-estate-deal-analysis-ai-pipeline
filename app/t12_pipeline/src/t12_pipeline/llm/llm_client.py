@@ -1,29 +1,39 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_anthropic import ChatAnthropic
 
 from t12_pipeline.config.agent_llm_config import DEFAULT_AGENT_NAME, get_agent_llm_config
 
-load_dotenv()
+# Always load this package's .env (app/t12_pipeline/.env), regardless of cwd.
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 
 def make_llm(
     agent_name: str = DEFAULT_AGENT_NAME,
-    provider: str | None = None,              # "openai" | "lmstudio" | "gemini"
+    provider: str | None = None,              # "openai" | "lmstudio" | "gemini" | "anthropic"
     model: str | None = None,
     temperature: float | None = None,
     base_url: str | None = None,
     api_key_env: str | None = None,
 ):
     agent_config = get_agent_llm_config(agent_name)
+    agent_provider = str(agent_config["provider"]).lower().strip()
 
-    provider = provider or str(agent_config["provider"])
-    provider = provider.lower().strip()
-    model = model or agent_config.get("model")  # type: ignore[assignment]
+    provider = (provider or str(agent_config["provider"])).lower().strip()
+
+    # Inherit the agent's model / api_key_env ONLY when the requested provider
+    # matches the agent's provider. Otherwise (e.g. provider="anthropic" while the
+    # default agent is OpenAI) leave them None so each provider branch below fills
+    # its own defaults — this stops an OpenAI model/key from leaking into a
+    # Claude/Gemini call.
+    same_provider = provider == agent_provider
+    model = model or (agent_config.get("model") if same_provider else None)  # type: ignore[assignment]
     temperature = temperature if temperature is not None else float(agent_config.get("temperature", 0.15))
-    api_key_env = api_key_env or agent_config.get("api_key_env")  # type: ignore[assignment]
+    api_key_env = api_key_env or (agent_config.get("api_key_env") if same_provider else None)  # type: ignore[assignment]
 
     # -------------------------
     # OpenAI (Cloud)
@@ -80,8 +90,28 @@ def make_llm(
             temperature=temperature,
         )
 
+    # -------------------------
+    # Anthropic (Claude)
+    # -------------------------
+    if provider in ("anthropic", "claude"):
+        model = model or os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
+        api_key_env = api_key_env or "CLAUDE_API_KEY"
+        api_key = os.getenv(api_key_env)
+
+        if not api_key:
+            raise ValueError(f"{api_key_env} is missing")
+
+        # The Claude 5 family deprecated `temperature` (the API 400s if it's sent),
+        # so we don't forward it. These models are low-variance by default, and our
+        # downstream arithmetic checks catch any drift.
+        return ChatAnthropic(
+            model=model,       # type: ignore
+            api_key=api_key,   # type: ignore
+            max_tokens=8192,   # Claude requires an explicit cap; large enough for our structured JSON
+        )
+
     raise ValueError(
-        f"Unknown provider: {provider}. Use 'openai', 'lmstudio', or 'gemini'."
+        f"Unknown provider: {provider}. Use 'openai', 'lmstudio', 'gemini', or 'anthropic'."
     )
 
 

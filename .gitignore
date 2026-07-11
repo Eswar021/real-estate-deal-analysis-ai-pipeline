@@ -21,6 +21,11 @@ data/
 # Generated outputs — reproducible by running the pipeline
 output_docs/
 
+# Notebook run outputs / baseline snapshots (generated, large, contain financials)
+workflow_output/
+app/t12_pipeline/src/analysis/workflow/workflow_output/
+app/t12_pipeline/src/analysis/workflow/baseline/
+
 # Archive — old/experimental code, not needed
 archive/
 
