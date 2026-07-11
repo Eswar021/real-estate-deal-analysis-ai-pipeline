@@ -5,7 +5,11 @@ side (the AI structure agent as an anchor-candidate source). The *current* pipel
 diagram still lives in [t12_parsing_proposal.md](./t12_parsing_proposal.md); this file
 shows what it would become if we adopt the anchor-first design.
 
-**Build status (2026-07-11):** Phase 1 (unknown branch) is **implemented and tested** in the notebook — a new `Module 9b` anchor lock (`lock_anchors`, driven by `anchor_keywords.json`), the `apply_anchor_overrides` fact-override after Module 10, Module 11 reduced to a positional tag from the locked anchors, and the feedback loop constrained so it can't touch locked rows. On the 7-file unknown set: **6 auto-lock to the correct anchors and reconcile with no feedback loop; Eleven11 flags GATE (4 valid triples — genuinely ambiguous) and still reconciles.** Phase 2 (known branch) is not built yet.
+**Build status (2026-07-11): both branches implemented and tested.**
+- **Phase 1 (unknown):** `Module 9b` anchor lock (`lock_anchors`, driven by `anchor_keywords.json`), `apply_anchor_overrides` after Module 10, Module 11 reduced to a positional tag from the locked anchors, feedback loop constrained off locked rows. On the 7-file unknown set: **6 auto-lock to the correct anchors and reconcile with no feedback loop; Eleven11 flags GATE (4 valid triples) and still reconciles.**
+- **Phase 2 (known):** known formats now build a **template map** (`build_known_map`) and run the *same* dynamic-extract → anchor-lock → classify → override → NOI path (no AI). Tested on Ladera / Lincoln / Creekside → **3/3 reconcile**: Ladera **auto-locks NOI to the real row, not the after-debt row (bug fixed)**; Lincoln's vendor-typo NOI ("Net Operationg Income") is found by the **derive** step (N = R − E matches the row); Creekside flags GATE and reconciles. The real orchestrator runs a known file end-to-end with **no AI call**.
+
+Not yet covered: the interactive gate UI (batch uses a positional tie-break), and a pure "no NOI row anywhere" derive (no matching row) still routes to the gate.
 
 ---
 
