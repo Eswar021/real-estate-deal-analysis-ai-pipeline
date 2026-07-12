@@ -62,3 +62,11 @@ def run_feedback_loop(classified, grid, final_map, noi_res, max_iters=3):
                     "iterations": it, "history": history, "diagnosis": diag}
     return {"status": "UNRESOLVED", "classified": cur, "noi": cur_noi,
             "iterations": max_iters, "history": history, "diagnosis": diag}
+
+
+def run(state):
+    """Step: diagnose (on NOI fail) — AI-reclassify. reads classified, cell_grid,
+    structure_map, noi; writes feedback + the corrected classified/noi."""
+    fb = run_feedback_loop(state["classified"], state["cell_grid"], state["structure_map"],
+                           state["noi"], max_iters=state.get("max_iters", 5))
+    return {**state, "classified": fb["classified"], "noi": fb["noi"], "feedback": fb}

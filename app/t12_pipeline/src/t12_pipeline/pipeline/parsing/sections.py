@@ -24,3 +24,8 @@ def assign_sections(classified, final_map):
         elif row == noi_row:
             state = "capex"
     return classified
+
+
+def run(state):
+    """Step: sections — reads classified, structure_map; assigns each row's section."""
+    return {**state, "classified": assign_sections(state["classified"], state["structure_map"])}

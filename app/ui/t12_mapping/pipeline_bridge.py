@@ -33,13 +33,8 @@ from t12_pipeline.pipeline.mapping.find_mapping import run_ai_mapping
 
 
 # ── run-state: one accumulating dict per upload_id, persisted as state.json ──────────
-#    cell_grid is stored separately (cell_grid.json) — it's multi-MB, kept out of state.json.
-STEPS = {
-    "stage1":        stages.stage1,
-    "check_anchors": stages.check_anchors,
-    "classify":      stages.classify,
-}
-
+#    The step catalog (stages.STEPS) lives in the pipeline; cell_grid is stored separately
+#    (cell_grid.json) — it's multi-MB, kept out of state.json.
 
 def get_state(run_id, with_grid: bool = True) -> dict:
     """Load the run-state; inject the cell_grid side artifact unless the caller won't need it."""
@@ -65,7 +60,7 @@ def run_step(run_id, name, *, save: bool = True, with_grid: bool = True, **input
     except FileNotFoundError:
         state = {"run_id": str(run_id)}
     state.update(inputs)
-    state = STEPS[name](state)
+    state = stages.STEPS[name](state)
     if save:
         save_state(run_id, state)
     return state

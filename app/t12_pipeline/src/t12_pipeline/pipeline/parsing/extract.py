@@ -139,3 +139,13 @@ def extract_row_signals_dynamic(grid, final_map):
 
     apply_arithmetic(rows)
     return rows
+
+
+def run_anchor_rows(state):
+    """Step: extract_anchor_rows (Stage 1) — reads cell_grid, structure_map; writes anchor_rows."""
+    return {**state, "anchor_rows": extract_anchor_rows(state["cell_grid"], state["structure_map"])}
+
+
+def run_signals(state):
+    """Step: extract_signals (Stage 2) — reads cell_grid, structure_map; writes signals."""
+    return {**state, "signals": extract_row_signals_dynamic(state["cell_grid"], state["structure_map"])}

@@ -182,6 +182,32 @@ def lock_anchors(rows, final_map):
             "passing": [], "candidates": cands}
 
 
+def run(state):
+    """Step: lock_anchors — reads anchor_rows, structure_map; writes anchor_lock and the
+    locked R/E/NOI rows (+ any expense split) into structure_map."""
+    lock = lock_anchors(state["anchor_rows"], state["structure_map"])
+    fm = state["structure_map"]
+    if lock["anchors"]:
+        a = lock["anchors"]
+        fm = {**fm, "revenue_end_row": a["revenue_end_row"], "expense_end_row": a["expense_end_row"],
+              "noi_row": a["noi_row"], "expense_split_rows": a.get("expense_split_rows")}
+    return {**state, "anchor_lock": lock, "structure_map": fm}
+
+
+def run_check(state):
+    """Step: check_anchors — light R − |E| = NOI re-verify of state['anchors'] against the
+    Stage-1 anchor_rows (keeps the auto split only if the expense row is unchanged).
+    writes reconcile."""
+    locked = (state.get("anchor_lock") or {}).get("anchors") or {}
+    picks  = state.get("anchors") or {}
+    exp    = picks.get("expense_end_row")
+    split  = locked.get("expense_split_rows") if exp == locked.get("expense_end_row") else None
+    eunit  = split or [exp]
+    rc = reconcile_triple(state.get("anchor_rows", []),
+                          picks.get("revenue_end_row"), eunit, picks.get("noi_row"))
+    return {**state, "reconcile": rc}
+
+
 def reconcile_triple(rows, revenue_row, expense_unit, noi_row):
     """Light per-month `R − |E| = NOI` check for one specific triple — the anchor gate's
     re-verify. `rows` is the Stage-1 anchor_rows ({row, description, values}); NO signals,

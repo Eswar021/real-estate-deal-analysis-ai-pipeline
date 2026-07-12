@@ -13,6 +13,7 @@ Ported verbatim from notebook Module 10 (print helpers dropped).
 from openpyxl.utils import column_index_from_string
 
 from .cell_grid import grid_row_map, gvalue
+from .anchor_lock import apply_anchor_overrides
 
 CLASSES = ["METADATA", "SECTION_HEADER", "SUBSECTION_HEADER", "DATA",
            "SUBSECTION_SUBTOTAL", "SECTION_SUBTOTAL", "COMPUTED_METRIC"]
@@ -123,3 +124,30 @@ def reconcile_leaf_data(rows, grid, structure_map):
         "noi":     {"computed": round(rev - exp, 2), "vendor": round(v(noi_r), 2),
                     "ok": ok(rev - exp, v(noi_r))},
     }
+
+
+def _derive_subsection_subtotals(signal_rows, final_map):
+    """Known files have no AI subsection map — the arithmetic scan already fires on every row
+    whose value = the running sum of the data rows above it; those ARE the subsection
+    subtotals. Return them, minus the grand anchors (handled by the fact override separately)."""
+    anchors = {final_map.get("revenue_end_row"), final_map.get("expense_end_row"),
+               final_map.get("noi_row"), *(final_map.get("expense_split_rows") or [])}
+    anchors.discard(None)
+    return sorted(r["row"] for r in signal_rows
+                  if r.get("arithmetic_sum_of_above") and r["row"] not in anchors)
+
+
+def run(state):
+    """Step: classify — reads signals, structure_map; derives subsection subtotals for known
+    files, then classifies + applies the arithmetic fact-override. writes classified and
+    (for known files) structure_map.validated_subsection_subtotal_rows."""
+    fm, signals = state["structure_map"], state["signals"]
+    if not fm.get("validated_subsection_subtotal_rows"):
+        fm = {**fm, "validated_subsection_subtotal_rows": _derive_subsection_subtotals(signals, fm)}
+    classified = apply_anchor_overrides(classify_rows(signals, fm), fm)
+    return {**state, "structure_map": fm, "classified": classified}
+
+
+def run_flag(state):
+    """Step: flag low-confidence rows — reads classified; writes low_confidence_rows."""
+    return {**state, "low_confidence_rows": flag_low_confidence(state["classified"])}

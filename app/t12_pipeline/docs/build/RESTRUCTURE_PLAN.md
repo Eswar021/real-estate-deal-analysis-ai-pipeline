@@ -206,8 +206,12 @@ The mapping stage reads `state["classification"]["rows"]` directly — `legacy_a
   `check_anchors` are thin callers of `run_step` that ALSO mirror the run-state to the current
   per-page files, so no page breaks. Verified: CLI `parse_file` unchanged on all 7 files; full
   UI flow (upload→gate→re-verify→confirm→review→recompute) identical, incl. split/sign/MANUAL.
-- **Phase B — modules to `run(state)`.** Refactor the micro pipeline functions to the uniform
-  signature. Pure-logic change, no UI impact.
+- **Phase B — modules to `run(state)`. ✅ DONE.** Every parsing module now exposes its own
+  `run(state)` step (`cell_grid` / `format_detect` / `structure_map` / `extract` /
+  `anchor_lock` / `classify` / `sections` / `noi` / `feedback`); `stages.py` composes them and
+  publishes `STEPS` (the registry the bridge dispatches on). The `run_parse` wrappers are gone —
+  `parse_file` (CLI) drives the stages and flattens. Verified: no import cycles, CLI unchanged
+  on all 7 files, full UI flow identical.
 - **Phase C — views become the router.** Move the stage sequencing out of the bridge into the
   page views (`run_step` calls). The bridge shrinks to `get_state/save_state/run_step` + registry.
 - **Phase D — collapse files, retire adapters.** Pages read from `state` via page-local

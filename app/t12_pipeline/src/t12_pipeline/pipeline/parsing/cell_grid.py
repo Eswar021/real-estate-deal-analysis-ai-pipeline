@@ -72,6 +72,11 @@ def extract_cell_grid(path):
     return grid
 
 
+def run(state):
+    """Step: extract_grid — reads file.path, writes cell_grid (the run-state form)."""
+    return {**state, "cell_grid": extract_cell_grid(state["file"]["path"])}
+
+
 # ── helpers every downstream module uses to read the grid ─────────────────────
 def grid_row_map(grid):
     """{sheet_row_number: row_record} for O(1) lookup by row number."""

@@ -11,8 +11,10 @@ from openpyxl.utils import get_column_letter, column_index_from_string
 from .cell_grid import grid_row_map, gvalue
 from .signals import (detect_value_columns, CODE_COL, DESC_COL,
                       EMB_DESC_COL, NOCODE_DESC_COL)
+from .structure_agent import run_structure_agent
 
 _MIN_MONTH_COLS = 6
+KNOWN_FORMATS = ("code_in_a_desc_in_b", "embedded_code_in_a", "no_code")
 
 
 def validate_subsections(final, grid):
@@ -108,3 +110,16 @@ def build_known_map(fmt, grid):
         "revenue_end_row": None, "expense_end_row": None, "noi_row": None,
         "subsections": [], "validated_subsection_subtotal_rows": [], "subsection_header_rows": [],
     }
+
+
+def run(state):
+    """Step: resolve_columns — reads cell_grid, format; writes structure_map, sub_results,
+    structure_map_ai. Known formats use the template map (no AI); unknown → the AI agent."""
+    fmt, grid = state["format"]["format"], state["cell_grid"]
+    if fmt in KNOWN_FORMATS:
+        return {**state, "structure_map": build_known_map(fmt, grid),
+                "sub_results": [], "structure_map_ai": None}
+    ai = run_structure_agent(grid)
+    final_map, sub_results = build_final_map(ai.model_dump(), grid)
+    return {**state, "structure_map": final_map, "sub_results": sub_results,
+            "structure_map_ai": ai.model_dump()}

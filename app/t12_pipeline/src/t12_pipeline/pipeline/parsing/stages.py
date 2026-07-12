@@ -1,84 +1,88 @@
-"""Stage functions in run-state form: every one is `run(state) -> state`.
+"""The step catalog and the composite stages, all in run-state form (`run(state) -> state`).
 
-These are the units the bridge's `run_step` executes and the views sequence. Each reads the
-slices it needs from the single `state` dict, adds its own, and returns `state` — a uniform,
-composable contract (see docs/build/RESTRUCTURE_PLAN.md).
+Every pipeline module now exposes its own `run(state)` step (see each module). This file
+composes them into the two coherent stages the app runs, and publishes `STEPS` — the registry
+the bridge's `run_step` dispatches on and the views sequence.
 
-Phase A: these WRAP the existing, tested `run_parse` functions (no behaviour change); later
-phases absorb the underlying logic here and retire the flat wrappers.
+  stage1  = extract_grid → detect_format → resolve_columns → extract_anchor_rows → lock_anchors
+  classify = (apply confirmed anchors) → extract_signals → classify → sections → verify_noi
+             → (diagnose, only on NOI fail) → flag_low_confidence
 
-state slices touched here:
-  file            {name, path}                         (input)
-  cell_grid       the Layer-1 grid                     (heavy; kept as a side artifact)
-  format          detect_format result
-  structure_map   final_map (columns + anchors + subsections)
-  structure_map_ai the raw AI map (unknown files) or None
-  sub_results     per-subsection arithmetic results
-  anchor_rows     light {row, description, values} rows for the lock / gate
-  anchor_lock     {status, method, anchors, candidates, passing}
-  anchors         the user's confirmed R/E/NOI picks   (written by the gate view)
-  reconcile       light re-verify result               (check_anchors)
-  signals         full per-row signal vectors          (classify)
-  classification  {classified, noi, feedback, low_confidence_rows}  (classify)
+See docs/build/RESTRUCTURE_PLAN.md.
 """
-from .run_parse import parse_to_anchors, classify_within_anchors
-from .anchor_lock import reconcile_triple
+from . import cell_grid, format_detect, structure_map, extract, anchor_lock, sections, noi, feedback
+from . import classify as classify_mod
 
 
 def stage1(state):
-    """STAGE 1 — Layer 1 → format detect → resolve columns → light anchor rows → R−E=NOI
-    lock. reads: file. writes: cell_grid, format, structure_map, structure_map_ai,
-    sub_results, anchor_rows, anchor_lock."""
-    s1 = parse_to_anchors(state["file"]["path"])
-    return {**state,
-            "cell_grid":        s1["cell_grid"],
-            "format":           s1["format_result"],
-            "structure_map":    s1["final_map"],
-            "structure_map_ai": s1["structure_map"],
-            "sub_results":      s1["sub_results"],
-            "anchor_rows":      s1["anchor_rows"],
-            "anchor_lock":      s1["anchor_lock"],
-            "step":             "locked"}
+    """STAGE 1 — up to the R − E = NOI anchor lock. reads: file. writes: cell_grid, format,
+    structure_map, structure_map_ai, sub_results, anchor_rows, anchor_lock."""
+    state = cell_grid.run(state)           # extract_grid
+    state = format_detect.run(state)       # detect_format
+    state = structure_map.run(state)       # resolve_columns (template / AI)
+    state = extract.run_anchor_rows(state)  # light {row, description, values}
+    state = anchor_lock.run(state)         # R − E = NOI lock
+    return {**state, "step": "locked"}
 
 
 def check_anchors(state):
-    """Light `R − |E| = NOI` re-verify of state['anchors'] against the Stage-1 anchor_rows.
-    reads: anchor_rows, anchor_lock, anchors. writes: reconcile. (No cell_grid needed.)"""
-    locked = (state.get("anchor_lock") or {}).get("anchors") or {}
-    picks  = state.get("anchors") or {}
-    exp    = picks.get("expense_end_row")
-    split  = locked.get("expense_split_rows") if exp == locked.get("expense_end_row") else None
-    eunit  = split or [exp]
-    rc = reconcile_triple(state.get("anchor_rows", []),
-                          picks.get("revenue_end_row"), eunit, picks.get("noi_row"))
-    return {**state, "reconcile": rc}
+    """Light re-verify of state['anchors'] — delegates to the anchor_lock step."""
+    return anchor_lock.run_check(state)
+
+
+def _apply_confirmed_anchors(state):
+    """Fold the user's confirmed R/E/NOI picks into structure_map, keeping the auto-detected
+    expense split only if the expense row is unchanged from the pre-filled one."""
+    picks = state.get("anchors")
+    if picks is None:
+        return state
+    fm = dict(state["structure_map"])
+    locked_exp, locked_split = fm.get("expense_end_row"), fm.get("expense_split_rows")
+    fm["revenue_end_row"] = picks.get("revenue_end_row")
+    fm["expense_end_row"] = picks.get("expense_end_row")
+    fm["noi_row"]         = picks.get("noi_row")
+    fm["expense_split_rows"] = locked_split if picks.get("expense_end_row") == locked_exp else None
+    return {**state, "structure_map": fm}
 
 
 def classify(state):
-    """STAGE 2 — apply the confirmed anchors → full signal extraction → classify + fact
-    override → sections → NOI verify → (AI diagnosis on fail) → confidence flags.
+    """STAGE 2 — apply the confirmed anchors, then extract signals → classify + fact override
+    → sections → NOI verify → (AI diagnosis only on NOI fail) → confidence flags.
     reads: cell_grid, structure_map, anchors, run_feedback?, max_iters?.
     writes: structure_map (anchors applied), signals, classification."""
-    final_map = dict(state["structure_map"])
-    picks = state.get("anchors")
-    if picks is not None:
-        locked_exp   = final_map.get("expense_end_row")
-        locked_split = final_map.get("expense_split_rows")
-        final_map["revenue_end_row"] = picks.get("revenue_end_row")
-        final_map["expense_end_row"] = picks.get("expense_end_row")
-        final_map["noi_row"]         = picks.get("noi_row")
-        # keep the auto-detected split only if the user kept the pre-filled expense row
-        final_map["expense_split_rows"] = (
-            locked_split if picks.get("expense_end_row") == locked_exp else None)
+    state = _apply_confirmed_anchors(state)
+    state = extract.run_signals(state)
+    state = classify_mod.run(state)        # derive subsections + classify + override
+    state = sections.run(state)
+    state = noi.run(state)
+    if not state["noi"]["overall_pass"] and state.get("run_feedback", True) \
+            and state["structure_map"].get("noi_row"):
+        state = feedback.run(state)        # AI diagnosis loop
+    state = classify_mod.run_flag(state)
 
-    s2 = classify_within_anchors(state["cell_grid"], final_map,
-                                 run_feedback=state.get("run_feedback", True),
-                                 max_iters=state.get("max_iters", 5))
-    return {**state,
-            "structure_map":  final_map,
-            "signals":        s2["signal_rows"],
-            "classification": {"classified":          s2["classified"],
-                               "noi":                 s2["noi"],
-                               "feedback":            s2["feedback"],
-                               "low_confidence_rows": s2["low_confidence_rows"]},
-            "step": "classified"}
+    classification = {"classified":          state["classified"],
+                      "noi":                 state["noi"],
+                      "feedback":            state.get("feedback"),
+                      "low_confidence_rows": state["low_confidence_rows"]}
+    keep = {k: v for k, v in state.items()
+            if k not in ("classified", "noi", "feedback", "low_confidence_rows")}
+    return {**keep, "classification": classification, "step": "classified"}
+
+
+# The step registry: composite stages + the individual steps (available for finer routing).
+STEPS = {
+    "stage1":          stage1,
+    "classify":        classify,
+    "check_anchors":   check_anchors,
+    "extract_grid":    cell_grid.run,
+    "detect_format":   format_detect.run,
+    "resolve_columns": structure_map.run,
+    "anchor_rows":     extract.run_anchor_rows,
+    "lock_anchors":    anchor_lock.run,
+    "signals":         extract.run_signals,
+    "classify_rows":   classify_mod.run,
+    "sections":        sections.run,
+    "verify_noi":      noi.run,
+    "diagnose":        feedback.run,
+    "flag":            classify_mod.run_flag,
+}

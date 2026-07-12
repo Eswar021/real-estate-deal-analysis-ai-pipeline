@@ -106,3 +106,8 @@ def detect_format(grid, scan_rows=60):
     return {"format": best, "confidence": scores[best],
             "reason": f"{best} strongest in column A",
             "scores": scores, "counts": counts, "fractions": F, "rows_with_text": rows_with_text}
+
+
+def run(state):
+    """Step: detect_format — reads cell_grid, writes format (the run-state form)."""
+    return {**state, "format": detect_format(state["cell_grid"])}

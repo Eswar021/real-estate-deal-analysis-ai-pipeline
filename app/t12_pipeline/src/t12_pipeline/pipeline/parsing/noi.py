@@ -76,3 +76,8 @@ def verify_noi(classified, grid, final_map):
             "revenue_rows": rev_rows, "expense_rows": exp_rows,
             "vendor_rows": {"revenue_end": final_map["revenue_end_row"],
                             "expense_end": final_map["expense_end_row"], "noi": final_map["noi_row"]}}
+
+
+def run(state):
+    """Step: verify_noi — reads classified, cell_grid, structure_map; writes noi."""
+    return {**state, "noi": verify_noi(state["classified"], state["cell_grid"], state["structure_map"])}
