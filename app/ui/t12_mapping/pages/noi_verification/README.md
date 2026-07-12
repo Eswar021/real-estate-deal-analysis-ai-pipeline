@@ -14,8 +14,8 @@ class / section / values / confidence / low_confidence). No cell_grid needed —
 were computed at classify time.
 
 **Writes** (on **Recompute**, via `run_step("classify", run_feedback=False)` → deterministic,
-no AI): the run-state + `mirror_mapping` (`annotated_blocks.json` + `actual_noi.json` for the
-mapping stage / data_review).
+no AI): the run-state. On **Save & Continue** it also runs Stage 3 mapping (`run_mapping`,
+which builds its input from the run-state and writes `state.mapping`).
 
 **On Save & Continue:** runs the mapping stage (`run_mapping`, reads `annotated_blocks.json`)
 then redirects to `data_review`.

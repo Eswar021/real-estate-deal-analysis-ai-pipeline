@@ -219,9 +219,16 @@ The mapping stage reads `state["classification"]["rows"]` directly — `legacy_a
   + `run_preflight` (pre-run screen) + `mirror_stage1`/`mirror_stage2` (transitional file
   mirrors, removed in Phase D) + `run_mapping` + loaders. Verified: full UI flow + reject flow
   identical (split/sign/MANUAL preserved).
-- **Phase D — collapse files, retire adapters.** Pages read from `state` via page-local
-  presenters; drop `classification/annotated_blocks/comparison/actual_noi` as separate files;
-  mapping + `data_review` read `state` slices. `legacy_adapter` deleted.
+- **Phase D — collapse files, retire adapters. ✅ DONE.** Every page reads the run-state
+  directly (parsing pages via `get_state`; the review page via a page-local presenter,
+  `noi_verification.helpers.build_view`). Storage per upload is now just `state.json` +
+  `cell_grid.json` — the ~8 mirror/legacy files (anchor_lock / parse_state / classification /
+  comparison / annotated_blocks / actual_noi / auto_mapped / ai_mapped) are gone. Stage 3
+  builds its mapping input in-memory from the run-state and writes `state.mapping`;
+  `data_review` reads/writes `state.mapping`. `legacy_adapter` is trimmed to `to_annotated` +
+  `column_headers` (the in-memory mapping input); the rest is deleted. Verified across the
+  full flow incl. Stage-3 mapping + data_review edit round-trip (the AI mapping call itself is
+  internally unchanged).
 
 Each phase is independently shippable and testable against the 7 sample files + the UI flow.
 

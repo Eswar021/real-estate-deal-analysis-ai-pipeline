@@ -1,9 +1,6 @@
-"""Compatibility layer — map the anchor-first `parse_file` result onto the legacy
-`annotated_blocks` / `comparison` / `actual_noi` shapes the Django UI and the mapping
-stage (Stage 3) already consume. Lets the bridge swap its guts without rewriting the
-mapping stage or the UI data contracts.
-
-Pure logic (no Django) so it's unit-testable.
+"""Mapping-input adapter — build the `annotated_blocks` shape the mapping stage (Stage 3)
+consumes from a parse result. The bridge calls `to_annotated` in-memory (no file) to feed
+`map_results`; `column_headers` is also reused by the classify step. Pure logic (no Django).
 """
 from openpyxl.utils import column_index_from_string
 
@@ -66,51 +63,3 @@ def to_annotated(res, file_name="", file_path=""):
     }
 
 
-def _blk(actual, computed):
-    if actual is None or computed is None:
-        return {"actual": actual, "computed": computed, "diff": None, "abs_diff": None, "match": None}
-    diff = round(computed - actual, 2)
-    return {"actual": round(actual, 2), "computed": round(computed, 2), "diff": diff,
-            "abs_diff": round(abs(diff), 2), "match": abs(diff) <= max(1.0, abs(actual) * 0.005)}
-
-
-def to_comparison(res, file_name=""):
-    """parse_file result → legacy comparison dict (what the noi_verification page shows).
-    Built directly from the anchor-first NOI verification."""
-    noi = res["noi"]; hdrs = column_headers(res)
-    months = []
-    for i, m in enumerate(noi["months"]):
-        months.append({
-            "month":   hdrs[i] if i < len(hdrs) else res["final_map"]["value_columns"][i],
-            "revenue": _blk(m["rev"][0], m["rev"][1]),
-            "expense": _blk(m["exp"][0], m["exp"][1]),
-            "noi":     _blk(m["noi"][0], m["noi"][1]),
-        })
-    last = noi["months"][-1] if noi["months"] else None
-    totals = {
-        "revenue": _blk(last["rev"][0], last["rev"][1]) if last else _blk(None, None),
-        "expense": _blk(last["exp"][0], last["exp"][1]) if last else _blk(None, None),
-        "noi":     _blk(last["noi"][0], last["noi"][1]) if last else _blk(None, None),
-    }
-    noi_desc = next((r["description"] for r in res["classified"]
-                     if r["row"] == res["final_map"].get("noi_row")), "")
-    return {
-        "file": file_name, "format": res["format"], "column_headers": hdrs,
-        "overall_pass": noi["overall_pass"], "tolerance_used": "max($1, 0.5%)",
-        "months": months, "totals": totals,
-        "actual_noi_row": noi_desc, "skipped_count": 0, "unmapped_count": 0,
-        "anchor_status": res["anchor_lock"]["status"],
-    }
-
-
-def to_actual_noi(res):
-    """Minimal vendor-totals view (the data_review page reads this)."""
-    noi = res["noi"]; last = noi["months"][-1] if noi["months"] else None
-    return {
-        "format": res["format"],
-        "revenue_end_row": res["final_map"].get("revenue_end_row"),
-        "expense_end_row": res["final_map"].get("expense_end_row"),
-        "noi_row": res["final_map"].get("noi_row"),
-        "noi": {"actual": last["noi"][0] if last else None,
-                "description": to_comparison(res)["actual_noi_row"]},
-    }

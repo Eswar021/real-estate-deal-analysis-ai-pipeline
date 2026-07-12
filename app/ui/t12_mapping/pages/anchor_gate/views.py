@@ -15,8 +15,7 @@ POST action=continue: CONFIRM — run Stage 2 (classify + AI diagnosis on fail),
                       the classification review.
 
 Reads:  the run-state (anchor_lock + anchor_rows) via bridge.get_state
-Writes: on Confirm — the classify step (run-state) + mirror_mapping (annotated_blocks +
-        actual_noi for the mapping stage / data_review). Re-verify writes nothing.
+Writes: on Confirm — the classify step (Stage 2) into the run-state. Re-verify writes nothing.
 DB:     Upload.current_step = 'noi_verification' (on Confirm)
 Next:   noi_verification (the classification review)
 """
@@ -48,10 +47,9 @@ def anchors(request, upload_id):
         }
         try:
             if request.POST.get("action") == "continue":
-                # Stage 2 (classify + AI diagnosis on NOI fail); mirror the mapping inputs
-                s = pipeline_bridge.run_step(upload_obj.id, "classify",
-                                             anchors=chosen, run_feedback=True)
-                pipeline_bridge.mirror_mapping(upload_obj.id, s)
+                # Stage 2 into the run-state (classify + AI diagnosis on NOI fail)
+                pipeline_bridge.run_step(upload_obj.id, "classify",
+                                         anchors=chosen, run_feedback=True)
                 upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
                 upload_obj.save(update_fields=["current_step", "updated_at"])
                 return redirect("noi_verify", upload_id=upload_obj.id)

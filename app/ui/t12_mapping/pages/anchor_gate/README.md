@@ -15,10 +15,9 @@ at gate time only the Stage-1 state exists.
 - **Re-verify** (POST `action=verify`, via `run_step("check_anchors", save=False)`): **nothing**
   — a light `R − |E| = NOI` check on the picked rows using only `anchor_rows` (no classification,
   no AI).
-- **Confirm** (POST `action=continue`, via `run_step("classify")` + `mirror_mapping`): runs
-  **Stage 2** into the run-state (the classify step flips `anchor_lock` to `MANUAL` in-state),
-  then mirrors `annotated_blocks.json` + `actual_noi.json` for the mapping stage / data_review.
-  The AI failure-diagnosis loop runs here only if NOI fails.
+- **Confirm** (POST `action=continue`, via `run_step("classify")`): runs **Stage 2** into the
+  run-state (the classify step flips `anchor_lock` to `MANUAL` in-state). The AI
+  failure-diagnosis loop runs here only if NOI fails.
 
 **DB:** `Upload.current_step = 'noi_verification'` on Confirm.
 

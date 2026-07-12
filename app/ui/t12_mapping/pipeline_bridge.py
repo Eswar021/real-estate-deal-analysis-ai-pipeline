@@ -112,64 +112,50 @@ def run_preflight(xlsx_local_path) -> dict:
     return screen_structure(extract_cell_grid(str(xlsx_local_path)))
 
 
-# ── mirror helper: bridge the run-state to the files the mapping side still reads ────
-#    Transitional (Phase D-parsing). Phase D-mapping removes it once the mapping stage +
-#    data_review read the run-state directly. The parsing pages already read the run-state.
-
-def mirror_mapping(upload_id, state) -> None:
-    """Write the two files the mapping stage (annotated_blocks) and data_review (actual_noi)
-    still consume, built from the confirmed run-state."""
-    res = _res_from_state(state)
-    storage.write_json(upload_id, "annotated_blocks.json", la.to_annotated(res, state["file"]["name"]))
-    storage.write_json(upload_id, "actual_noi.json",       la.to_actual_noi(res))
-
-
-# The parsing pages (anchor gate, classification review) read the run-state directly via
-# get_state — no per-page loader needed. Mapping-side loaders live below.
+# Every page reads the run-state directly via get_state — no per-page loader needed. Stage 3
+# builds its mapping input in-memory from the run-state (below); nothing mirrors to files.
 
 
 # ═══════════════════════════════════════════════════════════════════════
-#  Stage 2 — Mapping (rulebook lookup + AI fallback)  — UNCHANGED
+#  Stage 3 — Mapping (rulebook lookup + AI fallback)
 # ═══════════════════════════════════════════════════════════════════════
 
 def run_mapping(upload_id) -> dict:
-    """Runs the full mapping stage on the (corrected) annotated_blocks entry.
-    Synchronous; 30-180s depending on how many rows fall to the AI fallback."""
+    """Stage 3 — map every classified DATA row to a canonical category. Builds the mapping
+    input (annotated shape) in-memory from the run-state, runs the rulebook lookup + AI
+    fallback, and stores the result in state['mapping']. Synchronous; 30-180s depending on
+    how many rows fall to the AI fallback."""
     import time
     t0 = time.time()
-    print(f"[bridge] Stage 2 starting for upload {upload_id}", flush=True)
+    print(f"[bridge] Stage 3 starting for upload {upload_id}", flush=True)
 
     rulebook  = _load_latest_rulebook()
-    annotated = storage.read_json(upload_id, "annotated_blocks.json")
+    state     = get_state(upload_id)                       # cell_grid needed for column headers
+    annotated = la.to_annotated(_res_from_state(state), state["file"]["name"])
 
-    print(f"[bridge] Stage 2a — rulebook lookup (map_blocks)", flush=True)
+    print(f"[bridge] Stage 3a — rulebook lookup (map_blocks)", flush=True)
     auto_mapped = map_results(annotated, rulebook)
-    storage.write_json(upload_id, "auto_mapped.json", auto_mapped)
     s = auto_mapped["summary"]
     print(f"[bridge]   {s['data_rows']} data rows | {s['mapped']} mapped | {s['unmapped']} unmapped", flush=True)
 
-    print(f"[bridge] Stage 2b — AI fallback (find_mapping)", flush=True)
+    print(f"[bridge] Stage 3b — AI fallback (find_mapping)", flush=True)
     ai_mapped, run_logs = run_ai_mapping(auto_mapped, rulebook)
-    storage.write_json(upload_id, "ai_mapped.json", ai_mapped)
-    if run_logs:
-        storage.write_json(upload_id, "ai_mapping_logs.json", run_logs)
 
-    print(f"[bridge] Stage 2 finished in {time.time() - t0:.1f}s", flush=True)
+    state["mapping"] = ai_mapped
+    if run_logs:
+        state["mapping_logs"] = run_logs
+    save_state(upload_id, state)
+    print(f"[bridge] Stage 3 finished in {time.time() - t0:.1f}s", flush=True)
     return ai_mapped
 
 
-def load_mapped(upload_id) -> dict:
-    return storage.read_json(upload_id, "ai_mapped.json")
-
-
-def save_mapped(upload_id, mapped_data: dict) -> None:
-    storage.write_json(upload_id, "ai_mapped.json", mapped_data)
+def save_mapping(upload_id, mapped_data: dict) -> None:
+    """Persist data_review's per-row edits back into the run-state's mapping slice."""
+    state = get_state(upload_id, with_grid=False)
+    state["mapping"] = mapped_data
+    save_state(upload_id, state)
 
 
 def load_categories() -> list[str]:
     """Returns the sorted canonical category list from the latest rulebook (dropdown options)."""
     return get_rulebook_categories(_load_latest_rulebook())
-
-
-def load_actual_noi(upload_id) -> dict:
-    return storage.read_json(upload_id, "actual_noi.json")

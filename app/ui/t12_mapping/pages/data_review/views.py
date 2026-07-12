@@ -27,9 +27,11 @@ def review(request, upload_id):
     upload_obj = get_object_or_404(Upload, pk=upload_id)
 
     try:
-        mapped     = pipeline_bridge.load_mapped(upload_obj.id)
-        actual_noi = pipeline_bridge.load_actual_noi(upload_obj.id)
+        state = pipeline_bridge.get_state(upload_obj.id, with_grid=False)
     except FileNotFoundError:
+        state = None
+    mapped = (state or {}).get("mapping")
+    if mapped is None:
         return render(request, "upload/upload.html", {
             "errors": {"t12_file": "Mapped data not found. Please run NOI verification and click Save & Continue."},
         })
@@ -39,9 +41,13 @@ def review(request, upload_id):
     if request.method == "POST":
         try:
             mapped = _apply_row_update(mapped, request.POST)
-            pipeline_bridge.save_mapped(upload_obj.id, mapped)
+            pipeline_bridge.save_mapping(upload_obj.id, mapped)
         except Exception as e:
             save_error = str(e)
+
+    # Original-NOI (per month) comes from the classification slice's NOI verification.
+    noi_months = ((state.get("classification") or {}).get("noi") or {}).get("months") or []
+    actual_noi = {"noi": {"by_month": [m["noi"][0] for m in noi_months]}}
 
     categories = pipeline_bridge.load_categories()
     summary    = compute_summary(mapped, actual_noi)

@@ -2,12 +2,12 @@
 
 **URL:** `/t12/<upload_id>/review/`
 
-**Reads:**
-- `ai_mapped.json` — Stage 2 output: every data row with `mapping`, `ai_suggested_mapping`, `final_mapping` (user override), `flip_sign`
-- `actual_noi.json` — vendor-reported NOI per month (for the "Original NOI" summary row)
+**Reads:** the **run-state** via `bridge.get_state(id, with_grid=False)`:
+- `state.mapping` — Stage 3 output: every data row with `mapping`, `ai_suggested_mapping`, `final_mapping` (user override), `flip_sign`
+- `state.classification.noi` — the per-month NOI verification, for the "Original NOI" summary row
 
-**Writes** (on every row update POST):
-- `ai_mapped.json` — patches `final_mapping` and `flip_sign` on the targeted row, preserves the original `mapping` and `ai_suggested_mapping` for audit
+**Writes** (on every row update POST, via `bridge.save_mapping`):
+- `state.mapping` — patches `final_mapping` and `flip_sign` on the targeted row, preserving the original `mapping` and `ai_suggested_mapping` for audit
 
 **DB:** updates `Upload.current_step='data_review'`
 

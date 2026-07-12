@@ -46,13 +46,12 @@ def verify(request, upload_id):
         action = request.POST.get("action", "recompute")
 
         try:
-            # deterministic recompute on the adjusted anchors (no AI); mirror mapping inputs
+            # deterministic recompute on the adjusted anchors (no AI) into the run-state
             anchors = {"revenue_end_row": corrections["total_revenue_row"],
                        "expense_end_row": corrections["total_expense_row"],
                        "noi_row":         corrections["noi_row"]}
             state = pipeline_bridge.run_step(upload_obj.id, "classify",
                                              anchors=anchors, run_feedback=False)
-            pipeline_bridge.mirror_mapping(upload_obj.id, state)
         except Exception as e:
             recompute_error = str(e)
         else:
