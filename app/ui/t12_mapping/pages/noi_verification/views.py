@@ -19,7 +19,7 @@ DB:     Upload.current_step bumped to 'data_review' on Save & Continue
 
 from django.shortcuts import get_object_or_404, redirect, render
 
-from t12_mapping import pipeline_bridge
+from t12_mapping import debug_log, pipeline_bridge
 from t12_mapping.models import Upload
 
 from .helpers import build_context, int_or_none
@@ -64,6 +64,7 @@ def verify(request, upload_id):
                 except Exception as e:
                     recompute_error = f"Mapping error: {e}"
 
+    debug_log.log_classification(state)
     return render(
         request,
         "noi_verification/verify.html",

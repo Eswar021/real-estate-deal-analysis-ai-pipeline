@@ -20,6 +20,7 @@ keywords + position only to **rank** the (few) triples that reconcile. Keywords 
 tie-breaker, not a gate → robust to unseen vendor wording.
 
 ### Algorithm (the "3SUM via hashing" / hash-join trick)
+
 We never know which row is R/E/NOI up front — we hypothesise and let the arithmetic derive the
 missing one:
 
@@ -88,6 +89,7 @@ run the arithmetic anchor lock (section 1)
 
 Subsections are derived arithmetically (`arithmetic_sum_of_above`): a row is a subtotal if its
 value = the sum of the consecutive data rows above it. Three cases:
+
 - **Grand totals (R/E/NOI):** handled by the anchor lock, not here. ✅
 - **Leaf subtotals:** the arithmetic scan catches them. ✅
 - **Nested (subtotal of subtotals):** iterate — once leaf subtotals are found, treat them as
@@ -102,11 +104,19 @@ let the rare odd ones fall to the classifier score. **No AI needed.**
 
 ---
 
-## 4. 🔨 View-level debug logging (retire report.py for in-app use)
+## 4. ✅ View-level debug logging (retire report.py for in-app use) — DONE
+
+Built: `app/ui/t12_mapping/debug_log.py` (per-page `t12.<page>` loggers; INFO one-liner +
+DEBUG anchor/NOI/classified tables) wired into all four views; `LOGGING` block in
+`config/settings.py` (console + optional file, `T12_LOG_LEVEL` / `T12_LOG_FILE` env).
+Design below.
+
+
 
 Print the data at the **view** level (each view already receives the full run-state back from
 the steps), so we see exactly which view ran + what it produced — but do it with Python
 `logging`, not raw `print`:
+
 - per-page loggers, e.g. `logging.getLogger("t12.anchor_gate")`.
 - `logger.info("gate · AUTO · R68/E202/N203")` — always-on one-liner (flow visibility, low noise).
 - `logger.debug(<full row table / state slice>)` — detailed dump, shown only at DEBUG level.
@@ -137,6 +147,7 @@ a `LOGGING` block in settings.
 ---
 
 ## Suggested order
+
 **#4 (quick win)** → **#1 (robustness)** → **#5 analytics (visible deliverable)**, with
 #2 / #3 / rulebook / sign / learning-loop as follow-ups. Validate the AI path once (needs
 `CLAUDE_API_KEY` + a raw unknown-format T12) before #2.

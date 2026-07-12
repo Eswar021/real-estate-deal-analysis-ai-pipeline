@@ -167,3 +167,30 @@ MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+
+# ── T12 flow logging (t12_mapping.debug_log) ───────────────────────────────────
+# Per-view output: INFO = one-line summary per view; T12_LOG_LEVEL=DEBUG adds the full
+# detail (anchor/classified/NOI tables). Set T12_LOG_FILE=<path> to also write to a file.
+T12_LOG_LEVEL = os.environ.get('T12_LOG_LEVEL', 'INFO').upper()
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        't12':   {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s', 'datefmt': '%H:%M:%S'},
+        'plain': {'format': '%(message)s'},
+    },
+    'handlers': {
+        'console':     {'class': 'logging.StreamHandler', 'formatter': 'plain'},
+        't12_console': {'class': 'logging.StreamHandler', 'formatter': 't12'},
+    },
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
+    'loggers': {
+        'django.server': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        't12':           {'handlers': ['t12_console'], 'level': T12_LOG_LEVEL, 'propagate': False},
+    },
+}
+if os.environ.get('T12_LOG_FILE'):
+    LOGGING['handlers']['t12_file'] = {
+        'class': 'logging.FileHandler', 'filename': os.environ['T12_LOG_FILE'], 'formatter': 't12',
+    }
+    LOGGING['loggers']['t12']['handlers'].append('t12_file')

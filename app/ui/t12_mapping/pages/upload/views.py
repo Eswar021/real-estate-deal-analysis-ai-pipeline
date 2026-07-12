@@ -17,7 +17,7 @@ from pathlib import Path
 from django.shortcuts import redirect, render
 
 from shared import storage
-from t12_mapping import pipeline_bridge
+from t12_mapping import debug_log, pipeline_bridge
 from t12_mapping.models import Upload
 
 
@@ -61,9 +61,10 @@ def upload(request):
                 "errors": {"t12_file": preflight["reason"]},
                 "property_name": property_name,
             })
-        pipeline_bridge.run_step(                                # STAGE 1 only (no classification)
+        state = pipeline_bridge.run_step(                        # STAGE 1 only (no classification)
             upload_obj.id, "stage1",
             file={"name": Path(xlsx_path).name, "path": str(xlsx_path)})
+        debug_log.log_stage1(state)
     except Exception as e:
         upload_obj.delete()  # cascades file deletion via FileField
         return render(request, "upload/upload.html", {
