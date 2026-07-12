@@ -3,6 +3,8 @@ pages/upload/views.py
 
 URL:    /t12/
 Reads:  nothing (entry point)
+Screens: STAGE 0 via pipeline_bridge.run_preflight — rejects rent rolls / Model-T12 files /
+         non-T12 spreadsheets before any parsing (deletes the Upload, re-renders the error).
 Writes: STAGE 1 ONLY via pipeline_bridge.run_detection — anchor_lock.json,
         parse_state.json, cell_grid.json. Classification (annotated_blocks / comparison /
         actual_noi) is NOT written here — the anchor gate writes it on Confirm.
@@ -52,6 +54,13 @@ def upload(request):
 
     try:
         xlsx_path = storage.get_local_path(upload_obj.file)
+        preflight = pipeline_bridge.run_preflight(xlsx_path)  # STAGE 0 — screen before parsing
+        if not preflight["ok"]:
+            upload_obj.delete()  # not a T12 input — reject cleanly, nothing parsed
+            return render(request, "upload/upload.html", {
+                "errors": {"t12_file": preflight["reason"]},
+                "property_name": property_name,
+            })
         pipeline_bridge.run_detection(upload_obj.id, xlsx_path)  # STAGE 1 only (no classification)
     except Exception as e:
         upload_obj.delete()  # cascades file deletion via FileField

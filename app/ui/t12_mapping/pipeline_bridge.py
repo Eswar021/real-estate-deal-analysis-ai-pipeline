@@ -27,6 +27,8 @@ from shared import storage
 
 from t12_pipeline.config.paths import DB_RULEBOOKS_DIR
 from t12_pipeline.config.rulebook_utils import get_rulebook_categories
+from t12_pipeline.pipeline.parsing.cell_grid import extract_cell_grid
+from t12_pipeline.pipeline.parsing.preflight import screen_name, screen_structure
 from t12_pipeline.pipeline.parsing.run_parse import parse_to_anchors, classify_within_anchors
 from t12_pipeline.pipeline.parsing.anchor_lock import reconcile_triple
 from t12_pipeline.pipeline.parsing import legacy_adapter as la
@@ -77,6 +79,16 @@ def _persist_stage2(upload_id, res, file_name) -> dict:
     storage.write_json(upload_id, "comparison.json",       comparison)
     storage.write_json(upload_id, "actual_noi.json",       la.to_actual_noi(res))
     return comparison
+
+
+def run_preflight(xlsx_local_path) -> dict:
+    """STAGE 0 — screen the workbook before any parsing or AI call. Checks the name first
+    (rent roll / Model-T12) so those never even get read; otherwise reads the grid once for
+    the structural check. Returns {ok, kind, reason}."""
+    name_reject = screen_name(Path(xlsx_local_path).name)
+    if name_reject:
+        return name_reject
+    return screen_structure(extract_cell_grid(str(xlsx_local_path)))
 
 
 def run_detection(upload_id, xlsx_local_path) -> dict:
