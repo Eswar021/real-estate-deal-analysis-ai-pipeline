@@ -14,6 +14,7 @@ The t12_pipeline package is installed in editable mode (`pip install -e ./app/t1
 """
 
 import json
+import os
 from pathlib import Path
 
 from shared import storage
@@ -21,6 +22,7 @@ from shared import storage
 from t12_pipeline.config.paths import DB_RULEBOOKS_DIR
 from t12_pipeline.config.rulebook_utils import get_rulebook_categories
 from t12_pipeline.pipeline.parsing.run_parse import parse_file
+from t12_pipeline.pipeline.parsing import report as parse_report
 from t12_pipeline.pipeline.parsing.extract import extract_row_signals_dynamic  # noqa: F401 (kept for parity)
 from t12_pipeline.pipeline.parsing.anchor_lock import apply_anchor_overrides
 from t12_pipeline.pipeline.parsing.classify import classify_rows
@@ -71,6 +73,8 @@ def run_detection(upload_id, xlsx_local_path) -> dict:
     fail). Persists the legacy stage files + anchor-first state. Returns the comparison
     dict so the view can show PASS/FAIL, totals, and the anchor status."""
     res = parse_file(str(xlsx_local_path))
+    if os.environ.get("T12_PARSE_REPORT", "1") != "0":   # prints the full breakdown to the server console
+        parse_report.print_parse_report(res)
     return _persist(upload_id, res, Path(xlsx_local_path).name)
 
 
