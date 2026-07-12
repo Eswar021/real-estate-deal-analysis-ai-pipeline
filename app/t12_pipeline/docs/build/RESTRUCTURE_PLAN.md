@@ -212,8 +212,13 @@ The mapping stage reads `state["classification"]["rows"]` directly — `legacy_a
   publishes `STEPS` (the registry the bridge dispatches on). The `run_parse` wrappers are gone —
   `parse_file` (CLI) drives the stages and flattens. Verified: no import cycles, CLI unchanged
   on all 7 files, full UI flow identical.
-- **Phase C — views become the router.** Move the stage sequencing out of the bridge into the
-  page views (`run_step` calls). The bridge shrinks to `get_state/save_state/run_step` + registry.
+- **Phase C — views become the router. ✅ DONE.** The page views now sequence the pipeline
+  themselves via `run_step` (upload → `stage1`; gate → `check_anchors` / `classify`; review →
+  `classify`). The bridge's composite `run_detection`/`run_classification`/`confirm_anchors`/
+  `apply_and_recompute`/`check_anchors` are gone; it's now `get_state`/`save_state`/`run_step`
+  + `run_preflight` (pre-run screen) + `mirror_stage1`/`mirror_stage2` (transitional file
+  mirrors, removed in Phase D) + `run_mapping` + loaders. Verified: full UI flow + reject flow
+  identical (split/sign/MANUAL preserved).
 - **Phase D — collapse files, retire adapters.** Pages read from `state` via page-local
   presenters; drop `classification/annotated_blocks/comparison/actual_noi` as separate files;
   mapping + `data_review` read `state` slices. `legacy_adapter` deleted.

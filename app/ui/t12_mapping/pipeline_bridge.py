@@ -48,8 +48,12 @@ def get_state(run_id, with_grid: bool = True) -> dict:
 
 
 def save_state(run_id, state: dict) -> None:
-    """Persist the run-state to state.json. The heavy cell_grid is NOT written here — it's a
-    read-mostly side artifact written once (at detection) and re-loaded by later steps."""
+    """Persist the run-state to state.json. The heavy cell_grid is a read-mostly side
+    artifact — written once (the first save that carries it) and skipped thereafter, since
+    it never changes after extraction."""
+    grid = state.get("cell_grid")
+    if grid is not None and not storage.exists(run_id, "cell_grid.json"):
+        storage.write_json(run_id, "cell_grid.json", grid)
     storage.write_json(run_id, "state.json", {k: v for k, v in state.items() if k != "cell_grid"})
 
 
@@ -85,15 +89,6 @@ def _restore_cell_grid(cg: dict) -> dict:
     return cg
 
 
-def _write_legacy_stage1(upload_id, state) -> None:
-    """Bridge the run-state to the current per-page files the anchor gate reads
-    (anchor_lock + parse_state). cell_grid.json is written by save_state."""
-    storage.write_json(upload_id, "anchor_lock.json", state["anchor_lock"])
-    storage.write_json(upload_id, "parse_state.json",
-                       {"file": state["file"]["name"], "format": state["format"]["format"],
-                        "final_map": state["structure_map"], "anchor_rows": state["anchor_rows"]})
-
-
 def _res_from_state(state, anchor_lock) -> dict:
     """The flat `res` shape the presenter / legacy_adapter consume, built from state slices."""
     cls = state["classification"]
@@ -103,50 +98,33 @@ def _res_from_state(state, anchor_lock) -> dict:
             "signal_rows": state["signals"], "low_confidence_rows": cls["low_confidence_rows"]}
 
 
-def _write_legacy_stage2(upload_id, res, file_name) -> dict:
-    """Bridge the run-state to the current per-page files: classification.json (review page)
-    plus annotated_blocks / comparison / actual_noi (mapping stage + NOI helpers)."""
-    comparison = la.to_comparison(res, file_name)
-    storage.write_json(upload_id, "classification.json", build_classification_view(res, file_name))
-    storage.write_json(upload_id, "annotated_blocks.json", la.to_annotated(res, file_name))
-    storage.write_json(upload_id, "comparison.json",       comparison)
-    storage.write_json(upload_id, "actual_noi.json",       la.to_actual_noi(res))
-    return comparison
-
-
 def run_preflight(xlsx_local_path) -> dict:
-    """STAGE 0 — screen the workbook before any parsing or AI call. Checks the name first
-    (rent roll / Model-T12) so those never even get read; otherwise reads the grid once for
-    the structural check. Returns {ok, kind, reason}."""
+    """STAGE 0 — screen the workbook before any parsing or AI call (pre-run: no run-state
+    yet, a rejected file is never accepted). Checks the name first (rent roll / Model-T12)
+    so those never even get read; otherwise reads the grid once for the structural check.
+    Returns {ok, kind, reason}."""
     name_reject = screen_name(Path(xlsx_local_path).name)
     if name_reject:
         return name_reject
     return screen_structure(extract_cell_grid(str(xlsx_local_path)))
 
 
-def run_detection(upload_id, xlsx_local_path) -> dict:
-    """STAGE 1 — run the `stage1` step (Layer 1 → detect → resolve → light anchor rows →
-    R−E=NOI lock) into the run-state, then mirror it to the gate's files. STOPS here;
-    classification runs only after the user confirms the anchors. Returns the anchor_lock —
-    every file then goes to the anchor gate; the status only pre-fills it, never advances."""
-    state = run_step(upload_id, "stage1",
-                     file={"name": Path(xlsx_local_path).name, "path": str(xlsx_local_path)})
-    storage.write_json(upload_id, "cell_grid.json", state["cell_grid"])   # heavy artifact, written once
-    _write_legacy_stage1(upload_id, state)
-    return state["anchor_lock"]
+# ── mirror helpers: write the run-state to the current per-page files ─────────────────
+#    Transitional (Phase C). Phase D drops these once every page reads the run-state directly.
+
+def mirror_stage1(upload_id, state) -> None:
+    """Mirror the Stage-1 run-state to the files the anchor gate reads (anchor_lock +
+    parse_state). cell_grid.json is written by save_state on the first save."""
+    storage.write_json(upload_id, "anchor_lock.json", state["anchor_lock"])
+    storage.write_json(upload_id, "parse_state.json",
+                       {"file": state["file"]["name"], "format": state["format"]["format"],
+                        "final_map": state["structure_map"], "anchor_rows": state["anchor_rows"]})
 
 
-def run_classification(upload_id, anchors: dict, *, run_feedback: bool) -> dict:
-    """STAGE 2 — run the `classify` step (apply the confirmed anchors → signal extract →
-    classify + override → NOI verify → diagnosis on fail) into the run-state, then mirror it
-    to the review/mapping files. The AI structure agent is NOT re-called.
-
-    anchors = {"revenue_end_row", "expense_end_row", "noi_row"} — the user's confirmed rows.
-    run_feedback=True runs the AI failure-diagnosis loop when NOI fails (the gate Confirm);
-    run_feedback=False is a deterministic recompute with no AI (the review-page recompute).
-    Returns the comparison dict."""
-    state = run_step(upload_id, "classify", anchors=anchors, run_feedback=run_feedback)
-
+def mirror_stage2(upload_id, state) -> dict:
+    """Mirror the Stage-2 run-state to the per-page files (classification / annotated_blocks /
+    comparison / actual_noi) and flip the lock to MANUAL (the user confirmed the anchors).
+    Returns the comparison."""
     fm = state["structure_map"]
     anchor_lock = {**state["anchor_lock"], "status": "MANUAL", "method": "manual",
                    "anchors": {"revenue_end_row": fm["revenue_end_row"],
@@ -155,38 +133,12 @@ def run_classification(upload_id, anchors: dict, *, run_feedback: bool) -> dict:
     storage.write_json(upload_id, "anchor_lock.json", anchor_lock)
 
     res = _res_from_state(state, anchor_lock)
-    return _write_legacy_stage2(upload_id, res, state["file"]["name"])
-
-
-def check_anchors(upload_id, anchors: dict) -> dict:
-    """Anchor-gate RE-VERIFY — the light `check_anchors` step (R − |E| = NOI on the picked
-    rows using only the Stage-1 anchor_rows). NO classification, NO AI, nothing persisted
-    (save=False), and the cell_grid isn't loaded. Returns {reconciles, matched, months}."""
-    state = run_step(upload_id, "check_anchors", save=False, with_grid=False, anchors=anchors)
-    return state["reconcile"]
-
-
-def confirm_anchors(upload_id, anchors: dict) -> tuple[dict, dict]:
-    """Anchor-gate CONFIRM — commit the 3 anchors and run Stage 2 WITH the AI failure-
-    diagnosis loop (fires only if NOI fails). Returns (classification_view, comparison)."""
-    comparison = run_classification(upload_id, {
-        "revenue_end_row": anchors.get("revenue_end_row"),
-        "expense_end_row": anchors.get("expense_end_row"),
-        "noi_row":         anchors.get("noi_row"),
-    }, run_feedback=True)
-    return storage.read_json(upload_id, "classification.json"), comparison
-
-
-def apply_and_recompute(upload_id, corrections: dict) -> tuple[dict, dict]:
-    """Review-page RECOMPUTE — re-run Stage 2 on adjusted anchors, deterministically (no
-    AI). corrections = {"total_revenue_row", "total_expense_row", "noi_row"}.
-    Returns (classification_view, comparison)."""
-    comparison = run_classification(upload_id, {
-        "revenue_end_row": corrections.get("total_revenue_row"),
-        "expense_end_row": corrections.get("total_expense_row"),
-        "noi_row":         corrections.get("noi_row"),
-    }, run_feedback=False)
-    return storage.read_json(upload_id, "classification.json"), comparison
+    comparison = la.to_comparison(res, state["file"]["name"])
+    storage.write_json(upload_id, "classification.json", build_classification_view(res, state["file"]["name"]))
+    storage.write_json(upload_id, "annotated_blocks.json", la.to_annotated(res, state["file"]["name"]))
+    storage.write_json(upload_id, "comparison.json",       comparison)
+    storage.write_json(upload_id, "actual_noi.json",       la.to_actual_noi(res))
+    return comparison
 
 
 def load_annotated_blocks(upload_id) -> dict:

@@ -49,11 +49,17 @@ def anchors(request, upload_id):
         }
         try:
             if request.POST.get("action") == "continue":
-                pipeline_bridge.confirm_anchors(upload_obj.id, chosen)  # Stage 2 (+ AI diagnosis)
+                # Stage 2 (classify + AI diagnosis on NOI fail), then mirror to the page files
+                state = pipeline_bridge.run_step(upload_obj.id, "classify",
+                                                 anchors=chosen, run_feedback=True)
+                pipeline_bridge.mirror_stage2(upload_obj.id, state)
                 upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
                 upload_obj.save(update_fields=["current_step", "updated_at"])
                 return redirect("noi_verify", upload_id=upload_obj.id)
-            reconciles = pipeline_bridge.check_anchors(upload_obj.id, chosen)["reconciles"]
+            # light re-verify — the check_anchors step, nothing persisted, no cell_grid loaded
+            reconciles = pipeline_bridge.run_step(
+                upload_obj.id, "check_anchors", save=False, with_grid=False,
+                anchors=chosen)["reconcile"]["reconciles"]
         except Exception as e:
             error = str(e)
 
