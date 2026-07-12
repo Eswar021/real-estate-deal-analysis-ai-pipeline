@@ -1,10 +1,10 @@
-"""CLI / testing entry point — run both stages in one pass and flatten the run-state.
+"""One-shot convenience runner — run both stages in one pass and flatten the run-state.
 
-The stage logic now lives in `stages.py` (each pipeline module exposes a `run(state)` step;
-`stages` composes them). This module keeps `parse_file` as the one-shot convenience the CLI
-report + tests use — it drives `stage1` + `classify` over an in-memory run-state and flattens
-the result to the flat keys `report.py` expects. The app never calls this; it runs the stages
-through the bridge's `run_step`, stage by stage.
+The stage logic lives in `stages.py` (each pipeline module exposes a `run(state)` step;
+`stages` composes them). `parse_file` drives `stage1` + `classify` over an in-memory run-state
+and flattens the result to a flat dict — handy for tests and scripts that want to run the whole
+pipeline on a file. The app never calls this; it runs the stages through the bridge's `run_step`,
+stage by stage.
 """
 from pathlib import Path
 
@@ -12,7 +12,7 @@ from .stages import stage1, classify
 
 
 def parse_file(xlsx_path, *, run_feedback=True, max_iters=5):
-    """Stage 1 + Stage 2 in one pass; returns the flat shape the CLI report reads."""
+    """Stage 1 + Stage 2 in one pass; returns a flat result dict (for tests / scripts)."""
     state = stage1({"file": {"name": Path(xlsx_path).name, "path": str(xlsx_path)}})
     state = classify({**state, "run_feedback": run_feedback, "max_iters": max_iters})
     cls = state["classification"]

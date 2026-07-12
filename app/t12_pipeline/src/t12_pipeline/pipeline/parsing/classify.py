@@ -10,9 +10,6 @@ they are facts for the override layer.
 `confidence` (top score − runner-up) is added per row for the confidence gate.
 Ported verbatim from notebook Module 10 (print helpers dropped).
 """
-from openpyxl.utils import column_index_from_string
-
-from .cell_grid import grid_row_map, gvalue
 from .anchor_lock import apply_anchor_overrides
 
 CLASSES = ["METADATA", "SECTION_HEADER", "SUBSECTION_HEADER", "DATA",
@@ -100,30 +97,6 @@ def flag_low_confidence(classified, threshold=LOW_CONFIDENCE_MARGIN):
         if low:
             flagged.append(r["row"])
     return flagged
-
-
-def reconcile_leaf_data(rows, grid, structure_map):
-    """Correctness self-check: the values of ONLY the DATA-class rows in each section
-    must sum to that section's grand total. Returns computed vs vendor + the rows."""
-    last  = column_index_from_string(structure_map["value_columns"][-1])
-    rmap  = grid_row_map(grid)
-    def v(r):
-        g = rmap.get(r); x = gvalue(g, last) if g else None
-        return x if isinstance(x, (int, float)) else 0.0
-    mh, rev_end, exp_end, noi_r = (structure_map["month_header_row"], structure_map["revenue_end_row"],
-                                   structure_map["expense_end_row"], structure_map["noi_row"])
-    rev_rows = [r["row"] for r in rows if r["class"] == "DATA" and mh < r["row"] < rev_end]
-    exp_rows = [r["row"] for r in rows if r["class"] == "DATA" and rev_end < r["row"] < exp_end]
-    rev = sum(v(rr) for rr in rev_rows); exp = sum(v(rr) for rr in exp_rows)
-    ok = lambda a, b: abs(a - b) <= max(1.0, abs(b) * 0.005)
-    return {
-        "revenue": {"computed": round(rev, 2), "vendor": round(v(rev_end), 2),
-                    "ok": ok(rev, v(rev_end)), "rows": rev_rows, "n": len(rev_rows)},
-        "expense": {"computed": round(exp, 2), "vendor": round(v(exp_end), 2),
-                    "ok": ok(exp, v(exp_end)), "rows": exp_rows, "n": len(exp_rows)},
-        "noi":     {"computed": round(rev - exp, 2), "vendor": round(v(noi_r), 2),
-                    "ok": ok(rev - exp, v(noi_r))},
-    }
 
 
 def _derive_subsection_subtotals(signal_rows, final_map):

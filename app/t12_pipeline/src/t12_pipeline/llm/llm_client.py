@@ -8,8 +8,9 @@ from langchain_anthropic import ChatAnthropic
 
 from t12_pipeline.config.agent_llm_config import DEFAULT_AGENT_NAME, get_agent_llm_config
 
-# Always load this package's .env (app/t12_pipeline/.env), regardless of cwd.
-load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+# Always load the shared app-level .env (app/.env), regardless of cwd.
+# parents: [0]=llm [1]=t12_pipeline [2]=src [3]=app/t12_pipeline [4]=app
+load_dotenv(Path(__file__).resolve().parents[4] / ".env")
 
 
 def make_llm(

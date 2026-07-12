@@ -2,8 +2,7 @@
 
 Each view receives the full run-state back from the steps, so it logs what it produced —
 a one-line summary at INFO (flow visibility), the full detail at DEBUG. Toggle with
-`T12_LOG_LEVEL=DEBUG` (and `T12_LOG_FILE=path` to also write to a file). This is the in-app
-alternative to `report.py` (which stays as the standalone CLI tool).
+`T12_LOG_LEVEL=DEBUG` (and `T12_LOG_FILE=path` to also write to a file).
 
 Loggers are namespaced `t12.<page>`, so the terminal shows exactly which view ran.
 """

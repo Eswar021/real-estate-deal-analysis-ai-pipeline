@@ -104,12 +104,12 @@ let the rare odd ones fall to the classifier score. **No AI needed.**
 
 ---
 
-## 4. ✅ View-level debug logging (retire report.py for in-app use) — DONE
+## 4. ✅ View-level debug logging — DONE (report.py removed)
 
 Built: `app/ui/t12_mapping/debug_log.py` (per-page `t12.<page>` loggers; INFO one-liner +
 DEBUG anchor/NOI/classified tables) wired into all four views; `LOGGING` block in
-`config/settings.py` (console + optional file, `T12_LOG_LEVEL` / `T12_LOG_FILE` env).
-Design below.
+`config/settings.py` (console + optional file, `T12_LOG_LEVEL` / `T12_LOG_FILE` env). The old
+`report.py` CLI dump was deleted (its report-only helper `reconcile_leaf_data` too). Design below.
 
 
 
@@ -124,7 +124,7 @@ the steps), so we see exactly which view ran + what it produced — but do it wi
   level via env (`T12_LOG_LEVEL=DEBUG`).
 
 Gives quiet-by-default, full-data-on-demand, kept-in-a-file, and per-view attribution.
-`report.py` stays only as the standalone CLI debugger (`python -m …report file.xlsx`).
+The old `report.py` CLI dump has been removed (view-level logging replaces it).
 
 **Effort:** small — a logging helper + a few `logger.info/debug` calls in the four views +
 a `LOGGING` block in settings.

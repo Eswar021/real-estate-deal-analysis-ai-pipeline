@@ -10,9 +10,15 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Shared app-level .env (app/.env) — one file for both the UI and the t12_pipeline. Loaded
+# before the os.environ reads below; load_dotenv does NOT override real environment variables
+# (so Render's prod env still wins).
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # ── Secrets / debug / hosts ────────────────────────────────────────────────────
