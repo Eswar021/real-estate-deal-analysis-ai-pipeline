@@ -131,17 +131,17 @@ never the pipeline directly.
 
 Every step is `run(state) -> state`. "reads / writes" = which state slices.
 
-| Step | reads | writes | wraps today's |
-|---|---|---|---|
-| `preflight` | file | `preflight` | `screen_name` + `screen_structure` |
-| `extract_grid` | file.path | `cell_grid` (artifact) | `extract_cell_grid` |
-| `detect_format` | cell_grid | `format` | `detect_format` |
-| `resolve_columns` | cell_grid, format | `structure_map` | `resolve_structure_map` (template / AI agent) |
-| `lock_anchors` | cell_grid, structure_map | `anchor_rows`, `anchor_lock`, structure_map.anchors | `extract_anchor_rows` + `lock_anchors` |
-| `check_anchors` | anchor_rows, anchors | `reconcile` | `reconcile_triple` |
-| `classify` | cell_grid, structure_map, anchors | `signals`, `classification` | `extract_row_signals_dynamic` + `classify_rows` + `apply_anchor_overrides` + `assign_sections` + `verify_noi` + `flag_low_confidence` |
-| `diagnose` | classification (on NOI fail) | classification (corrected) | `run_feedback_loop` |
-| `map` | classification.rows, rulebook | `mapping` | `map_results` + `run_ai_mapping` |
+| Step                | reads                             | writes                                                  | wraps today's                                                                                                                                     |
+| ------------------- | --------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preflight`       | file                              | `preflight`                                           | `screen_name` + `screen_structure`                                                                                                            |
+| `extract_grid`    | file.path                         | `cell_grid` (artifact)                                | `extract_cell_grid`                                                                                                                             |
+| `detect_format`   | cell_grid                         | `format`                                              | `detect_format`                                                                                                                                 |
+| `resolve_columns` | cell_grid, format                 | `structure_map`                                       | `resolve_structure_map` (template / AI agent)                                                                                                   |
+| `lock_anchors`    | cell_grid, structure_map          | `anchor_rows`, `anchor_lock`, structure_map.anchors | `extract_anchor_rows` + `lock_anchors`                                                                                                        |
+| `check_anchors`   | anchor_rows, anchors              | `reconcile`                                           | `reconcile_triple`                                                                                                                              |
+| `classify`        | cell_grid, structure_map, anchors | `signals`, `classification`                         | `extract_row_signals_dynamic` + `classify_rows` + `apply_anchor_overrides` + `assign_sections` + `verify_noi` + `flag_low_confidence` |
+| `diagnose`        | classification (on NOI fail)      | classification (corrected)                              | `run_feedback_loop`                                                                                                                             |
+| `map`             | classification.rows, rulebook     | `mapping`                                             | `map_results` + `run_ai_mapping`                                                                                                              |
 
 Composite convenience steps (also `run(state)`): **`stage1` = extract_grid→detect_format→
 resolve_columns→lock_anchors**; **`stage2` = classify (+diagnose on fail)**. Views can call the
@@ -199,10 +199,13 @@ The mapping stage reads `state["classification"]["rows"]` directly — `legacy_a
 
 ## 8. Migration (incremental — app stays working at every phase)
 
-- **Phase A — introduce state + executor (no behaviour change).** Add `state.json` +
-  `get_state/save_state/run_step`. Refactor the two stage functions to `run(state)`. The
-  bridge's existing `run_detection`/`run_classification` become thin callers of `run_step`
-  and, during transition, ALSO write the current per-page files so no page breaks yet.
+- **Phase A — introduce state + executor (no behaviour change). ✅ DONE.** Added `state.json`
+  (+ `cell_grid.json` side artifact) and `get_state/save_state/run_step`. The stage functions
+  now live in `parsing/stages.py` as `stage1` / `classify` / `check_anchors`, each `run(state)`
+  (Phase A wraps the tested `run_parse` functions). `run_detection`/`run_classification`/
+  `check_anchors` are thin callers of `run_step` that ALSO mirror the run-state to the current
+  per-page files, so no page breaks. Verified: CLI `parse_file` unchanged on all 7 files; full
+  UI flow (upload→gate→re-verify→confirm→review→recompute) identical, incl. split/sign/MANUAL.
 - **Phase B — modules to `run(state)`.** Refactor the micro pipeline functions to the uniform
   signature. Pure-logic change, no UI impact.
 - **Phase C — views become the router.** Move the stage sequencing out of the bridge into the

@@ -1,21 +1,17 @@
 """
 t12_mapping/pipeline_bridge.py
 
-Thin wrapper that runs the t12_pipeline anchor-first parser AND the mapping stage,
-persisting each stage output via the storage abstraction (dev=local FS, prod=S3).
+The connection between the page views and the t12_pipeline. It runs the pipeline STAGE BY
+STAGE against a single accumulating run-state (one per upload_id), mirroring the app flow —
+nothing downstream fires until the user submits.
 
-The parse runs STAGE BY STAGE, mirroring the app flow (nothing downstream fires until
-the user submits):
-
-  run_detection      — STAGE 1: format detect → resolve columns → anchor lock
-                       (R − E = NOI). Stops here. NO classification.
-  run_classification — STAGE 2: classify + fact override → section → NOI verify.
-                       Runs only after the user confirms the anchors at the gate
-                       (every file stops at the gate — nothing auto-advances).
-
-The one-pass `run_parse.parse_file` is for the CLI report / testing only; the app never
-calls it. Stage-2 output is mapped to the legacy annotated_blocks / comparison shapes via
-legacy_adapter, so the UI pages and the mapping stage are unchanged.
+Restructure (Phase A, see app/t12_pipeline/docs/build/RESTRUCTURE_PLAN.md):
+  - The run-state lives in `state.json` (+ `cell_grid.json` as a heavy side artifact).
+  - Every pipeline step is `run(state) -> state` (see pipeline.parsing.stages).
+  - `run_step(id, name, **inputs)` = load state → run the named step → save state.
+  - The stage entry points below still ALSO write the current per-page files
+    (anchor_lock / parse_state / classification / annotated_blocks / comparison /
+    actual_noi) so the existing pages keep working while the migration proceeds.
 
 The t12_pipeline package is installed in editable mode (`pip install -e ./app/t12_pipeline`).
 """
@@ -29,12 +25,50 @@ from t12_pipeline.config.paths import DB_RULEBOOKS_DIR
 from t12_pipeline.config.rulebook_utils import get_rulebook_categories
 from t12_pipeline.pipeline.parsing.cell_grid import extract_cell_grid
 from t12_pipeline.pipeline.parsing.preflight import screen_name, screen_structure
-from t12_pipeline.pipeline.parsing.run_parse import parse_to_anchors, classify_within_anchors
-from t12_pipeline.pipeline.parsing.anchor_lock import reconcile_triple
+from t12_pipeline.pipeline.parsing import stages
 from t12_pipeline.pipeline.parsing import legacy_adapter as la
 from t12_pipeline.pipeline.parsing.presenter import build_classification_view
 from t12_pipeline.pipeline.mapping.map_blocks import map_results
 from t12_pipeline.pipeline.mapping.find_mapping import run_ai_mapping
+
+
+# ── run-state: one accumulating dict per upload_id, persisted as state.json ──────────
+#    cell_grid is stored separately (cell_grid.json) — it's multi-MB, kept out of state.json.
+STEPS = {
+    "stage1":        stages.stage1,
+    "check_anchors": stages.check_anchors,
+    "classify":      stages.classify,
+}
+
+
+def get_state(run_id, with_grid: bool = True) -> dict:
+    """Load the run-state; inject the cell_grid side artifact unless the caller won't need it."""
+    state = storage.read_json(run_id, "state.json")
+    if with_grid:
+        try:
+            state["cell_grid"] = _restore_cell_grid(storage.read_json(run_id, "cell_grid.json"))
+        except FileNotFoundError:
+            pass
+    return state
+
+
+def save_state(run_id, state: dict) -> None:
+    """Persist the run-state to state.json. The heavy cell_grid is NOT written here — it's a
+    read-mostly side artifact written once (at detection) and re-loaded by later steps."""
+    storage.write_json(run_id, "state.json", {k: v for k, v in state.items() if k != "cell_grid"})
+
+
+def run_step(run_id, name, *, save: bool = True, with_grid: bool = True, **inputs) -> dict:
+    """load state → merge inputs → run the named `run(state)` step → (save) → return state."""
+    try:
+        state = get_state(run_id, with_grid=with_grid)
+    except FileNotFoundError:
+        state = {"run_id": str(run_id)}
+    state.update(inputs)
+    state = STEPS[name](state)
+    if save:
+        save_state(run_id, state)
+    return state
 
 
 def _load_latest_rulebook() -> dict:
@@ -56,23 +90,27 @@ def _restore_cell_grid(cg: dict) -> dict:
     return cg
 
 
-def _persist_stage1(upload_id, s1, file_name) -> None:
-    """Write the Stage-1 state the anchor gate reads + Stage 2 reuses (no AI re-call):
-    anchor_lock (status/candidates/passing), parse_state (format + final_map + the light
-    anchor_rows for the gate to render), and the cell_grid. NO signals, NO classification
-    yet — Stage 2 extracts the full signal vector from the cell_grid on confirm."""
-    storage.write_json(upload_id, "anchor_lock.json", s1["anchor_lock"])
+def _write_legacy_stage1(upload_id, state) -> None:
+    """Bridge the run-state to the current per-page files the anchor gate reads
+    (anchor_lock + parse_state). cell_grid.json is written by save_state."""
+    storage.write_json(upload_id, "anchor_lock.json", state["anchor_lock"])
     storage.write_json(upload_id, "parse_state.json",
-                       {"file": file_name, "format": s1["format"],
-                        "final_map": s1["final_map"], "anchor_rows": s1["anchor_rows"]})
-    storage.write_json(upload_id, "cell_grid.json", s1["cell_grid"])
+                       {"file": state["file"]["name"], "format": state["format"]["format"],
+                        "final_map": state["structure_map"], "anchor_rows": state["anchor_rows"]})
 
 
-def _persist_stage2(upload_id, res, file_name) -> dict:
-    """Write the Stage-2 outputs. `classification.json` is the natural view the review page
-    reads directly (thin bridge — the pipeline's presenter builds it, we just forward it).
-    The legacy annotated_blocks / comparison / actual_noi are still written for the mapping
-    stage and the current NOI helpers. Returns the comparison."""
+def _res_from_state(state, anchor_lock) -> dict:
+    """The flat `res` shape the presenter / legacy_adapter consume, built from state slices."""
+    cls = state["classification"]
+    return {"format": state["format"]["format"], "final_map": state["structure_map"],
+            "cell_grid": state["cell_grid"], "anchor_lock": anchor_lock,
+            "classified": cls["classified"], "noi": cls["noi"], "feedback": cls["feedback"],
+            "signal_rows": state["signals"], "low_confidence_rows": cls["low_confidence_rows"]}
+
+
+def _write_legacy_stage2(upload_id, res, file_name) -> dict:
+    """Bridge the run-state to the current per-page files: classification.json (review page)
+    plus annotated_blocks / comparison / actual_noi (mapping stage + NOI helpers)."""
     comparison = la.to_comparison(res, file_name)
     storage.write_json(upload_id, "classification.json", build_classification_view(res, file_name))
     storage.write_json(upload_id, "annotated_blocks.json", la.to_annotated(res, file_name))
@@ -92,72 +130,45 @@ def run_preflight(xlsx_local_path) -> dict:
 
 
 def run_detection(upload_id, xlsx_local_path) -> dict:
-    """STAGE 1 — anchor-first parse up to the R − E = NOI lock: format detect → resolve
-    columns (template / AI structure agent) → dynamic extract → anchor lock. STOPS here;
-    classification runs only after the user confirms the anchors. Persists the Stage-1
-    state (anchor_lock, parse_state, cell_grid) and returns the anchor_lock. Every file
-    then goes to the anchor gate — the status only pre-fills it, it never auto-advances."""
-    s1 = parse_to_anchors(str(xlsx_local_path))
-    _persist_stage1(upload_id, s1, Path(xlsx_local_path).name)
-    return s1["anchor_lock"]
+    """STAGE 1 — run the `stage1` step (Layer 1 → detect → resolve → light anchor rows →
+    R−E=NOI lock) into the run-state, then mirror it to the gate's files. STOPS here;
+    classification runs only after the user confirms the anchors. Returns the anchor_lock —
+    every file then goes to the anchor gate; the status only pre-fills it, never advances."""
+    state = run_step(upload_id, "stage1",
+                     file={"name": Path(xlsx_local_path).name, "path": str(xlsx_local_path)})
+    storage.write_json(upload_id, "cell_grid.json", state["cell_grid"])   # heavy artifact, written once
+    _write_legacy_stage1(upload_id, state)
+    return state["anchor_lock"]
 
 
 def run_classification(upload_id, anchors: dict, *, run_feedback: bool) -> dict:
-    """STAGE 2 — classify inside the confirmed anchors → section → NOI verify → (diagnosis).
-    Reuses the Stage-1 parse_state + cell_grid; the AI structure agent is NOT re-called.
+    """STAGE 2 — run the `classify` step (apply the confirmed anchors → signal extract →
+    classify + override → NOI verify → diagnosis on fail) into the run-state, then mirror it
+    to the review/mapping files. The AI structure agent is NOT re-called.
 
     anchors = {"revenue_end_row", "expense_end_row", "noi_row"} — the user's confirmed rows.
-    Overrides the anchors, marks the lock MANUAL, and preserves the auto-detected expense
-    split only if the user kept the pre-filled expense row.
-
     run_feedback=True runs the AI failure-diagnosis loop when NOI fails (the gate Confirm);
     run_feedback=False is a deterministic recompute with no AI (the review-page recompute).
+    Returns the comparison dict."""
+    state = run_step(upload_id, "classify", anchors=anchors, run_feedback=run_feedback)
 
-    Persists classification.json + annotated_blocks / comparison / actual_noi. Returns the
-    comparison dict."""
-    state = storage.read_json(upload_id, "parse_state.json")
-    cell_grid = _restore_cell_grid(storage.read_json(upload_id, "cell_grid.json"))
-    final_map = dict(state["final_map"])
-    locked_exp   = final_map.get("expense_end_row")
-    locked_split = final_map.get("expense_split_rows")
-    final_map["revenue_end_row"] = anchors.get("revenue_end_row")
-    final_map["expense_end_row"] = anchors.get("expense_end_row")
-    final_map["noi_row"]         = anchors.get("noi_row")
-    # keep the auto-detected expense split only if the user left the expense row on the
-    # pre-filled (locked) one; picking a different single row drops the split.
-    final_map["expense_split_rows"] = (
-        locked_split if anchors.get("expense_end_row") == locked_exp else None)
-
-    # Stage 2 extracts the full signal vector from the cell_grid here (not at upload).
-    s2 = classify_within_anchors(cell_grid, final_map, run_feedback=run_feedback)
-
-    anchor_lock = storage.read_json(upload_id, "anchor_lock.json")
-    anchor_lock = {**anchor_lock, "status": "MANUAL", "method": "manual",
-                   "anchors": {"revenue_end_row": final_map["revenue_end_row"],
-                               "expense_end_row": final_map["expense_end_row"],
-                               "noi_row":         final_map["noi_row"]}}
+    fm = state["structure_map"]
+    anchor_lock = {**state["anchor_lock"], "status": "MANUAL", "method": "manual",
+                   "anchors": {"revenue_end_row": fm["revenue_end_row"],
+                               "expense_end_row": fm["expense_end_row"],
+                               "noi_row":         fm["noi_row"]}}
     storage.write_json(upload_id, "anchor_lock.json", anchor_lock)
 
-    res = {"format": state["format"], "final_map": final_map, "cell_grid": cell_grid,
-           "anchor_lock": anchor_lock, **s2}
-    comparison = _persist_stage2(upload_id, res, state.get("file", ""))
-    storage.write_json(upload_id, "parse_state.json", {**state, "final_map": final_map})
-    return comparison
+    res = _res_from_state(state, anchor_lock)
+    return _write_legacy_stage2(upload_id, res, state["file"]["name"])
 
 
 def check_anchors(upload_id, anchors: dict) -> dict:
-    """Anchor-gate RE-VERIFY — light `R − |E| = NOI` check on the picked rows using only
-    the Stage-1 anchor_rows. NO classification, NO AI, nothing persisted. Preserves the
-    auto-detected expense split only if the user kept the pre-filled expense row.
-    Returns the reconcile_triple result ({reconciles, matched, months})."""
-    state = storage.read_json(upload_id, "parse_state.json")
-    lock  = storage.read_json(upload_id, "anchor_lock.json")
-    locked = lock.get("anchors") or {}
-    exp = anchors.get("expense_end_row")
-    split = locked.get("expense_split_rows") if exp == locked.get("expense_end_row") else None
-    expense_unit = split or [exp]
-    return reconcile_triple(state.get("anchor_rows", []),
-                            anchors.get("revenue_end_row"), expense_unit, anchors.get("noi_row"))
+    """Anchor-gate RE-VERIFY — the light `check_anchors` step (R − |E| = NOI on the picked
+    rows using only the Stage-1 anchor_rows). NO classification, NO AI, nothing persisted
+    (save=False), and the cell_grid isn't loaded. Returns {reconciles, matched, months}."""
+    state = run_step(upload_id, "check_anchors", save=False, with_grid=False, anchors=anchors)
+    return state["reconcile"]
 
 
 def confirm_anchors(upload_id, anchors: dict) -> tuple[dict, dict]:
