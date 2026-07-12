@@ -51,7 +51,7 @@ def upload(request):
 
     try:
         xlsx_path = storage.get_local_path(upload_obj.file)
-        pipeline_bridge.run_detection(upload_obj.id, xlsx_path)
+        comparison = pipeline_bridge.run_detection(upload_obj.id, xlsx_path)
     except Exception as e:
         upload_obj.delete()  # cascades file deletion via FileField
         return render(request, "upload/upload.html", {
@@ -62,4 +62,8 @@ def upload(request):
     upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
     upload_obj.save(update_fields=["current_step", "updated_at"])
 
+    # Ambiguous R−E=NOI lock (GATE / DERIVED / NONE) → confirm the anchors first;
+    # a clean AUTO lock skips straight to NOI verification.
+    if comparison.get("anchor_status") not in ("AUTO", None):
+        return redirect("anchor_gate", upload_id=upload_obj.id)
     return redirect("noi_verify", upload_id=upload_obj.id)

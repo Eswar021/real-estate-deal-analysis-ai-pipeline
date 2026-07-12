@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}T12 Mapping | Confirm Anchors{% endblock %}
+
+{% block content %}
+<div class="container">
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h2 class="h4 fw-bold mb-1">Stage 1 — Confirm R / E / NOI anchors</h2>
+        <p class="text-muted small mb-0">{{ file_name }}</p>
+      </div>
+      {% if reconciles %}
+        <span class="badge bg-success fs-6 px-3 py-2">R − E = NOI ✓</span>
+      {% else %}
+        <span class="badge bg-danger fs-6 px-3 py-2">R − E ≠ NOI ✗</span>
+      {% endif %}
+    </div>
+
+    <div class="alert alert-{{ status_tone }} py-2">
+      <strong>{{ status }}</strong> — {{ status_explain }}
+    </div>
+
+    {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
+
+    {% if passing %}
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-3">
+        <h6 class="fw-bold mb-2">Passing triples <span class="text-muted fw-normal small">(R − E = NOI held month-by-month)</span></h6>
+        <ul class="small mb-0">
+          {% for t in passing %}
+          <li>Revenue row <strong>{{ t.revenue }}</strong> − Expense row <strong>{{ t.expense|join:"+" }}</strong> = NOI row <strong>{{ t.noi }}</strong></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h6 class="fw-bold mb-3">Confirm the three anchor rows</h6>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold mb-1">Revenue grand total (R)</label>
+            <select name="revenue_end_row" class="form-select form-select-sm">
+              {% for o in all_rows %}
+              <option value="{{ o.row }}" {% if o.row == current.revenue_end_row %}selected{% endif %}>
+                Row {{ o.row }} — {{ o.description }}{% if o.value != None %}  (${{ o.value|floatformat:0|intcomma }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold mb-1">Expense grand total (E)</label>
+            <select name="expense_end_row" class="form-select form-select-sm">
+              {% for o in all_rows %}
+              <option value="{{ o.row }}" {% if o.row == current.expense_end_row %}selected{% endif %}>
+                Row {{ o.row }} — {{ o.description }}{% if o.value != None %}  (${{ o.value|floatformat:0|intcomma }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-1">
+            <label class="form-label small fw-semibold mb-1">Net Operating Income (NOI)</label>
+            <select name="noi_row" class="form-select form-select-sm">
+              {% for o in all_rows %}
+              <option value="{{ o.row }}" {% if o.row == current.noi_row %}selected{% endif %}>
+                Row {{ o.row }} — {{ o.description }}{% if o.value != None %}  (${{ o.value|floatformat:0|intcomma }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 justify-content-end">
+        <button type="submit" name="action" value="verify" class="btn btn-outline-secondary">Re-verify</button>
+        <button type="submit" name="action" value="continue"
+                class="btn btn-{% if reconciles %}success{% else %}warning{% endif %}">
+          {% if reconciles %}Confirm &amp; Continue →{% else %}Confirm anyway &amp; Continue →{% endif %}
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+</div>
+{% endblock %}
