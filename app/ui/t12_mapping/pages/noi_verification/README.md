@@ -7,13 +7,15 @@ fail. Shows the NOI verification on top and **every classified row bucketed by s
 (revenue / expense / capex), each with its 7-class label, total, and confidence — anchor
 rows and low-confidence rows flagged.
 
-**Reads:**
-- `classification.json` — the pipeline's natural Stage-2 view: confirmed anchors, per-month
-  NOI verification, and every classified row (class / section / values / confidence /
-  low_confidence). Built by the pipeline presenter; the page reads it directly (thin bridge).
+**Reads:** the **run-state** via `bridge.get_state(id, with_grid=False)`. The page-local
+presenter (`helpers.build_view`) turns the run-state's `classification` slice + confirmed
+anchors into the review view (confirmed anchors, per-month NOI, every classified row with
+class / section / values / confidence / low_confidence). No cell_grid needed — `column_headers`
+were computed at classify time.
 
-**Writes** (on **Recompute**, via `apply_and_recompute` → deterministic Stage 2, no AI):
-- `classification.json`, `annotated_blocks.json`, `comparison.json`, `actual_noi.json`
+**Writes** (on **Recompute**, via `run_step("classify", run_feedback=False)` → deterministic,
+no AI): the run-state + `mirror_mapping` (`annotated_blocks.json` + `actual_noi.json` for the
+mapping stage / data_review).
 
 **On Save & Continue:** runs the mapping stage (`run_mapping`, reads `annotated_blocks.json`)
 then redirects to `data_review`.

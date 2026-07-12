@@ -29,7 +29,7 @@ def verify(request, upload_id):
     upload_obj = get_object_or_404(Upload, pk=upload_id)
 
     try:
-        view = pipeline_bridge.load_classification(upload_obj.id)
+        state = pipeline_bridge.get_state(upload_obj.id, with_grid=False)
     except FileNotFoundError:
         return render(request, "upload/upload.html", {
             "errors": {"t12_file": "Upload data not found. Please re-upload."},
@@ -46,14 +46,13 @@ def verify(request, upload_id):
         action = request.POST.get("action", "recompute")
 
         try:
-            # deterministic recompute on the adjusted anchors (no AI), then mirror + reload
+            # deterministic recompute on the adjusted anchors (no AI); mirror mapping inputs
             anchors = {"revenue_end_row": corrections["total_revenue_row"],
                        "expense_end_row": corrections["total_expense_row"],
                        "noi_row":         corrections["noi_row"]}
             state = pipeline_bridge.run_step(upload_obj.id, "classify",
                                              anchors=anchors, run_feedback=False)
-            pipeline_bridge.mirror_stage2(upload_obj.id, state)
-            view = pipeline_bridge.load_classification(upload_obj.id)
+            pipeline_bridge.mirror_mapping(upload_obj.id, state)
         except Exception as e:
             recompute_error = str(e)
         else:
@@ -69,5 +68,5 @@ def verify(request, upload_id):
     return render(
         request,
         "noi_verification/verify.html",
-        build_context(upload_obj, view, recompute_error),
+        build_context(upload_obj, state, recompute_error),
     )

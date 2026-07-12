@@ -12,6 +12,7 @@ See docs/build/RESTRUCTURE_PLAN.md.
 """
 from . import cell_grid, format_detect, structure_map, extract, anchor_lock, sections, noi, feedback
 from . import classify as classify_mod
+from .legacy_adapter import column_headers
 
 
 def stage1(state):
@@ -31,8 +32,9 @@ def check_anchors(state):
 
 
 def _apply_confirmed_anchors(state):
-    """Fold the user's confirmed R/E/NOI picks into structure_map, keeping the auto-detected
-    expense split only if the expense row is unchanged from the pre-filled one."""
+    """Fold the user's confirmed R/E/NOI picks into structure_map (keeping the auto-detected
+    expense split only if the expense row is unchanged) and flip the lock to MANUAL — the
+    user has now confirmed the anchors, so the run-state carries that status directly."""
     picks = state.get("anchors")
     if picks is None:
         return state
@@ -42,7 +44,10 @@ def _apply_confirmed_anchors(state):
     fm["expense_end_row"] = picks.get("expense_end_row")
     fm["noi_row"]         = picks.get("noi_row")
     fm["expense_split_rows"] = locked_split if picks.get("expense_end_row") == locked_exp else None
-    return {**state, "structure_map": fm}
+    lock = {**(state.get("anchor_lock") or {}), "status": "MANUAL", "method": "manual",
+            "anchors": {"revenue_end_row": fm["revenue_end_row"],
+                        "expense_end_row": fm["expense_end_row"], "noi_row": fm["noi_row"]}}
+    return {**state, "structure_map": fm, "anchor_lock": lock}
 
 
 def classify(state):
@@ -60,12 +65,29 @@ def classify(state):
         state = feedback.run(state)        # AI diagnosis loop
     state = classify_mod.run_flag(state)
 
-    classification = {"classified":          state["classified"],
-                      "noi":                 state["noi"],
-                      "feedback":            state.get("feedback"),
-                      "low_confidence_rows": state["low_confidence_rows"]}
+    # Extract a JSON-clean diagnosis summary (the raw feedback holds a pydantic object that
+    # doesn't survive the state.json round-trip). column_headers computed here (we have the
+    # grid) so the review page never needs the heavy cell_grid.
+    fb, diagnosis = state.get("feedback"), None
+    if fb:
+        dg = fb.get("diagnosis")
+        diagnosis = {"status":             fb.get("status"),
+                     "iterations":         fb.get("iterations"),
+                     "user_message":       getattr(dg, "user_message", None) if dg else None,
+                     "data_inconsistency": getattr(dg, "data_inconsistency", None) if dg else None}
+
+    classification = {"classified":           state["classified"],
+                      "noi":                  state["noi"],
+                      "diagnosis":            diagnosis,
+                      "low_confidence_rows":  state["low_confidence_rows"],
+                      "column_headers":       column_headers({"final_map": state["structure_map"],
+                                                              "cell_grid": state["cell_grid"]}),
+                      "confidence_threshold": classify_mod.LOW_CONFIDENCE_MARGIN}
+    # `feedback` (the raw loop result, with a pydantic diagnosis) is left top-level for the
+    # CLI report only; save_state strips it from state.json (the clean summary is in
+    # classification.diagnosis). classified/noi/low_confidence_rows fold into classification.
     keep = {k: v for k, v in state.items()
-            if k not in ("classified", "noi", "feedback", "low_confidence_rows")}
+            if k not in ("classified", "noi", "low_confidence_rows")}
     return {**keep, "classification": classification, "step": "classified"}
 
 

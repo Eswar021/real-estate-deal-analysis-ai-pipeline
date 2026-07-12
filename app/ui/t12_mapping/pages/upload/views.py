@@ -61,10 +61,9 @@ def upload(request):
                 "errors": {"t12_file": preflight["reason"]},
                 "property_name": property_name,
             })
-        state = pipeline_bridge.run_step(                        # STAGE 1 only (no classification)
+        pipeline_bridge.run_step(                                # STAGE 1 only (no classification)
             upload_obj.id, "stage1",
             file={"name": Path(xlsx_path).name, "path": str(xlsx_path)})
-        pipeline_bridge.mirror_stage1(upload_obj.id, state)
     except Exception as e:
         upload_obj.delete()  # cascades file deletion via FileField
         return render(request, "upload/upload.html", {

@@ -1,10 +1,10 @@
 """
 pages/anchor_gate/helpers.py — page-local helpers.
 
-Builds the context for the Stage-1 anchor gate. At gate time neither signal extraction
-nor classification has run yet (both are Stage 2), so the row descriptions + values come
-from the Stage-1 parse_state (anchor_rows — the light {row, description, values} build),
-NOT annotated_blocks. The candidates + passing triples + status come from anchor_lock.json.
+Builds the context for the Stage-1 anchor gate straight from the run-state (Phase D — no
+parse_state.json / anchor_lock.json). At gate time neither signal extraction nor
+classification has run yet, so the row descriptions + values come from the light Stage-1
+`anchor_rows`; the candidates + passing triples + status come from `anchor_lock`.
 """
 
 
@@ -32,11 +32,12 @@ STATUS_EXPLAIN = {
 }
 
 
-def build_context(upload, anchor_lock, parse_state, chosen=None, reconciles=None, error=None):
+def build_context(upload, state, chosen=None, reconciles=None, error=None):
     """`chosen` is the user's picks on a Re-verify POST (pre-fills the selectors); `reconciles`
     is that light R − |E| = NOI verdict. On the first GET both are None — the selectors
     pre-fill from the auto-lock and `reconciles` reflects whether the lock found a triple."""
-    anchor_rows = parse_state.get("anchor_rows", [])
+    anchor_lock = state.get("anchor_lock") or {}
+    anchor_rows = state.get("anchor_rows", [])
     by = {r["row"]: r for r in anchor_rows}
 
     def info(rn):
@@ -66,7 +67,7 @@ def build_context(upload, anchor_lock, parse_state, chosen=None, reconciles=None
 
     return {
         "upload_id":   upload.id,
-        "file_name":   parse_state.get("file", "") or upload.file_name,
+        "file_name":   (state.get("file") or {}).get("name") or upload.file_name,
         "status":      status,
         "status_tone": tone,
         "status_explain": explain,

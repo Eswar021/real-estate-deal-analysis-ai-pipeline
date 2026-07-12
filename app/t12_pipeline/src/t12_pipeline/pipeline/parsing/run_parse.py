@@ -27,7 +27,7 @@ def parse_file(xlsx_path, *, run_feedback=True, max_iters=5):
         "anchor_lock":         state["anchor_lock"],
         "classified":          cls["classified"],
         "noi":                 cls["noi"],
-        "feedback":            cls["feedback"],
+        "feedback":            state.get("feedback"),
         "signal_rows":         state["signals"],
         "low_confidence_rows": cls["low_confidence_rows"],
     }

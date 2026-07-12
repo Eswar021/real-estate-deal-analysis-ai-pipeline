@@ -14,9 +14,9 @@ POST action=verify:   LIGHT re-check R − |E| = NOI on the chosen rows (no clas
 POST action=continue: CONFIRM — run Stage 2 (classify + AI diagnosis on fail), redirect to
                       the classification review.
 
-Reads:  anchor_lock.json, parse_state.json
-Writes: classification.json, annotated_blocks.json, comparison.json, actual_noi.json
-        (Stage 2, ONLY on Confirm via confirm_anchors — Re-verify writes nothing)
+Reads:  the run-state (anchor_lock + anchor_rows) via bridge.get_state
+Writes: on Confirm — the classify step (run-state) + mirror_mapping (annotated_blocks +
+        actual_noi for the mapping stage / data_review). Re-verify writes nothing.
 DB:     Upload.current_step = 'noi_verification' (on Confirm)
 Next:   noi_verification (the classification review)
 """
@@ -33,8 +33,7 @@ def anchors(request, upload_id):
     upload_obj = get_object_or_404(Upload, pk=upload_id)
 
     try:
-        anchor_lock = pipeline_bridge.load_anchor_lock(upload_obj.id)
-        parse_state = pipeline_bridge.load_parse_state(upload_obj.id)
+        state = pipeline_bridge.get_state(upload_obj.id, with_grid=False)
     except FileNotFoundError:
         return render(request, "upload/upload.html", {
             "errors": {"t12_file": "Upload data not found. Please re-upload."},
@@ -49,10 +48,10 @@ def anchors(request, upload_id):
         }
         try:
             if request.POST.get("action") == "continue":
-                # Stage 2 (classify + AI diagnosis on NOI fail), then mirror to the page files
-                state = pipeline_bridge.run_step(upload_obj.id, "classify",
-                                                 anchors=chosen, run_feedback=True)
-                pipeline_bridge.mirror_stage2(upload_obj.id, state)
+                # Stage 2 (classify + AI diagnosis on NOI fail); mirror the mapping inputs
+                s = pipeline_bridge.run_step(upload_obj.id, "classify",
+                                             anchors=chosen, run_feedback=True)
+                pipeline_bridge.mirror_mapping(upload_obj.id, s)
                 upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
                 upload_obj.save(update_fields=["current_step", "updated_at"])
                 return redirect("noi_verify", upload_id=upload_obj.id)
@@ -66,5 +65,5 @@ def anchors(request, upload_id):
     return render(
         request,
         "anchor_gate/anchors.html",
-        build_context(upload_obj, anchor_lock, parse_state, chosen, reconciles, error),
+        build_context(upload_obj, state, chosen, reconciles, error),
     )

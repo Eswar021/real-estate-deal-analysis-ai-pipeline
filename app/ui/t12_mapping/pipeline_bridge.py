@@ -27,7 +27,6 @@ from t12_pipeline.pipeline.parsing.cell_grid import extract_cell_grid
 from t12_pipeline.pipeline.parsing.preflight import screen_name, screen_structure
 from t12_pipeline.pipeline.parsing import stages
 from t12_pipeline.pipeline.parsing import legacy_adapter as la
-from t12_pipeline.pipeline.parsing.presenter import build_classification_view
 from t12_pipeline.pipeline.mapping.map_blocks import map_results
 from t12_pipeline.pipeline.mapping.find_mapping import run_ai_mapping
 
@@ -54,7 +53,10 @@ def save_state(run_id, state: dict) -> None:
     grid = state.get("cell_grid")
     if grid is not None and not storage.exists(run_id, "cell_grid.json"):
         storage.write_json(run_id, "cell_grid.json", grid)
-    storage.write_json(run_id, "state.json", {k: v for k, v in state.items() if k != "cell_grid"})
+    # cell_grid (heavy) and feedback (holds a pydantic diagnosis; the clean summary lives in
+    # classification.diagnosis) are kept out of the persisted state.
+    skip = ("cell_grid", "feedback")
+    storage.write_json(run_id, "state.json", {k: v for k, v in state.items() if k not in skip})
 
 
 def run_step(run_id, name, *, save: bool = True, with_grid: bool = True, **inputs) -> dict:
@@ -89,12 +91,13 @@ def _restore_cell_grid(cg: dict) -> dict:
     return cg
 
 
-def _res_from_state(state, anchor_lock) -> dict:
-    """The flat `res` shape the presenter / legacy_adapter consume, built from state slices."""
+def _res_from_state(state) -> dict:
+    """The flat `res` shape legacy_adapter consumes (mapping input + data_review's actual_noi),
+    built from run-state slices. legacy_adapter ignores feedback, so it's omitted."""
     cls = state["classification"]
     return {"format": state["format"]["format"], "final_map": state["structure_map"],
-            "cell_grid": state["cell_grid"], "anchor_lock": anchor_lock,
-            "classified": cls["classified"], "noi": cls["noi"], "feedback": cls["feedback"],
+            "cell_grid": state["cell_grid"], "anchor_lock": state["anchor_lock"],
+            "classified": cls["classified"], "noi": cls["noi"], "feedback": None,
             "signal_rows": state["signals"], "low_confidence_rows": cls["low_confidence_rows"]}
 
 
@@ -109,61 +112,20 @@ def run_preflight(xlsx_local_path) -> dict:
     return screen_structure(extract_cell_grid(str(xlsx_local_path)))
 
 
-# ── mirror helpers: write the run-state to the current per-page files ─────────────────
-#    Transitional (Phase C). Phase D drops these once every page reads the run-state directly.
+# ── mirror helper: bridge the run-state to the files the mapping side still reads ────
+#    Transitional (Phase D-parsing). Phase D-mapping removes it once the mapping stage +
+#    data_review read the run-state directly. The parsing pages already read the run-state.
 
-def mirror_stage1(upload_id, state) -> None:
-    """Mirror the Stage-1 run-state to the files the anchor gate reads (anchor_lock +
-    parse_state). cell_grid.json is written by save_state on the first save."""
-    storage.write_json(upload_id, "anchor_lock.json", state["anchor_lock"])
-    storage.write_json(upload_id, "parse_state.json",
-                       {"file": state["file"]["name"], "format": state["format"]["format"],
-                        "final_map": state["structure_map"], "anchor_rows": state["anchor_rows"]})
-
-
-def mirror_stage2(upload_id, state) -> dict:
-    """Mirror the Stage-2 run-state to the per-page files (classification / annotated_blocks /
-    comparison / actual_noi) and flip the lock to MANUAL (the user confirmed the anchors).
-    Returns the comparison."""
-    fm = state["structure_map"]
-    anchor_lock = {**state["anchor_lock"], "status": "MANUAL", "method": "manual",
-                   "anchors": {"revenue_end_row": fm["revenue_end_row"],
-                               "expense_end_row": fm["expense_end_row"],
-                               "noi_row":         fm["noi_row"]}}
-    storage.write_json(upload_id, "anchor_lock.json", anchor_lock)
-
-    res = _res_from_state(state, anchor_lock)
-    comparison = la.to_comparison(res, state["file"]["name"])
-    storage.write_json(upload_id, "classification.json", build_classification_view(res, state["file"]["name"]))
+def mirror_mapping(upload_id, state) -> None:
+    """Write the two files the mapping stage (annotated_blocks) and data_review (actual_noi)
+    still consume, built from the confirmed run-state."""
+    res = _res_from_state(state)
     storage.write_json(upload_id, "annotated_blocks.json", la.to_annotated(res, state["file"]["name"]))
-    storage.write_json(upload_id, "comparison.json",       comparison)
     storage.write_json(upload_id, "actual_noi.json",       la.to_actual_noi(res))
-    return comparison
 
 
-def load_annotated_blocks(upload_id) -> dict:
-    return storage.read_json(upload_id, "annotated_blocks.json")
-
-
-def load_comparison(upload_id) -> dict:
-    return storage.read_json(upload_id, "comparison.json")
-
-
-def load_anchor_lock(upload_id) -> dict:
-    return storage.read_json(upload_id, "anchor_lock.json")
-
-
-def load_classification(upload_id) -> dict:
-    """Stage-2 natural view — anchors, NOI verification, and every classified row
-    (class/section/values/confidence/low_confidence). The review page reads this directly."""
-    return storage.read_json(upload_id, "classification.json")
-
-
-def load_parse_state(upload_id) -> dict:
-    """Stage-1 state — {file, format, final_map, anchor_rows}. The anchor gate reads
-    anchor_rows (the light {row, description, values} build) to render the candidate/
-    all-row selectors before Stage 2 has extracted signals or produced annotated_blocks."""
-    return storage.read_json(upload_id, "parse_state.json")
+# The parsing pages (anchor gate, classification review) read the run-state directly via
+# get_state — no per-page loader needed. Mapping-side loaders live below.
 
 
 # ═══════════════════════════════════════════════════════════════════════
