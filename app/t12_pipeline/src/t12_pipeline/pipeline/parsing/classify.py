@@ -82,6 +82,25 @@ def classify_rows(rows, structure_map=None):
     return out
 
 
+# rows WITH VALUES whose top-two class margin is below this were a close call → flag them
+# for human review (they feed the NOI sum, so a wrong call there actually moves the number).
+# Empirically tuned; clean files sit well above it. Adjust as more labelled files come in.
+LOW_CONFIDENCE_MARGIN = 0.15
+
+
+def flag_low_confidence(classified, threshold=LOW_CONFIDENCE_MARGIN):
+    """Set `low_confidence` on each row and return the flagged row numbers. Only value-bearing
+    rows are eligible — a low-margin header doesn't affect the totals, an ambiguous data /
+    subtotal row does. Confidence is the top-two class-score margin from `classify_rows`."""
+    flagged = []
+    for r in classified:
+        low = bool(r.get("has_values")) and r.get("confidence", 1.0) < threshold
+        r["low_confidence"] = low
+        if low:
+            flagged.append(r["row"])
+    return flagged
+
+
 def reconcile_leaf_data(rows, grid, structure_map):
     """Correctness self-check: the values of ONLY the DATA-class rows in each section
     must sum to that section's grand total. Returns computed vs vendor + the rows."""

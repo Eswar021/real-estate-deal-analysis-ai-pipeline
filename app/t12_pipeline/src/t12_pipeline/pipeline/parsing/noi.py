@@ -33,13 +33,26 @@ def verify_noi(classified, grid, final_map):
                 (comp_rev if r["section"] == "revenue" else comp_exp)[i] += v
     comp_rev = [round(x, 2) for x in comp_rev]
     comp_exp = [round(x, 2) for x in comp_exp]
-    comp_noi = [round(comp_rev[i] - comp_exp[i], 2) for i in range(n)]
+    # NOI = revenue − expense MAGNITUDE; abs() handles vendors who sign expenses negative
+    # (comp_exp comes out negative) as well as those who keep them positive.
+    comp_noi = [round(comp_rev[i] - abs(comp_exp[i]), 2) for i in range(n)]
 
     # top-down (vendor-reported) — the locked grand-total rows
     def _num(vals):
         return [v if isinstance(v, (int, float)) else None for v in vals]
     act_rev = _num(_row_values(grid, final_map["revenue_end_row"], value_cols))
-    act_exp = _num(_row_values(grid, final_map["expense_end_row"], value_cols))
+    split = final_map.get("expense_split_rows")
+    if split:
+        # vendor splits the expense total across >1 row (controllable + non-controllable):
+        # the vendor expense per month is their sum, not any single row.
+        sums, seen = [0.0] * n, [False] * n
+        for er in split:
+            for i, v in enumerate(_row_values(grid, er, value_cols)):
+                if isinstance(v, (int, float)):
+                    sums[i] += v; seen[i] = True
+        act_exp = [round(sums[i], 2) if seen[i] else None for i in range(n)]
+    else:
+        act_exp = _num(_row_values(grid, final_map["expense_end_row"], value_cols))
     act_noi = _num(_row_values(grid, final_map["noi_row"], value_cols))
 
     def _match(a, c):

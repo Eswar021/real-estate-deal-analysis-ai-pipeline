@@ -46,13 +46,24 @@ def is_metric(desc):
 
 def detect_value_columns(grid, start_col, min_hits=5):
     """Columns at/after start_col that hold numbers in enough rows = the value region.
-    Reads cell_grid."""
+    Reads cell_grid. Returns only the FIRST CONTIGUOUS run: the 12 months + total sit in
+    adjacent columns, so a second numeric block further right (e.g. a duplicate embedded
+    'Income Statement' table, seen in some RealPage exports) is correctly excluded — it
+    starts after a column gap and would otherwise inflate every downstream sum."""
     numeric = {}
     for grow in grid["rows"]:
         for c, cell in grow["cells"].items():
             if c >= start_col and isinstance(cell["value"], (int, float)):
                 numeric[c] = numeric.get(c, 0) + 1
-    return sorted(c for c, n in numeric.items() if n >= min_hits)
+    cols = sorted(c for c, n in numeric.items() if n >= min_hits)
+    if not cols:
+        return []
+    run = [cols[0]]
+    for c in cols[1:]:
+        if c != run[-1] + 1:
+            break
+        run.append(c)
+    return run
 
 
 def apply_arithmetic(rows):

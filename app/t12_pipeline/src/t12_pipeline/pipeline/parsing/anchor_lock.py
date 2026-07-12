@@ -48,28 +48,28 @@ def _hits(rows, markers, exclusions):
     return out
 
 
-def nominate_anchors(signal_rows, kw, ai_rows):
+def nominate_anchors(rows, kw, ai_rows):
     """Per anchor type: grand-marker rows (intermediates only if no grand fires),
     minus exclusions, requiring >=6 numeric month values; unioned with the AI's rows."""
     cands = {}
     for t in ("revenue", "expense", "noi"):
         cfg = kw[t]
-        c = _hits(signal_rows, cfg["grand_markers"], cfg.get("exclusions", []))
+        c = _hits(rows, cfg["grand_markers"], cfg.get("exclusions", []))
         if not c:
-            c = _hits(signal_rows, cfg.get("intermediate_markers", []), cfg.get("exclusions", []))
+            c = _hits(rows, cfg.get("intermediate_markers", []), cfg.get("exclusions", []))
         if ai_rows.get(t):
             c = sorted(set(c) | {ai_rows[t]})
         cands[t] = sorted(set(c))
     return cands
 
 
-def _expense_units(signal_rows, kw, exp_cands):
+def _expense_units(rows, kw, exp_cands):
     """Expense candidates as single rows PLUS split-pair sums (controllable + non-)."""
     units = [[e] for e in exp_cands]
     for pair in kw["expense"].get("split_pair_markers", {}).get("pairs", []):
         legs = []
         for m in pair:
-            legs.append([r["row"] for r in signal_rows
+            legs.append([r["row"] for r in rows
                          if m in r["description"].strip().lower() and _ncount(_mvals(r)) >= _MINCOLS])
         for a in legs[0]:
             for b in legs[1]:
@@ -95,22 +95,25 @@ def _triple_holds(rrow, eunit, nrow, byrow):
     for i in range(n):
         if rv[i] is None or ev[i] is None or nv[i] is None:
             continue
-        if not _amatch(nv[i], rv[i] - ev[i]):
+        # NOI = revenue − expense MAGNITUDE. abs() covers both sign conventions: vendors
+        # who store expenses positive (rv − ev) and vendors who store them negative
+        # (rv − |ev| = rv + ev). Without it, negative-signed expenses never reconcile.
+        if not _amatch(nv[i], rv[i] - abs(ev[i])):
             return False
         matched += 1
     return matched >= _MINCOLS
 
 
-def lock_anchors(signal_rows, final_map):
+def lock_anchors(rows, final_map):
     """Nominate → triple-test → lock. Returns dict(status, method, anchors, passing,
     candidates). status ∈ {AUTO, GATE, DERIVED, NONE}. `anchors` gives revenue_end_row
     / expense_end_row / noi_row (expense boundary = bottom-most of a split pair)."""
-    byrow = {r["row"]: r for r in signal_rows}
+    byrow = {r["row"]: r for r in rows}
     ai_rows = {"revenue": final_map.get("revenue_end_row"),
                "expense": final_map.get("expense_end_row"),
                "noi": final_map.get("noi_row")}
-    cands = nominate_anchors(signal_rows, ANCHOR_KEYWORDS, ai_rows)
-    eunits = _expense_units(signal_rows, ANCHOR_KEYWORDS, cands["expense"])
+    cands = nominate_anchors(rows, ANCHOR_KEYWORDS, ai_rows)
+    eunits = _expense_units(rows, ANCHOR_KEYWORDS, cands["expense"])
 
     passing = []
     for rr in cands["revenue"]:
@@ -153,11 +156,11 @@ def lock_anchors(signal_rows, final_map):
                 for i, x in enumerate(_mvals(byrow[er])):
                     if isinstance(x, (int, float)):
                         ev[i] = (ev[i] or 0.0) + x
-            derived = [(rv[i] - ev[i]) if (rv[i] is not None and ev[i] is not None) else None
+            derived = [(rv[i] - abs(ev[i])) if (rv[i] is not None and ev[i] is not None) else None
                        for i in range(len(rv))]
             if sum(1 for v in derived if v is not None) < _MINCOLS:
                 continue
-            for r in signal_rows:
+            for r in rows:
                 nr = r["row"]
                 if nr == rr or nr in eu or not (rr < min(eu) < nr):
                     continue
@@ -177,6 +180,34 @@ def lock_anchors(signal_rows, final_map):
                 "passing": dmatched, "candidates": cands}
     return {"status": "NONE", "method": None, "anchors": None,
             "passing": [], "candidates": cands}
+
+
+def reconcile_triple(rows, revenue_row, expense_unit, noi_row):
+    """Light per-month `R − |E| = NOI` check for one specific triple — the anchor gate's
+    re-verify. `rows` is the Stage-1 anchor_rows ({row, description, values}); NO signals,
+    NO classification. `expense_unit` is a list (a single row, or a split pair). Returns
+    {reconciles, matched, months:[{i, revenue, expense, noi, computed, match}]}."""
+    byrow = {r["row"]: r for r in rows}
+    eu = [e for e in (expense_unit or []) if e is not None]
+    if revenue_row not in byrow or noi_row not in byrow or not eu or any(e not in byrow for e in eu):
+        return {"reconciles": False, "matched": 0, "months": []}
+    rv, nv = _mvals(byrow[revenue_row]), _mvals(byrow[noi_row])
+    ev = [None] * len(rv)
+    for er in eu:
+        for i, x in enumerate(_mvals(byrow[er])):
+            if isinstance(x, (int, float)):
+                ev[i] = (ev[i] or 0.0) + x
+    months, matched, all_ok = [], 0, True
+    for i in range(len(rv)):
+        if rv[i] is None or ev[i] is None or nv[i] is None:
+            continue
+        calc = rv[i] - abs(ev[i])
+        ok = _amatch(nv[i], calc)
+        matched += ok
+        all_ok = all_ok and ok
+        months.append({"i": i, "revenue": rv[i], "expense": ev[i], "noi": nv[i],
+                       "computed": round(calc, 2), "match": ok})
+    return {"reconciles": all_ok and matched >= _MINCOLS, "matched": matched, "months": months}
 
 
 def apply_anchor_overrides(classified, final_map):

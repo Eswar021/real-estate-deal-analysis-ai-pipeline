@@ -32,6 +32,33 @@ def _desc_from_columns(grow, desc_cols_idx):
     return None, None
 
 
+def extract_anchor_rows(grid, final_map):
+    """STAGE 1 light build — just {row, description, values} per row, enough for the
+    anchor lock (which only reads descriptions for keyword nomination and monthly values
+    for the R − E = NOI test). NO signal vector, NO arithmetic — that's Stage 2's job,
+    after the anchors are confirmed. Uses the SAME description/value derivation as
+    extract_row_signals_dynamic, so the rows it feeds the lock are identical to what the
+    full extractor would have produced (the lock result is unchanged by this split)."""
+    desc_cols_idx = [column_index_from_string(c) for c in final_map["description_columns"]]
+    value_cols    = [column_index_from_string(c) for c in final_map["value_columns"]]
+    embedded      = final_map["code_embedded_in_description"]
+    rows = []
+    for grow in grid["rows"]:
+        raw, _ = _desc_from_columns(grow, desc_cols_idx)
+        raw = raw if raw is not None else ""
+        desc = CODE_PREFIX_RE.sub("", raw).strip() if embedded else raw.strip()
+        raw_vals = [gvalue(grow, c) for c in value_cols]
+        numeric  = [v for v in raw_vals if isinstance(v, (int, float))]
+        if not desc and not numeric:
+            continue
+        rows.append({
+            "row":         grow["row"],
+            "description": desc,
+            "values":      [round(v, 2) if isinstance(v, (int, float)) else None for v in raw_vals],
+        })
+    return rows
+
+
 def extract_row_signals_dynamic(grid, final_map):
     """Per-row feature vector driven by final_map: the raw signal pool + monthly values."""
     max_row = grid["max_row"]

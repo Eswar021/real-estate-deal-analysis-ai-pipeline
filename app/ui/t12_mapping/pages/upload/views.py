@@ -3,10 +3,11 @@ pages/upload/views.py
 
 URL:    /t12/
 Reads:  nothing (entry point)
-Writes: via pipeline_bridge.run_detection — block_detection.json,
-        annotated_blocks.json, actual_noi.json, computed_noi.json, comparison.json
+Writes: STAGE 1 ONLY via pipeline_bridge.run_detection — anchor_lock.json,
+        parse_state.json, cell_grid.json. Classification (annotated_blocks / comparison /
+        actual_noi) is NOT written here — the anchor gate writes it on Confirm.
 DB:     creates Upload row (status=draft, current_step='upload')
-Next:   redirects to noi_verification
+Next:   anchor_gate (always — Stage 2 runs only after the anchors are confirmed there)
 """
 
 from pathlib import Path
@@ -51,7 +52,7 @@ def upload(request):
 
     try:
         xlsx_path = storage.get_local_path(upload_obj.file)
-        comparison = pipeline_bridge.run_detection(upload_obj.id, xlsx_path)
+        pipeline_bridge.run_detection(upload_obj.id, xlsx_path)  # STAGE 1 only (no classification)
     except Exception as e:
         upload_obj.delete()  # cascades file deletion via FileField
         return render(request, "upload/upload.html", {
@@ -59,11 +60,8 @@ def upload(request):
             "property_name": property_name,
         })
 
-    upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
-    upload_obj.save(update_fields=["current_step", "updated_at"])
-
-    # Ambiguous R−E=NOI lock (GATE / DERIVED / NONE) → confirm the anchors first;
-    # a clean AUTO lock skips straight to NOI verification.
-    if comparison.get("anchor_status") not in ("AUTO", None):
-        return redirect("anchor_gate", upload_id=upload_obj.id)
-    return redirect("noi_verify", upload_id=upload_obj.id)
+    # TRUE STAGING — every upload stops at the anchor gate. Classification (Stage 2) runs
+    # ONLY after the user confirms the R / E / NOI anchors there, never at upload. A clean
+    # AUTO lock just arrives pre-filled and already reconciling (a one-click confirm).
+    # current_step stays 'upload' until the gate is confirmed (the gate bumps it to 'noi').
+    return redirect("anchor_gate", upload_id=upload_obj.id)

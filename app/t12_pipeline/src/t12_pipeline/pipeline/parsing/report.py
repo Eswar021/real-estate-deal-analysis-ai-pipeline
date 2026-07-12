@@ -120,7 +120,8 @@ def _fmt_noi_cell(t):
     return f"{av} / {cv} {mark}"
 
 
-def print_parse_report(res, *, explain_all=False, show_all_rows=True):
+def print_stage1_report(res, *, show_all_rows=True):
+    """Stage 1 — format detection, column resolution, signal extraction, anchor lock."""
     fm = res["final_map"]; fr = res["format_result"]
     print(f"format : {res['format']}  (confidence {fr['confidence']}, {fr['reason']})")
 
@@ -161,6 +162,10 @@ def print_parse_report(res, *, explain_all=False, show_all_rows=True):
     print(f"  → status {al['status']} ({al['method']}) — locked "
           f"R={a and a['revenue_end_row']} E={a and a['expense_end_row']} N={a and a['noi_row']}{tag}")
 
+
+def print_stage2_report(res, *, explain_all=False, show_all_rows=True):
+    """Stage 2 — classification + fact override, section assignment, NOI, diagnosis loop."""
+    fm = res["final_map"]
     _hr("Module 10 — Classification (7-class) + fact override")
     dist = Counter(r["class"] for r in res["classified"])
     print("  class distribution: " + "  ".join(f"{c}={dist.get(c, 0)}" for c in CLASSES))
@@ -203,6 +208,12 @@ def print_parse_report(res, *, explain_all=False, show_all_rows=True):
             print(f"  data inconsistency: {dg.data_inconsistency}")
         if getattr(dg, "user_message", None):
             print(f"  user message: {dg.user_message}")
+
+
+def print_parse_report(res, *, explain_all=False, show_all_rows=True):
+    """Full one-pass report (CLI / testing): Stage 1 then Stage 2."""
+    print_stage1_report(res, show_all_rows=show_all_rows)
+    print_stage2_report(res, explain_all=explain_all, show_all_rows=show_all_rows)
 
 
 def main(argv=None):

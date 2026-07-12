@@ -4,17 +4,21 @@ pages/anchor_gate/views.py
 URL:    /t12/<upload_id>/anchors/
 
 The Stage-1 anchor gate — shown when the R − E = NOI lock is ambiguous
-(GATE / DERIVED / NONE). The user confirms/adjusts the three anchor rows; the
-pipeline re-verifies (R − E = NOI) and re-classifies without re-calling the AI.
+(GATE / DERIVED / NONE). The user confirms/adjusts the three anchor rows; confirming
+runs STAGE 2 (classify → section → NOI verify) on those rows, WITHOUT re-calling the AI.
+Classification does not run until this gate is confirmed.
 
-GET / POST action=verify:  read anchor_lock + annotated + comparison, optionally
-                           re-lock to the user's rows and re-verify, render.
-POST action=continue:      persist the confirmed anchors, redirect to /noi/.
+GET:                  read anchor_lock + parse_state (anchor_rows); render the selectors.
+POST action=verify:   LIGHT re-check R − |E| = NOI on the chosen rows (no classification,
+                      no AI, nothing persisted) and show the verdict.
+POST action=continue: CONFIRM — run Stage 2 (classify + AI diagnosis on fail), redirect to
+                      the classification review.
 
-Reads:  anchor_lock.json, annotated_blocks.json, comparison.json
-Writes: annotated_blocks.json, comparison.json  (via confirm_anchors)
-DB:     Upload.current_step = 'noi_verification'
-Next:   noi_verification
+Reads:  anchor_lock.json, parse_state.json
+Writes: classification.json, annotated_blocks.json, comparison.json, actual_noi.json
+        (Stage 2, ONLY on Confirm via confirm_anchors — Re-verify writes nothing)
+DB:     Upload.current_step = 'noi_verification' (on Confirm)
+Next:   noi_verification (the classification review)
 """
 
 from django.shortcuts import get_object_or_404, redirect, render
@@ -30,14 +34,13 @@ def anchors(request, upload_id):
 
     try:
         anchor_lock = pipeline_bridge.load_anchor_lock(upload_obj.id)
-        annotated   = pipeline_bridge.load_annotated_blocks(upload_obj.id)
-        comparison  = pipeline_bridge.load_comparison(upload_obj.id)
+        parse_state = pipeline_bridge.load_parse_state(upload_obj.id)
     except FileNotFoundError:
         return render(request, "upload/upload.html", {
             "errors": {"t12_file": "Upload data not found. Please re-upload."},
         })
 
-    error = None
+    chosen, reconciles, error = None, None, None
     if request.method == "POST":
         chosen = {
             "revenue_end_row": int_or_none(request.POST.get("revenue_end_row")),
@@ -45,17 +48,17 @@ def anchors(request, upload_id):
             "noi_row":         int_or_none(request.POST.get("noi_row")),
         }
         try:
-            annotated, comparison = pipeline_bridge.confirm_anchors(upload_obj.id, chosen)
-        except Exception as e:
-            error = str(e)
-        else:
             if request.POST.get("action") == "continue":
+                pipeline_bridge.confirm_anchors(upload_obj.id, chosen)  # Stage 2 (+ AI diagnosis)
                 upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
                 upload_obj.save(update_fields=["current_step", "updated_at"])
                 return redirect("noi_verify", upload_id=upload_obj.id)
+            reconciles = pipeline_bridge.check_anchors(upload_obj.id, chosen)["reconciles"]
+        except Exception as e:
+            error = str(e)
 
     return render(
         request,
         "anchor_gate/anchors.html",
-        build_context(upload_obj, anchor_lock, annotated, comparison, error),
+        build_context(upload_obj, anchor_lock, parse_state, chosen, reconciles, error),
     )

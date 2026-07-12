@@ -1,17 +1,19 @@
 """
-pages/noi_verification/views.py
+pages/noi_verification/views.py — the classification review (2nd hard stop).
 
 URL:    /t12/<upload_id>/noi/
 
-GET / POST `action=recompute`: read annotated_blocks + comparison, optionally
-apply corrections + recompute NOI, render verify page.
+Shows the Stage-2 result: NOI verification on top + every classified row bucketed by
+section. Every file stops here (pass or fail) before mapping.
 
-POST `action=continue`: persist any pending corrections, then run Stage 2
-(mapping + AI fallback) synchronously, then redirect to /review/.
+GET / POST action=recompute: read classification.json; on a POST, adjust the R / E / NOI
+                             anchors and re-run Stage 2 DETERMINISTICALLY (no AI); render.
+POST action=continue:        run the mapping stage, then redirect to /review/.
 
-Reads:  annotated_blocks.json, comparison.json
-Writes: annotated_blocks.json, comparison.json    (on Recompute)
-        auto_mapped.json, ai_mapped.json, ai_mapping_logs.json   (on Save & Continue)
+Reads:  classification.json
+Writes: classification.json + annotated_blocks.json + comparison.json + actual_noi.json
+        (on Recompute, via apply_and_recompute)
+        auto_mapped.json, ai_mapped.json, ai_mapping_logs.json (on Save & Continue)
 DB:     Upload.current_step bumped to 'data_review' on Save & Continue
 """
 
@@ -27,8 +29,7 @@ def verify(request, upload_id):
     upload_obj = get_object_or_404(Upload, pk=upload_id)
 
     try:
-        annotated  = pipeline_bridge.load_annotated_blocks(upload_obj.id)
-        comparison = pipeline_bridge.load_comparison(upload_obj.id)
+        view = pipeline_bridge.load_classification(upload_obj.id)
     except FileNotFoundError:
         return render(request, "upload/upload.html", {
             "errors": {"t12_file": "Upload data not found. Please re-upload."},
@@ -45,9 +46,7 @@ def verify(request, upload_id):
         action = request.POST.get("action", "recompute")
 
         try:
-            annotated, comparison = pipeline_bridge.apply_and_recompute(
-                upload_obj.id, corrections
-            )
+            view, _ = pipeline_bridge.apply_and_recompute(upload_obj.id, corrections)
         except Exception as e:
             recompute_error = str(e)
         else:
@@ -59,12 +58,9 @@ def verify(request, upload_id):
                     return redirect("data_review", upload_id=upload_obj.id)
                 except Exception as e:
                     recompute_error = f"Mapping error: {e}"
-            else:
-                upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
-                upload_obj.save(update_fields=["current_step", "updated_at"])
 
     return render(
         request,
         "noi_verification/verify.html",
-        build_context(upload_obj, annotated, comparison, recompute_error),
+        build_context(upload_obj, view, recompute_error),
     )

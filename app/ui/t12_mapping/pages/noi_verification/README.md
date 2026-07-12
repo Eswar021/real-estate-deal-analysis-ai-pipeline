@@ -1,23 +1,35 @@
-# noi_verification page
+# noi_verification page — Classification Review (Stage 2, 2nd hard stop)
 
 **URL:** `/t12/<upload_id>/noi/`
 
+The second hard stop. Every file lands here after the anchor gate is confirmed, pass or
+fail. Shows the NOI verification on top and **every classified row bucketed by section**
+(revenue / expense / capex), each with its 7-class label, total, and confidence — anchor
+rows and low-confidence rows flagged.
+
 **Reads:**
-- `annotated_blocks.json` — current row classifications and flags
-- `comparison.json` — pipeline NOI verification result
+- `classification.json` — the pipeline's natural Stage-2 view: confirmed anchors, per-month
+  NOI verification, and every classified row (class / section / values / confidence /
+  low_confidence). Built by the pipeline presenter; the page reads it directly (thin bridge).
 
-**Writes** (on every Recompute, so a page refresh shows the latest state):
-- `annotated_blocks.json` — corrected with the user's row selections + re-walked statement_side
-- `comparison.json` — new NOI comparison against the corrected data
+**Writes** (on **Recompute**, via `apply_and_recompute` → deterministic Stage 2, no AI):
+- `classification.json`, `annotated_blocks.json`, `comparison.json`, `actual_noi.json`
 
-**DB:** updates `Upload.current_step='noi_verification'` (or `'data_review'` on Save & Continue, future)
+**On Save & Continue:** runs the mapping stage (`run_mapping`, reads `annotated_blocks.json`)
+then redirects to `data_review`.
 
-**Next:** `data_review` (on Save & Continue, future)
+**DB:** `Upload.current_step = 'data_review'` on Save & Continue.
 
-## NOI pass/fail logic (helpers.ui_pass)
+**Next:** `data_review`.
 
-1. `comparison["overall_pass"]` — pipeline's NOI match (catches wrong NOI row selection)
-2. `comparison["total_revenue_check"]["match"]` — catches wrong revenue row selection (vendor_egi comes from the flagged is_total_revenue row, so the check is row-dependent)
-3. Expense row cross-check — compares `is_total_expense` flagged row value against `total_expense_check["row_method"]` (expense data sum). Threshold mirrors the pipeline's `STRICT` flag via `comparison["tolerance_used"]`.
+## Pass/fail (helpers.ui_pass)
+Green only when **NOI reconciles AND** the revenue and expense totals both match — two green
+lights, since a net NOI check alone can hide compensating misclassifications. The totals come
+straight from `classification.json` (which already sums an expense split-pair and tolerates
+the vendor's sign convention).
 
-The expense cross-check is needed because the pipeline's `total_expense_check` uses `EGI − NOI` (not the flagged row), so changing the expense row wouldn't otherwise affect PASS/FAIL.
+## Behaviour
+- **Recompute** re-runs Stage 2 on adjusted R / E / NOI anchors **deterministically** (no AI
+  diagnosis — that ran once on the gate Confirm).
+- **Save & Continue** runs mapping and moves on.
+- Low-confidence rows (small top-two class margin, value-bearing) are highlighted for review.

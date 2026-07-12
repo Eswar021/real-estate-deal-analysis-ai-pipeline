@@ -11,42 +11,44 @@ A single workflow that handles any layout (known or new), self-corrects misclass
 ```mermaid
 flowchart TD
     Upload([File uploaded]) --> Preflight{Pre-flight check:<br/>rent roll or Model T12?}
-    Preflight -->|yes| Reject[/Reject with clear message/]
-    Preflight -->|no| Raw[Layer 1 — Raw extraction<br/>read Excel ONCE, losslessly:<br/>value, formula, data_type, number_format,<br/>font, alignment, fill, border,<br/>+ merged ranges, hidden rows<br/>→ cell_grid]
+    Preflight -->|yes → not a T12 input| Reject[/Reject with clear message/]
+    Preflight -->|no → real T12| Raw[Layer 1 — Raw extraction<br/>read Excel ONCE, losslessly:<br/>value, formula, data_type, number_format,<br/>font, alignment, fill, border,<br/>+ merged ranges, hidden rows<br/>→ cell_grid]
 
     Raw --> Detect[Format detection<br/>reads cell_grid<br/>per-column signal scoring]
 
-    Detect -->|high score<br/>KNOWN| KCols[Resolve columns from the format template<br/>description / value / month-header known]
-    Detect -->|low / no score<br/>UNKNOWN| AIStruct[AI Structure Agent — Claude Opus<br/>reads the RAW grid → resolves columns<br/>+ nominates candidate R / E / NOI rows<br/>+ subsection hierarchy]
+    Detect -->|high score<br/>KNOWN| KMap[Template structure map — no AI<br/>columns + layout from the format<br/>+ candidate R / E / NOI rows]
+    Detect -->|low / no score<br/>UNKNOWN| AIMap[AI Structure Agent — Claude Opus<br/>structure map: columns + layout<br/>+ candidate R / E / NOI rows + subsections]
 
-    KCols --> Extract
-    AIStruct --> Extract
+    KMap --> Anchor
+    AIMap --> Anchor
 
-    Extract[Dynamic feature extractor — ONE for ALL formats<br/>reads cell_grid through the resolved columns<br/>emits the per-row signal vector + monthly values]
-    Extract --> Anchor
+    Anchor{{"STAGE 1 — Anchor lock · NO signal extraction yet<br/>read ONLY the candidate rows' monthly values<br/>R − E = NOI decides, month-by-month, tol max($1, 0.5%)<br/>status AUTO / DERIVED / GATE / NONE = only how the gate is pre-filled"}}
 
-    Anchor{{"Stage 1 — Lock R / E / NOI anchors<br/>keywords + AI nominate candidates<br/>R − E = NOI decides, month-by-month, tol max($1, 0.5%)<br/>one triple → auto-lock · typo / no-row → derive"}}
-    Anchor -->|zero / multiple / ambiguous| Gate[/Manual gate — raw file rendered as a sheet<br/>candidates + arithmetic evidence · click-any-row · live re-verify/]
-    Anchor -->|clean lock| Locked[(Locked anchors →<br/>revenue / expense / capex regions)]
-    Gate --> Locked
+    Anchor ==> Gate
 
-    Locked --> Classify[Classification — normalized signal-match, 7-class<br/>UNBIASED: score = fraction of a class's signals satisfied<br/>arithmetic-verified facts OVERRIDE the score<br/>runs INSIDE the locked regions]
-    Classify --> NOI{NOI verification<br/>our DATA-row sums vs vendor totals<br/>per month AND total}
+    Gate[/"🛑 ANCHOR GATE — EVERY file stops here · shown in the UI<br/>raw rows + candidates + arithmetic verdict<br/>user confirms / adjusts the 3 R / E / NOI rows<br/>(nothing auto-advances — a clean lock just arrives pre-filled)"/]
+
+    Gate ==>|user submits confirmed anchors| Extract[STAGE 2 — Dynamic feature extractor · ONE for all formats<br/>NOW extract the per-row signal vector + monthly values<br/>reads cell_grid through the resolved columns]
+
+    Extract --> Classify[Classification — normalized signal-match, 7-class<br/>UNBIASED: score = fraction of a class's signals satisfied<br/>arithmetic-verified facts OVERRIDE the score<br/>runs INSIDE the locked R / E / capex regions]
+    Classify --> NOI{NOI verification<br/>our DATA-row sums by section vs the locked vendor anchors<br/>per month AND total}
 
     NOI -->|FAIL| Diagnose[AI Failure Diagnosis — Claude Opus<br/>reclassifies rows only; anchors are locked,<br/>so the NOI target can't move]
-    NOI -->|PASS| Conf{Every row<br/>high-confidence?<br/>planned}
+    Diagnose -.->|loop back, max 5×,<br/>accept only if NOI now reconciles| NOI
+    Diagnose -->|loop exhausted / data problem| Review
+    NOI -->|PASS| Conf[Per-row confidence check<br/>flag any low-confidence rows]
+    Conf --> Review
 
-    Conf -->|yes| Success([Show user — ready for mapping])
-    Conf -->|no: low-confidence rows| Review([Route low-confidence rows<br/>to human review])
+    Review[/"🛑 CLASSIFICATION REVIEW — EVERY file stops here · shown in the UI<br/>ALL classified rows bucketed by section (R / E / capex)<br/>+ NOI verification on top + low-confidence / diagnosis flags"/]
 
-    Diagnose -->|Data problem| ShowData([Show user — vendor data<br/>inconsistent, cannot fix])
-    Diagnose -->|Classification fix| ApplyFix[Apply corrected classes, re-verify]
-    ApplyFix -.->|loop back, max 5 iterations,<br/>accept only if NOI now reconciles| NOI
+    Review ==>|user submits| Mapping([Mapping stage — unchanged])
 ```
 
-> **`cell_grid` is the single source of truth.** Layer 1 reads the Excel exactly once and dumps it losslessly; **format detection, every Layer 2 extractor, and the render-for-agent step all read `cell_grid`** — nothing reopens the workbook.
+> **Two hard stops, nothing auto-advances.** Every file stops at the **anchor gate** (after the lock) and again at the **classification review** (after NOI verification), and both are shown in the UI. The lock status (`AUTO` / `DERIVED` / `GATE` / `NONE`) is **only** how confidently the arithmetic found the triple — it decides how the gate is *pre-filled*, never whether the gate is shown.
 >
-> **One extractor for every format.** Known and unknown files run the **same dynamic feature extractor** — it just reads `cell_grid` through the columns it is given (a *template* map for known formats, the AI map for unknown). So there is a single feature schema and a single classifier downstream, regardless of format.
+> **`cell_grid` is the single source of truth.** Layer 1 reads the Excel exactly once and dumps it losslessly; **format detection, the anchor lock, the dynamic extractor, and the render-for-agent step all read `cell_grid`** — nothing reopens the workbook.
+>
+> **Signals come AFTER the lock.** The anchor lock reads only the candidate rows' monthly *values* (no bold / border / keyword signals). The full **dynamic feature extractor** runs only once the user confirms the anchors — so a file abandoned at the gate never pays for signal extraction, and classification always runs against confirmed anchors. Known and unknown files then run the **same** extractor (a *template* map for known formats, the AI map for unknown) — one feature schema, one classifier downstream.
 
 ---
 
@@ -56,11 +58,11 @@ flowchart TD
 
 **Layer 1 — Raw extraction (the only time we touch Excel).** One module reads the workbook and dumps its **used range** losslessly into `cell_grid` — a plain, JSON-serializable list of row records. It captures everything a cell holds: `value`, `formula`, `data_type`, `number_format`, `font` (bold / italic / underline / size / color), `alignment` (horizontal / indent), `fill`, `border` (the top-border "sum line" is a real subtotal cue), plus worksheet-level facts like `merged_ranges` (critical for TREE layouts) and `hidden_rows`. To be truly lossless it may read the file twice internally — once `data_only=True` for cached values, once `data_only=False` for formulas — but that's still Excel touched in exactly one stage. **The  used range means the last row/column with content, not Excel's million-row maximum** (guard against a phantom `max_row`). Every module after this works from `cell_grid`; nothing reopens the workbook — mirroring the existing pipeline's "Stage 1 reads the xlsx once, everything downstream is JSON."
 
-**Layer 2 — Feature derivation (one dynamic extractor).** A single dynamic extractor reads `cell_grid` through the resolved columns and *adds* the derived signals — `description`, `whitespace_depth`, `all_caps`, `total_keyword`, `is_metric`, `top_border`, `has_values`, `arithmetic_sum_of_above`, etc. The raw facts stay; the derived fields accumulate on top. Data grows downstream and is never truncated (a row record keeps its cells, gains signals here, gains a `class` at classification, gains `section` from the locked anchors).
+**Layer 2 — Feature derivation (one dynamic extractor).** **This runs in Stage 2 — after the anchor gate is confirmed, not before the lock.** A single dynamic extractor reads `cell_grid` through the resolved columns and *adds* the derived signals — `description`, `whitespace_depth`, `all_caps`, `total_keyword`, `is_metric`, `top_border`, `has_values`, `arithmetic_sum_of_above`, etc. The raw facts stay; the derived fields accumulate on top. Data grows downstream and is never truncated (a row record keeps its cells, gains signals here, gains a `class` at classification, gains `section` from the confirmed anchors).
 
 **Format detection (scoring-based).** Reading `cell_grid`, we scan the first ~60 rows and extract **position-agnostic** signals — patterns counted anywhere, without assuming where anything lives: code-pattern prevalence (dash / dot / colon / MRI style), how spread out the first text cell is across columns, merged-cell density, leading-whitespace prevalence. Each known format is scored against this profile. High score → known; low or no score → unknown. Because these signals don't assume cell positions, we can detect the format *before* we know where the data is (no chicken-and-egg).
 
-**Stage 1 — Anchor lock (before any classification).** Once the columns are known — from the format template (known branch) or the AI structure agent (unknown branch) — we lock the three anchors first. Keyword lists (`anchor_keywords.json`: grand / intermediate / exclusion + split-pairs) **and** the AI nominate candidate revenue / expense / NOI rows; the arithmetic `R − E = NOI` test, month-by-month within tolerance `max($1, 0.5%)`, decides which triple is real. Keywords only *nominate*; the math *decides*. Exactly one passing triple → **auto-lock**. Zero, multiple, or a genuinely novel phrasing → the **raw file is shown to the user** with each candidate's arithmetic verdict, and they confirm the three rows (a novel phrasing they pick is promoted back into the keyword list). No NOI row at all → derive `N = R − E` and flag it `derived`. The locked anchors define the revenue / expense / capex regions for everything downstream — which is why there's no separate section-assignment step later. This also kills the keyword-collision bug (e.g. a "Net Operating Income" row *and* a "…after Debt" row both matching): the after-debt row misses `R − E = N` by the debt service, so the math rejects it automatically.
+**Stage 1 — Anchor lock (before signals or classification).** Once the columns are known — from the format template (known branch) or the AI structure agent (unknown branch) — we lock the three anchors first, using **only the candidate rows' monthly values** (no signal extraction yet). Keyword lists (`anchor_keywords.json`: grand / intermediate / exclusion + split-pairs) **and** the AI nominate candidate revenue / expense / NOI rows; the arithmetic `R − E = NOI` test, month-by-month within tolerance `max($1, 0.5%)`, decides which triple is real. Keywords only *nominate*; the math *decides*. The result is a **status** — one clean triple (`AUTO`), a derived NOI row (`DERIVED`), several triples (`GATE`), or none (`NONE`) — but that status **only decides how the anchor gate is pre-filled**. **Every file then stops at the anchor gate and is shown to the user** with each candidate's arithmetic verdict; the user confirms or adjusts the three rows before anything else runs (a novel phrasing they pick is promoted back into the keyword list). No NOI row at all → derive `N = R − E` and offer it as the pre-fill. The confirmed anchors define the revenue / expense / capex regions for everything downstream — which is why there's no separate section-assignment step later. This also kills the keyword-collision bug (e.g. a "Net Operating Income" row *and* a "…after Debt" row both matching): the after-debt row misses `R − E = N` by the debt service, so the math rejects it automatically.
 
 **Known branch — a template map, then the shared extractor.** When detection matches a known format, we build a small **template structure map** from that format's fixed layout (which columns hold the description, the values, the month header) — no AI call needed. The **same dynamic extractor** then reads `cell_grid` through those columns. (Early on each format had its own extractor; those have been **unified** — the dynamic extractor does the same job driven by a column map, and it is the only one that emits the full current signal set, so known and unknown files are identical from extraction onward.)
 
@@ -99,7 +101,7 @@ Highest score wins; the gap to the runner-up is the confidence. The **arithmetic
 
 **NOI verification.** Sum the rows classified as revenue data, sum the rows classified as expense data, and check whether `sum(revenue) - sum(expense)` matches the vendor's NOI (at the **locked** NOI anchor) within tolerance, per month and total. Since the anchors were already confirmed at Stage 1, this step validates the **classification** — if a subtotal was mislabeled as data (or a data row as a subtotal), the sum won't reconcile and it falls to diagnosis.
 
-**PASS → confidence gate.** NOI reconciling isn't sufficient on its own — it's a *net* check, so two rows misclassified in opposite directions can cancel out and still reconcile. So a file only auto-passes when **NOI reconciles AND no individual row is low-confidence**. Confidence is the gap between a row's top two class scores (see *Classification*); any row whose gap stays below threshold after the arithmetic pass is flagged. If all rows are high-confidence → the file moves to the next stage (auto-mapping → AI mapping) as it does today. If some rows are low-confidence → just those rows route to human review, even though the totals happened to add up.
+**PASS → confidence check (shown, never a silent pass).** NOI reconciling isn't sufficient on its own — it's a *net* check, so two rows misclassified in opposite directions can cancel out and still reconcile. So even on a PASS we compute per-row confidence — the gap between a row's top two class scores (see *Classification*) — and **flag** any row that stays below threshold after the arithmetic pass. Nothing auto-advances: the file stops at the **classification review**, where all classified rows, the NOI result, and the low-confidence flags are shown; the user submits to move on to mapping. The flags just tell the user which rows to look at hardest.
 
 **FAIL → AI failure diagnosis.** The agent receives the classified rows and the discrepancy and returns one of two things:
 
@@ -113,7 +115,7 @@ Highest score wins; the gap to the runner-up is the confidence. The **arithmetic
 - **Format-specific work stays in extraction.** Known formats each have their own extractor; unknown files get a dynamic extractor driven by the AI structure map. Everything from classification onward is shared.
 - **Uniform feature schema.** Every extractor — per-format and dynamic — emits the same per-row feature vector, so one universal classifier serves all files.
 - **Arithmetic is the trust anchor.** AI proposes structure and fixes; math confirms. AI never overrides the arithmetic / NOI reconciliation.
-- **Auto-pass needs two green lights.** NOI reconciliation (a net check) *and* per-row confidence. Compensating errors can pass the sum but not the confidence gate, so low-confidence rows always surface even when the totals match.
+- **No silent auto-pass.** Every file stops at the anchor gate and again at the classification review — both shown in the UI. NOI reconciliation (a net check) *and* per-row confidence are surfaced together, so compensating errors that pass the net sum still show up as low-confidence flags for the user.
 - **AI is bounded to two roles** — structure identification for unknown files, and failure diagnosis when NOI doesn't reconcile. It is capped and always validated.
 - **Fail honestly.** When the vendor's own numbers are inconsistent, we say so rather than forcing a "fix."
 
