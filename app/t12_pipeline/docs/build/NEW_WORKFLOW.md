@@ -225,3 +225,14 @@ Mechanical (import refactor only — no data-path changes).
   `screen_structure`, `to_annotated`) — then W3's reorg updates only `__init__.py` + `stages.py`,
   never the bridge or views. (Python `import` can't be driven from `paths.py`; this is the clean
   equivalent.)
+
+### W5 · Retire `legacy_adapter` (one vocabulary end-to-end) — optional
+`legacy_adapter.to_annotated` only exists because the mapping stage still reads the OLD row
+vocabulary (`type` / `statement_side` / `section_path`). Not required — it's transitional. To
+remove it: (1) **add `section_path` / `section_context` onto the classified rows** in Stage 2 (a
+small step that walks the rows and accumulates the SECTION/SUBSECTION-header stack — the logic
+`to_annotated` does today), and (2) **update `map_blocks`** to read the new vocabulary
+(`class=="DATA"`, `section`, row-level `section_path`). Then the mapping stage reads
+`state.classification.rows` directly and `to_annotated` is deleted. Low priority / low harm (the
+adapter is 2 small functions and lives in the pipeline, not the bridge); risk sits in the
+AI-heavy mapping stage. **Best done alongside W3** (when we touch `mapping/` → `stage3_mapping/`).
