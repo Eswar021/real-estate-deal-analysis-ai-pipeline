@@ -1,5 +1,10 @@
 # New T12 Parsing Approach
 
+> **Doc role:** this is the **current, as-built workflow** (concept + diagram). The **target**
+> workflow (deterministic-first structure detection for unknown files) plus a **dry run of the
+> run-state data produced at each step** live in
+> [`../build/NEW_WORKFLOW.md`](../build/NEW_WORKFLOW.md).
+
 A single workflow that handles any layout (known or new), self-corrects misclassifications, and fails honestly when the vendor's own data is inconsistent.
 
 > **Anchor-first front end.** The R / E / NOI anchors are **locked up front (Stage 1)** by an arithmetic `R − E = NOI` test over keyword + AI candidates — *before* row classification — so classification runs inside known-good regions and the old post-classification section state machine is gone. The detailed Stage-1 breakdown, its failure modes, and the open decisions live in [anchor_first_workflow.md](./anchor_first_workflow.md).
