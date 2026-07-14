@@ -4,9 +4,11 @@ Every pipeline module now exposes its own `run(state)` step (see each module). T
 composes them into the two coherent stages the app runs, and publishes `STEPS` — the registry
 the bridge's `run_step` dispatches on and the views sequence.
 
-  stage1  = extract_grid → detect_format → resolve_columns → extract_anchor_rows → lock_anchors
+  stage1   = extract_grid → detect_format → resolve_columns → extract_anchor_rows → lock_anchors
   classify = (apply confirmed anchors) → extract_signals → classify → sections → verify_noi
              → [NOI fail? → diagnose → apply_fix → re-verify (loop)] → flag_low_confidence
+  reverify = apply the user's class edits → verify_noi → flag_low_confidence  (no AI, no
+             re-classify — the review page's own re-entry into the NOI check)
 
 Every fork here is owned by the FLOW (decided by the data / the arithmetic), never by a caller
 flag — a caller can only re-enter a step, not switch part of it off.
@@ -108,6 +110,41 @@ def classify(state):
     return {**keep, "classification": classification, "step": "classified"}
 
 
+def reverify(state):
+    """STAGE 2 re-entry — the user changed one or more rows' class on the review page.
+    apply the edits → verify_noi → flag_low_confidence, re-entering the SAME noi node the
+    first pass used, so the number on the page is always the pipeline's number.
+
+    Deliberately does NOT re-classify (that would recompute the scores from the signals and
+    silently overwrite the user's edit — what the NOI page's old Recompute did) and does NOT
+    call the AI (it already had its turn in `classify`; re-running it here would just fight the
+    user, one LLM call per edit). Sections aren't reassigned either: a section is positional
+    (which side of the locked anchors the row sits on), so a class edit cannot move one.
+    reads/writes: classification. inputs: class_edits={row: CLASS}."""
+    cls = state["classification"]
+    fm  = state["structure_map"]
+    # only the NOI target itself is off-limits — the user may reclassify anything between the
+    # anchors, including the arithmetic's subsection subtotals (the page offers no dropdown on
+    # the anchors, but the workflow doesn't rely on the page for that).
+    locked = {fm.get("revenue_end_row"), fm.get("expense_end_row"), fm.get("noi_row"),
+              *(fm.get("expense_split_rows") or [])} - {None}
+    edits = [{"row": int(r), "corrected_class": c}
+             for r, c in (state.get("class_edits") or {}).items()]
+
+    state = {**state, "classified": feedback.apply_corrections(cls["classified"], edits,
+                                                               locked, source="manual")}
+    state = noi.run(state)
+    state = classify_mod.run_flag(state)
+    parse_log.stage2_classify(state)
+    parse_log.stage2_noi(state, "re-verify")
+
+    classification = {**cls, "classified": state["classified"], "noi": state["noi"],
+                      "low_confidence_rows": state["low_confidence_rows"]}
+    keep = {k: v for k, v in state.items()
+            if k not in ("classified", "noi", "low_confidence_rows", "class_edits")}
+    return {**keep, "classification": classification, "step": "classified"}
+
+
 def stage3_mapping(state):
     """STAGE 3 — map every classified DATA row to a canonical category: rulebook lookup, then
     the AI fallback for whatever it missed. The anchor flags ride in via to_annotated straight
@@ -146,6 +183,7 @@ STEPS = {
     "stage1_parse":          stage1,                # upload        → parse up to the anchor lock
     "stage1_check_anchors":  check_anchors,         # gate          → re-verify picks (read-only)
     "stage2_classify":       classify,              # gate confirm  → Stage 2 (AI on NOI fail)
+    "stage2_reverify":       reverify,              # Stage-2 edit  → re-verify NOI (no AI)
     "stage3_mapping":        stage3_mapping,        # review submit → rulebook + AI fallback
     "stage3_update_mapping": stage3_update_mapping, # Stage-3 edit  → apply a mapping override
 }

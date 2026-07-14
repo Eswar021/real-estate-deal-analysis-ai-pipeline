@@ -104,6 +104,8 @@ Stage 1  extract_grid -> detect_format -> resolve_columns -> extract_anchor_rows
 Stage 2  apply anchors -> extract_signals -> classify -> sections -> verify_noi
            -> [NOI FAIL -> diagnose -> apply_fix -> re-verify, loop max 3] -> flag_low_confidence
 🛑 CLASSIFICATION REVIEW  every file stops here
+           user edits a row's class -> stage2_reverify: apply_edits -> verify_noi -> flag
+           (re-enters the SAME noi node; never re-classifies, never calls the AI)
 Stage 3  map_blocks (rulebook) -> find_mapping (AI fallback) -> data_review
 ```
 
@@ -132,6 +134,10 @@ corrections; it was deleted. A caller may only re-enter a step, never disable pa
 - **Row classes:** METADATA · SECTION_HEADER · SUBSECTION_HEADER · DATA · SUBSECTION_SUBTOTAL ·
   SECTION_SUBTOTAL · COMPUTED_METRIC. `verify_noi` sums only DATA rows by section (capex
   excluded).
+- **A re-entry never re-runs the step it re-enters.** `stage2_reverify` / `stage3_update_mapping`
+  apply the user's edit onto the reviewed result and re-verify; re-running `classify` / the
+  mapping would recompute over the edit and discard it (the old Recompute bug). Each row carries
+  `source` ∈ auto/ai/manual — display only, no behaviour hangs off it.
 
 ---
 

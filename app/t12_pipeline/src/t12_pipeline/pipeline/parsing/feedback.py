@@ -15,19 +15,25 @@ from .classify import CLASSES
 DEFAULT_MAX_ITERS = 3   # cap the AI reclassify loop (was 5); overridable via state["max_iters"]
 
 
-def apply_corrections(classified, problem_rows, locked=frozenset()):
-    """Return a copy of `classified` with the diagnosis's corrected_class applied to
-    the named rows (only rows/classes that are valid). Locked anchor rows are NEVER
-    reclassified — the Stage-1 arithmetic already fixed them, so diagnosis can only
-    move the rows between the anchors, never the NOI target itself."""
-    fix = {pr["row"]: pr["corrected_class"] for pr in problem_rows
+def apply_corrections(classified, problem_rows, locked: set | frozenset = frozenset(),
+                      source="ai"):
+    """Return a copy of `classified` with each named row's corrected_class applied (only
+    rows/classes that are valid). Locked anchor rows are NEVER reclassified — the Stage-1
+    arithmetic already fixed them, so a correction can only move the rows between the anchors,
+    never the NOI target itself. Shared by the AI loop (source="ai") and the user's Stage-2
+    edits (source="manual"); each changed row carries its own provenance because save_state
+    strips the raw feedback, making the row the only thing that reaches the review page."""
+    fix = {pr["row"]: pr for pr in problem_rows
            if pr.get("row") is not None and pr.get("corrected_class") in CLASSES
            and pr["row"] not in locked}
     out = []
     for r in classified:
         r2 = dict(r)
-        if r["row"] in fix:
-            r2["class"] = fix[r["row"]]
+        pr = fix.get(r["row"])
+        if pr is not None:
+            r2["class"] = pr["corrected_class"]
+            r2["source"] = source
+            r2["source_reason"] = pr.get("reason")
         out.append(r2)
     return out
 

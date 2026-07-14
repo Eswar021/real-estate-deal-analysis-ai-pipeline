@@ -7,8 +7,9 @@ The connection between the page views and the t12_pipeline — deliberately THIN
 
   - The run-state lives in `state.json` (+ `cell_grid.json` as a heavy side artifact).
   - Every workflow is `run(state) -> state` and is named in `stages.STEPS`
-    (`stage1_parse`, `stage1_check_anchors`, `stage2_classify`, `stage3_mapping`,
-    `stage3_update_mapping`). A view picks a workflow by NAME; it never assembles one.
+    (`stage1_parse`, `stage1_check_anchors`, `stage2_classify`, `stage2_reverify`,
+    `stage3_mapping`, `stage3_update_mapping`). A view picks a workflow by NAME; it never
+    assembles one.
   - No pipeline logic lives here. The rulebook load, the mapping input adapter and the
     stage composition all live in the pipeline, so every stage is runnable without Django.
 
@@ -22,6 +23,7 @@ from shared import storage
 
 from t12_pipeline.config.rulebook_utils import get_rulebook_categories, load_latest_rulebook
 from t12_pipeline.pipeline.parsing.cell_grid import extract_cell_grid
+from t12_pipeline.pipeline.parsing.classify import CLASSES
 from t12_pipeline.pipeline.parsing.preflight import screen_name, screen_structure
 from t12_pipeline.pipeline.parsing import stages
 
@@ -91,3 +93,8 @@ def run_preflight(xlsx_local_path) -> dict:
 def load_categories() -> list[str]:
     """Returns the sorted canonical category list from the latest rulebook (dropdown options)."""
     return get_rulebook_categories(load_latest_rulebook())
+
+
+def load_classes() -> list[str]:
+    """The pipeline's row classes — the Stage-2 review dropdown's options."""
+    return list(CLASSES)

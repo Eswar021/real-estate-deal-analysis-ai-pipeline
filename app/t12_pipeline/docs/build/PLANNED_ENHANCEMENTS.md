@@ -321,7 +321,7 @@ end-to-end (gate → corrected classification → NOI PASS → mapping with no N
 | 3 | **Reduce NOI diagnosis iterations to save credits** | ✅ **done** (max 3 + no-progress early-exit) |
 | 4 | **Take the 3 hardcoded templates out of the code into an input file** | ✅ **done** (W1: `config/known_formats.json`) |
 | 5 | **Anchor-keywords rulebook** — build a SECOND rulebook from the reviewed `.xlsm` (grand-total revenue/expense/NOI names), replacing the hand-made `anchor_keywords.json`. Shivam: keep it a **separate file** from the account-mapping rulebook so the two logic areas stay independent; `build_rulebook` emits both; the pipeline loads both. | 🔨 **TODO — his stated next step #1** |
-| 6 | **Per-row class dropdowns on the Stage-2 review** so the user can correct a classification | 🔨 **TODO** (design below, §4d) |
+| 6 | **Per-row class dropdowns on the Stage-2 review** so the user can correct a classification | ✅ **done** (§4d: `stage2_reverify` + dropdowns + `source` badges — no lock, no re-classify, no AI on edit) |
 | 7 | **Remove the Recompute button; enforce stage-gated flow** — "once stage 1 is locked you can't go back; stages are go/no-go gates" | ✅ **done** — anchors are read-only on the NOI page; only the GATE can re-classify now |
 | 8 | **Verify Stage 3 mapping uses the locked anchors** | ✅ **verified** — `to_annotated` reads R/E/NOI from `final_map` (= `structure_map` after the gate's picks) and sets `is_total_revenue/expense/noi` + `statement_side` from them |
 | 9 | Template-inventory file (10 templates / vendor fingerprints across 25 files) as future template recognition | 💡 later — Shivam: "let's not do that immediately" |
@@ -340,11 +340,12 @@ STEPS = {
     "stage1_parse":          stage1,                # upload        → parse up to the anchor lock
     "stage1_check_anchors":  check_anchors,         # gate          → re-verify picks (read-only)
     "stage2_classify":       classify,              # gate confirm  → Stage 2 (AI on NOI fail)
+    "stage2_reverify":       reverify,              # Stage-2 edit  → re-verify NOI (no AI)
     "stage3_mapping":        stage3_mapping,        # review submit → rulebook + AI fallback
     "stage3_update_mapping": stage3_update_mapping, # Stage-3 edit  → apply a mapping override
 }
 ```
-(`stage2_reverify` joins this list with §4d.) **A new need = a new workflow, never a new handle.**
+**A new need = a new workflow, never a new handle.**
 Tests don't use the registry — they import modules directly and mock the AI agents.
 
 **Stage 3 is now a real workflow too.** It used to be hand-assembled *in the UI*
@@ -358,25 +359,44 @@ its vocabulary is legacy (`type`/`statement_side` vs our `class`/`section`), whi
 
 ---
 
-## 4d. 🔨 Stage-2 classification editing — design (from the 12-Jul discussion)
+## 4d. ✅ Stage-2 classification editing — DONE (meeting item #6)
 
-Adding per-row class dropdowns means user edits must re-enter the flow. **Do NOT add a
-`manual_fix` caller flag** — that repeats the `run_feedback` mistake (§4b). Two clean pieces:
+Per-row class dropdowns on the review page + a `stage2_reverify` workflow. **No `manual_fix`
+caller flag** — that would repeat the `run_feedback` mistake (§4b); the user's edit enters as
+*data* (`class_edits={row: CLASS}`) and the page re-enters a named workflow.
 
-1. **Tag the source of every class.** Each classified row carries `source ∈ {auto, ai, manual}`
-   (today rows carry `class`/`section`/`confidence` but nothing says WHO set it). This gives the
-   UI its "AI-suggested" badge, and gives the diagnosis loop something to respect.
-2. **A user edit is a FACT, not a flag.** Rows with `source="manual"` join `feedback.locked`
-   (which already protects anchors + validated subsections), so the AI can still fix OTHER rows
-   but can never overwrite the user. No new branch inside `classify`.
+**`stage2_reverify` = apply_edits → `verify_noi` → `flag_low_confidence`.** It re-enters the
+SAME `noi` node the first pass used (not a copy, not a hand-built dict), so the number on the
+page is always the pipeline's number. Deliberately:
+- **No re-classify** — recomputing the scores from the signals would overwrite the edit and show
+  the user their change vanishing. That is exactly what the old Recompute did (§4b).
+- **No AI** — the diagnosis had its turn in `classify`; re-running it per edit would fight the
+  user and cost an LLM call per dropdown.
+- **No sections re-run** — a section is positional (which side of the locked anchors a row sits
+  on), so a class edit cannot move one. *(verified in `sections.assign_sections`)*
+- **No lock on manual rows.** The earlier design had `source="manual"` join `feedback.locked`;
+  dropped as unnecessary — nothing re-runs after an edit, so there is nothing to lock against,
+  and locking would punish a user who clicked a dropdown just to look.
+- **Anchors refused.** `locked` = R / E / NOI + expense split rows — the NOI target can't be
+  moved. The page also offers no dropdown on them; the workflow doesn't rely on the page for that.
 
-**Entry points (nodes the caller re-enters — legitimate, unlike a flag):**
-- `classify` (from the gate) — the full chain incl. auto-diagnosis on NOI fail. *(exists)*
-- `reverify` (Stage-2 edit) — apply the user's class edits → `verify_noi` → show. **No AI**, so
-  editing is fast/free and the user stays in control.
-- `diagnose` (an explicit "AI suggestions" button) — runs the diagnosis on demand and shows its
-  proposals; `feedback.history` already records every iteration (row, from→to, reason,
-  fail-cols before→after) and is the AI-suggestion history to render.
+**Provenance lives ON THE ROW**, not in the history: `source ∈ {auto, ai, manual}` +
+`source_reason`. The design first said "badge from the tag, reason from `feedback.history`" —
+**that could not work**: `save_state` strips `feedback`, and `classify` folds only a 4-field
+summary into `classification.diagnosis`, so the AI's per-row reasons never survive to the review
+page. `apply_corrections` (shared by the AI loop and the edit path, `source=` picks which) now
+stamps both onto the row, where they persist with `classification.classified` for free. Display
+only — **no behaviour hangs off the tag.** Grid-wide snapshots were considered and deferred:
+right for revert/audit, but the badge+tooltip need is met by the tag at ~3× less state.
+
+**UI:** dropdown on every non-anchor row; `AI` badge (tooltip = the diagnosis's reason) /
+`edited` badge; changing a dropdown disables **Save & Continue** until Re-verify runs, so an
+unapplied edit can never be what gets mapped.
+
+**Still open — the "AI suggestions" button** (an explicit on-demand `diagnose` re-entry showing
+proposals rather than applying them). Not built; `feedback.history` already records every
+iteration (row, from→to, reason, fail-cols before→after) and would be its data source — but it
+is stripped at save, so this needs the history persisted first.
 
 ---
 

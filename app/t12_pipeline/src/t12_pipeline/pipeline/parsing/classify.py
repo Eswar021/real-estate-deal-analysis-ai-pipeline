@@ -76,7 +76,8 @@ def classify_rows(rows, structure_map=None):
         best = max(sc, key=sc.get)
         ranked = sorted(sc.values(), reverse=True)
         confidence = round(ranked[0] - (ranked[1] if len(ranked) > 1 else 0.0), 3)
-        out.append({**f, "class": best, "scores": sc, "confidence": confidence})
+        out.append({**f, "class": best, "scores": sc, "confidence": confidence,
+                    "source": "auto"})
     return out
 
 

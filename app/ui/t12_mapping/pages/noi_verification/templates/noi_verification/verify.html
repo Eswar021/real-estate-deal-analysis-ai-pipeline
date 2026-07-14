@@ -29,7 +29,7 @@
       {{ diagnosis.user_message|default:diagnosis.data_inconsistency|default:"reviewed the classification." }}
     </div>
     {% endif %}
-    {% if recompute_error %}<div class="alert alert-danger py-2">Recompute error: {{ recompute_error }}</div>{% endif %}
+    {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
 
     {# ── NOI verification (totals) ── #}
     <div class="row g-3 mb-3">
@@ -128,8 +128,19 @@
                     {{ r.description }}
                     {% if r.is_anchor %}<span class="badge bg-dark ms-1">anchor</span>{% endif %}
                     {% if r.low_confidence %}<span class="badge bg-warning text-dark ms-1">low-conf</span>{% endif %}
+                    {% if r.source == 'ai' %}<span class="badge bg-info text-dark ms-1" title="{% if r.source_reason %}{{ r.source_reason }}{% else %}Reclassified by the AI diagnosis; kept because NOI then reconciled.{% endif %}">AI</span>{% endif %}
+                    {% if r.source == 'manual' %}<span class="badge bg-primary ms-1" title="You changed this row's class.">edited</span>{% endif %}
                   </td>
-                  <td><span class="badge bg-light text-dark border font-monospace">{{ r.class }}</span></td>
+                  <td>
+                    {% if r.is_anchor %}
+                      {# the locked R / E / NOI rows are the target NOI is checked against — not editable here #}
+                      <span class="badge bg-light text-dark border font-monospace" title="Locked at the anchor gate">{{ r.class }}</span>
+                    {% else %}
+                      <select name="class_{{ r.row }}" class="form-select form-select-sm font-monospace class-select py-0" style="font-size:.7rem">
+                        {% for c in classes %}<option value="{{ c }}"{% if c == r.class %} selected{% endif %}>{{ c }}</option>{% endfor %}
+                      </select>
+                    {% endif %}
+                  </td>
                   <td class="text-end">{% if r.total != None %}${{ r.total|floatformat:0|intcomma }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
                   <td class="text-center text-muted">{{ r.confidence|floatformat:2 }}</td>
                 </tr>
@@ -143,9 +154,15 @@
 
       <div class="d-flex justify-content-between align-items-center">
         <a href="{% url 't12_upload' %}" class="btn btn-outline-secondary">Upload Another File</a>
-        <button type="submit" name="action" value="continue" id="continue-btn" class="btn btn-dark px-4">
-          Save &amp; Continue to Mapping &rarr;
-        </button>
+        <div class="d-flex align-items-center gap-2">
+          <span id="dirty-hint" class="small text-primary d-none">Class changed — re-verify to apply it.</span>
+          <button type="submit" name="action" value="reverify" id="reverify-btn" class="btn btn-outline-primary">
+            Re-verify NOI
+          </button>
+          <button type="submit" name="action" value="continue" id="continue-btn" class="btn btn-dark px-4">
+            Save &amp; Continue to Mapping &rarr;
+          </button>
+        </div>
       </div>
     </form>
 
@@ -169,6 +186,15 @@
       document.getElementById('continue-spinner').classList.remove('d-none');
       setTimeout(() => { e.submitter.disabled = true; }, 50);
     }
+  });
+
+  // A changed dropdown is only a proposal until Re-verify runs it through the NOI check —
+  // block Continue so an unapplied edit can never be the thing we map.
+  document.querySelectorAll('.class-select').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      document.getElementById('dirty-hint').classList.remove('d-none');
+      document.getElementById('continue-btn').disabled = true;
+    });
   });
 </script>
 {% endblock %}

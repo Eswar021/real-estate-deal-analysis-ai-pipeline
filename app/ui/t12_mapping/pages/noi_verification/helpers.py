@@ -46,6 +46,7 @@ def build_view(state: dict) -> dict:
     rows = [{"row": r["row"], "description": r["description"], "class": r["class"],
              "section": r.get("section"), "values": r.get("values"),
              "confidence": r.get("confidence"), "low_confidence": bool(r.get("low_confidence")),
+             "source": r.get("source") or "auto", "source_reason": r.get("source_reason"),
              "is_anchor": r["row"] in anchor_set}
             for r in cls["classified"]]
 
@@ -86,7 +87,8 @@ def ui_pass(view: dict) -> bool:
     return True
 
 
-def build_context(upload, state: dict, recompute_error: str | None = None) -> dict:
+def build_context(upload, state: dict, error: str | None = None,
+                  classes: list[str] | None = None) -> dict:
     view = build_view(state)
     rows = view["rows"]
 
@@ -100,6 +102,9 @@ def build_context(upload, state: dict, recompute_error: str | None = None) -> di
             "confidence":     r.get("confidence"),
             "low_confidence": r.get("low_confidence"),
             "is_anchor":      r.get("is_anchor"),
+            # provenance is display-only: a badge + its tooltip. No behaviour hangs off it.
+            "source":         r.get("source"),
+            "source_reason":  r.get("source_reason"),
         })
     sections = [{"name": n, "label": lbl, "rows": by_section[n]}
                 for n, lbl in SECTION_ORDER if by_section.get(n)]
@@ -132,5 +137,6 @@ def build_context(upload, state: dict, recompute_error: str | None = None) -> di
         "anchor_selects":  anchor_selects,
         "all_rows":        all_rows,
         "diagnosis":       view.get("diagnosis"),
-        "recompute_error": recompute_error,
+        "classes":         classes or [],
+        "error":           error,
     }
