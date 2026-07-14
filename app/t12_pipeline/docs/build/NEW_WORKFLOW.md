@@ -1,51 +1,79 @@
-# New Workflow + Data Dry-Run (file upload → NOI verification)
+# New Workflow + Data Dry-Run (file upload → mapped result)
 
 Companion to [`../proposals/t12_parsing_proposal.md`](../proposals/t12_parsing_proposal.md)
-(the current as-built concept). This doc tracks:
+(the as-built concept). This doc tracks:
 
-1. the **target workflow** — with the **deterministic-first** structure detection for unknown
-   files (planned; see [`PLANNED_ENHANCEMENTS.md`](./PLANNED_ENHANCEMENTS.md) §2), and
+1. the **workflow as built** — end to end, upload → anchor gate → classification → mapping →
+   data review, including every user re-entry, and
 2. a **dry run of the run-state** — the actual JSON produced at each step, so you can see what
    data exists when.
 
-The **data shapes below are real** (captured from `Pointe Inverness T12 11-25.xlsx`, a known
-`code_in_a_desc_in_b` file). The only workflow difference between "current" and "target" is the
-unknown-branch routing (marked ⚠ below); every data shape is identical.
+The **data shapes below are real**, captured from `Pointe Inverness T12 11-25.xlsx` (a known
+`code_in_a_desc_in_b` file). The Stage-3 slice was captured rulebook-only, so the AI-fallback
+fields are annotated rather than shown from that file.
 
 ---
 
-## Workflow (target)
+## Workflow (as built)
+
+Every arrow labelled `stage*_*` is a **named workflow** in `stages.STEPS` — the only thing a view
+may run. There are exactly six, and every one appears below.
 
 ```mermaid
 flowchart TD
     U([File uploaded]) --> P{Stage 0 · pre-flight<br/>rent roll / Model T12 / not a T12?}
     P -->|reject| X[/Reject with reason/]
-    P -->|ok| G[Layer 1 · read Excel once → cell_grid]
+    P -->|ok · stage1_parse| G[Layer 1 · read Excel once → cell_grid]
     G --> F[Format detection]
 
-    F -->|KNOWN| KC[Template columns<br/>description/value/code known]
-    F -->|UNKNOWN| DC[Deterministic column detection ⚠ NEW<br/>value cols by numeric density · desc col · header/data rows]
+    F -->|KNOWN| KC[Config columns · known_formats.json<br/>value cols are CONFIG; header/data rows detected]
+    F -->|UNKNOWN| DC[Deterministic column detection<br/>value cols by numeric density · desc col · header/data rows]
 
     KC --> L
     DC --> L
-    L{{Anchor lock · R − E = NOI<br/>expense magnitude · fills revenue/expense/noi rows}}
+    L{{Anchor lock · R − abs E = NOI<br/>expense MAGNITUDE · hash-join on the annual total<br/>keywords only RANK, never gate}}
 
-    L -->|known: fails| GATE
-    L -->|unknown: fails| AI[AI structure agent ⚠<br/>re-read columns + propose anchors]
-    AI --> L2{{Anchor lock again}}
-    L2 -->|fails| GATE
-    L2 -->|locks| GATE
     L -->|locks| GATE
+    L -->|known: fails| GATE
+    L -->|unknown: fails| AI[AI structure agent · FALLBACK ONLY<br/>re-read columns + propose anchors]
+    AI --> L2{{Anchor lock again}}
+    L2 --> GATE
 
     GATE[/🛑 ANCHOR GATE · every file · user confirms R/E/NOI/]
-    GATE -->|confirm| C[Stage 2 · extract signals → classify + override<br/>→ sections → NOI verify → diagnosis on fail<br/>→ derive subsections · flag low-confidence]
-    C --> R[/🛑 CLASSIFICATION REVIEW · every file<br/>rows by section + NOI verification/]
-    R -->|submit| M([Stage 3 · mapping])
+    GATE -->|adjust picks · stage1_check_anchors| GATE
+
+    GATE -->|confirm · stage2_classify| C[Stage 2 · extract signals → classify + fact override<br/>→ sections → verify_noi]
+    C --> NOK{NOI reconciles?}
+    NOK -->|NO| D[AI diagnosis → apply_fix → re-verify · max 3<br/>a fix is KEPT only if the money then reconciles<br/>locked anchors are never reclassified]
+    NOK -->|YES| CF[flag low-confidence]
+    D --> CF
+    CF --> R[/🛑 CLASSIFICATION REVIEW · every file<br/>rows by section · NOI · class dropdowns · source badges/]
+
+    R -->|edit a class · stage2_reverify| RV[apply_edits → verify_noi → flag<br/>NO re-classify · NO AI · anchors refused]
+    RV --> R
+
+    R -->|Save &amp; Continue · stage3_mapping| M[Stage 3a · map_blocks · rulebook<br/>certain → contextual → no_conflict → unresolved]
+    M --> MA[Stage 3b · find_mapping · AI fallback for the leftovers]
+    MA --> DR[/🛑 DATA REVIEW · category per row<br/>summary = Stage 2's verified NOI, never recomputed/]
+
+    DR -->|override a row · stage3_update_mapping| UP[apply_row_edit · only what changed<br/>NO re-map · NO AI · NO NOI re-verify]
+    UP --> DR
+    DR --> END([mapped result — no terminal state yet, see PLANNED_ENHANCEMENTS §5])
 ```
 
-`⚠` = the only change vs the current workflow. **Known branch is unchanged.** For unknown files
-the AI is now a **fallback** (only if the deterministic lock can't reconcile) instead of the
-default. Everything after "columns known" is the same code for both branches.
+**Reading the graph:**
+
+- **The AI is a fallback, never the default.** For unknown files the structure agent runs only if
+  the deterministic lock can't reconcile; the diagnosis agent runs only when NOI fails. 23 of 24
+  raw seller files lock and reconcile with **no AI at all**.
+- **Every fork belongs to the flow**, decided by the data or the arithmetic — never by a caller
+  flag. A view picks a workflow by name; it cannot switch part of one off.
+- **A re-entry never re-runs the step it re-enters.** `stage2_reverify` and
+  `stage3_update_mapping` apply the user's edit onto the reviewed result. Re-running `classify`
+  or the mapping would recompute over the edit and silently discard it — the old "Recompute" bug.
+- **What a re-entry re-verifies is whatever its edit can break.** A class edit changes which rows
+  feed the NOI sum → `verify_noi` runs again. A category is a label and `flip_sign` is an output
+  sign convention → no sum moves → nothing to re-verify.
 
 ---
 
@@ -159,7 +187,93 @@ NOI totals: revenue `3,402,169 / 3,402,169` · expense `1,279,404 / 1,279,404` �
 
 The page reads `state.classification` directly: NOI verification on top, then every row bucketed
 by section (revenue / expense / capex) with its class + confidence, low-confidence rows flagged.
-On **Save & Continue** → Stage 3 mapping (`state.mapping`).
+Every non-anchor row carries a **class dropdown**; the locked R / E / NOI rows don't (they're the
+target NOI is checked against).
+
+Each classified row also carries its provenance — `source ∈ {auto, ai, manual}` (+ `source_reason`
+for AI fixes), which drives the badge and its tooltip. It lives **on the row** because
+`save_state` strips the raw `feedback`, so the row is the only thing that reaches the page.
+Display only: no behaviour hangs off the tag.
+
+### 8b · Re-verify (`stage2_reverify`) — the user corrects a class
+
+```json
+// input:  class_edits = {30: "SUBSECTION_SUBTOTAL"}
+// runs:   feedback.apply_corrections(source="manual") → noi.run → classify.run_flag
+// output: classification.classified[30].class + .source="manual"; classification.noi recomputed
+```
+
+Re-enters the **same `noi` node** the first pass used, so the number on the page is always the
+pipeline's number. It does **not** re-classify (that would recompute the scores and overwrite the
+edit), does **not** call the AI (it had its turn in `classify`), and does **not** reassign
+sections (a section is positional — which side of the locked anchors a row sits on — so a class
+edit can't move one). Anchor rows are refused by the workflow, not just hidden by the page.
+
+No lock is needed on an edited row precisely *because* nothing re-runs after an edit.
+
+### 9 · Stage 3 · mapping (on Save & Continue)  → `state.mapping`
+
+`stage3_mapping` = `load_latest_rulebook` → `to_annotated` → `map_blocks` (rulebook) →
+`find_mapping` (AI fallback). `state.step` becomes `"mapped"`.
+
+```json
+// state.mapping — Pointe Inverness, rulebook-only run
+{ "file": "Pointe Inverness T12 11-25.xlsx", "format": "code_in_a_desc_in_b",
+  "data_start_row": 9, "column_headers": ["Dec 2024", ..., "Total"],
+  "summary": { "total_rows": 137, "data_rows": 120, "anchor_status": "AUTO",
+               "mapped": 115, "unmapped": 5 },
+  "rows": [
+    // a rulebook hit
+    { "row": 10, "type": "data", "description": "Gross Potential Rent", "statement_side": "revenue",
+      "is_total_revenue": false, "is_total_expense": false, "is_noi": false,
+      "mapping": "Gross Potential Rent", "mapping_source": "no_conflict", "not_found": false },
+
+    // the LOCKED anchor rides in as a flag — we map against the rows the user confirmed
+    { "row": 172, "type": "subtotal", "description": "NET OPERATING INCOME", "is_noi": true,
+      "statement_side": "expense", "mapping": null, "mapping_source": null },
+
+    // what the AI fallback receives: the rulebook's near-misses as context
+    { "row": 35, "type": "data", "description": "Miscellaneous Income", "statement_side": "revenue",
+      "mapping": null, "not_found": true, "mapping_source": "unresolved",
+      "historical_candidate_mappings": ["Other Income Ops", "Utility Rebill - Other"],
+      "historical_statement_sides": ["revenue"],
+      "historical_section_paths": ["Other Income", "Other Income - Residential", ...] }
+  ] }
+```
+
+After `find_mapping`, each unresolved row gains **`ai_suggested_mapping`** + **`ai_confidence`**
+(`mapping_source: "ai"`). After a user override it gains **`final_mapping`** (+ `flip_sign`).
+The three fields are kept side by side — the original recommendation is never overwritten, so
+provenance is readable straight off the row.
+
+⚠ Note the row vocabulary here is the **old** one (`type` / `statement_side` / `section_path`),
+not the pipeline's (`class` / `section`). That's `legacy_adapter.to_annotated` translating — see
+**W5**, and note the `data_review` page reads this vocabulary too.
+
+### 10 · 🛑 Data review
+
+Reads `state.mapping` + `state.classification.noi`. The effective category per row is
+`final_mapping ?? mapping ?? ai_suggested_mapping`, so a user override always wins, then the
+rulebook, then the AI.
+
+**The bottom summary IS Stage 2's verified NOI** (`classification.noi.months`) — Original NOI,
+Calculated NOI, and the per-month red/green all come from it. The page does not re-derive the
+money: mapping only assigns categories, so there is nothing for a second opinion to catch. (It
+used to, and drifted — it summed `rev − exp` where the pipeline sums `rev − |exp|`, so a vendor
+signing expenses negative showed a $730k difference on a file Stage 2 had passed.)
+
+### 10b · Update mapping (`stage3_update_mapping`) — the user overrides a row
+
+```json
+// input:  row_edit = {"row": 35, "category": "Other Income Ops"}   // only the CHANGED keys
+// runs:   map_blocks.apply_row_edit  (validates the category against the rulebook)
+// output: mapping.rows[35].final_mapping   (flip_sign untouched — it wasn't in the edit)
+```
+
+The view diffs the POST against current state, because the page posts the whole row every time:
+passing both fields through would stamp `final_mapping` — a *user* override — onto a category the
+rulebook picked and the user never touched. `category: null` is an explicit "clear my override",
+distinct from omitting the key.
 
 ---
 
@@ -169,12 +283,20 @@ On **Save & Continue** → Stage 3 mapping (`state.mapping`).
 | -------------------------------------- | ------------------------------------------ | ----- |
 | `preflight`                          | pre-flight screen                          | 0     |
 | `format`                             | format detection                           | 1     |
-| `structure_map` columns              | known template / deterministic detect / AI | 1     |
+| `structure_map` columns              | known config / deterministic detect / AI   | 1     |
 | `revenue/expense/noi_row`            | **anchor lock** (arithmetic)         | 1     |
 | `anchors` (confirmed)                | **user at the gate**                 | 1→2  |
 | `validated_subsection_subtotal_rows` | **arithmetic scan in classify**      | 2     |
 | `classification` (rows + noi)        | classify + NOI verify                      | 2     |
-| `mapping`                            | rulebook + AI fallback                     | 3     |
+| `classification.classified[].class`  | classifier → AI diagnosis → **user** (`stage2_reverify`) | 2 |
+| `classification.classified[].source` | `auto` → `ai` (diagnosis) → `manual` (`stage2_reverify`) | 2 |
+| `classification.diagnosis`           | the feedback loop (only when NOI failed)   | 2     |
+| `mapping.rows[].mapping`             | **rulebook** (`map_blocks`)          | 3a    |
+| `mapping.rows[].ai_suggested_mapping` | AI fallback (`find_mapping`), for rulebook misses only | 3b |
+| `mapping.rows[].final_mapping` / `flip_sign` | **user at data_review** (`stage3_update_mapping`) | 3 |
+
+**The money is filled exactly once**, by `verify_noi` in stage 2 (`classification.noi`). Nothing
+downstream recomputes it; `data_review` displays it.
 
 ---
 
@@ -185,15 +307,27 @@ On **Save & Continue** → Stage 3 mapping (`state.mapping`).
   uses `run(state)`; tests/scripts can call the pure function.
 - **We pass the *whole* state to each step on purpose** — if a step later needs one more slice,
   we change *only that step*, not the view/router.
-- **`stages.py`** = the **`STEPS` registry** (name → step) that `run_step` dispatches on, plus the
-  **composite groupings** (`stage1`, `classify`) so a view calls `run_step("stage1")` instead of
-  six micro-calls. It is **not** a full-pipeline runner. NOI failure is handled *inside* `classify`
-  (the AI diagnosis loop), so there is no gap when a stage runs step-by-step.
+- **`stages.py`** = the **`STEPS` registry** — the six named workflows, and the **only** thing a
+  view may run. Individual module steps are deliberately not exposed: handing a caller raw nodes
+  invites it to assemble its own pipeline (skip a node, reorder, re-enter mid-stage), which is how
+  the NOI page once wiped the AI's corrections. A new need = a new workflow, never a new handle.
+  NOI failure is handled *inside* `stage2_classify` (the diagnosis loop), so no gap exists when a
+  stage runs step-by-step.
+
+  | workflow                | triggered by            | does |
+  | ----------------------- | ----------------------- | ---- |
+  | `stage1_parse`          | upload                  | read → detect → columns → anchor rows → lock |
+  | `stage1_check_anchors`  | gate, adjusting picks   | re-verify the user's R/E/NOI (read-only) |
+  | `stage2_classify`       | gate confirm            | signals → classify → sections → NOI (+AI on fail) → flags |
+  | `stage2_reverify`       | review, class edit      | apply edits → NOI → flags (no re-classify, no AI) |
+  | `stage3_mapping`        | review, Save & Continue | rulebook → AI fallback |
+  | `stage3_update_mapping` | data review, row edit   | apply the override (no re-map, no AI) |
+
 - **`run_parse.py`** (`parse_file`) = the one-pass **CLI / test runner** (stage1 + classify in
   memory, flattened). The app never calls it.
 - **`legacy_adapter.py`** (`to_annotated` + `column_headers`) = the **mapping-input adapter** —
-  builds the old `annotated_blocks` shape the mapping stage still consumes, in-memory. Retires
-  when the mapping stage reads classified rows directly.
+  builds the old `annotated_blocks` shape the mapping stage (and the `data_review` page) still
+  consume, in-memory. Retires with **W5**.
 
 ---
 
