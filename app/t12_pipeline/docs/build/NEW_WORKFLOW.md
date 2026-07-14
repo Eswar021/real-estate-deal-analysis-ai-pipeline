@@ -88,10 +88,14 @@ Every later step reads this; the workbook is never reopened.
   "validated_subsection_subtotal_rows": [] }
 ```
 
-- **Known** (shown): columns come from the format template.
-- **Unknown ⚠ (target):** the deterministic detector produces this *same shape*; if the anchor
-  lock below fails, the AI agent re-produces it (its columns + *proposed* anchors + rich
-  `subsections`, which the lock/arithmetic still re-decide).
+- **Known** (shown): columns come from the format template (`build_known_map`).
+- **Unknown ✅ (built — [`PLANNED_ENHANCEMENTS.md`](./PLANNED_ENHANCEMENTS.md) §2):**
+  `detect_structure_deterministic` reads this *same shape* off the grid (value cols = longest
+  numeric run; description = columns left of it minus bare code columns). The **anchor lock is the
+  oracle**: if it reconciles, the columns were right and we skip the AI; only a NONE lock falls
+  back to the AI agent (which re-produces columns + *proposed* anchors + rich `subsections`, all
+  still re-decided by the arithmetic). `state.structure_source` records which path ran. Verified:
+  all 7 validated unknown files reconcile deterministically — no AI.
 
 ### 5 · Anchor lock (Stage 1)  → `state.anchor_lock`  +  anchors filled into `structure_map`
 

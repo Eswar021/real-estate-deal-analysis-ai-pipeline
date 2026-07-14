@@ -66,6 +66,45 @@ def detect_value_columns(grid, start_col, min_hits=5):
     return run
 
 
+def detect_value_block(grid, min_hits=5, min_len=6):
+    """Value columns for an UNKNOWN layout — the LONGEST contiguous run of numeric-dense
+    columns (the monthly block + trailing total). Scans ALL columns; unlike
+    `detect_value_columns` (first run from a KNOWN start column), taking the *longest* run
+    ignores stray numeric columns — e.g. a hierarchical file whose subtotals bleed numbers
+    into an early description column (Cardinal's col A) — because those form a short run while
+    the 12-month block is long. Requires >= `min_len` columns so a stray pair never wins.
+    Returns the 1-based column indices, or [] if no block qualifies."""
+    numeric = {}
+    for grow in grid["rows"]:
+        for c, cell in grow["cells"].items():
+            if isinstance(cell["value"], (int, float)):
+                numeric[c] = numeric.get(c, 0) + 1
+    dense = sorted(c for c, n in numeric.items() if n >= min_hits)
+    if not dense:
+        return []
+    best, cur = [], [dense[0]]
+    for c in dense[1:]:
+        if c == cur[-1] + 1:
+            cur.append(c)
+        else:
+            if len(cur) > len(best):
+                best = cur
+            cur = [c]
+    if len(cur) > len(best):
+        best = cur
+    if len(best) < min_len:
+        return []
+    # trim END columns far sparser than the block's core — a stray trailing column with a
+    # handful of numbers and no month header (Crystal Lake col P: 5 cells vs the months' 222)
+    # would otherwise become the "total" column and break the NOI total check.
+    thr = 0.25 * max(numeric[c] for c in best)
+    while len(best) > min_len and numeric[best[-1]] < thr:
+        best = best[:-1]
+    while len(best) > min_len and numeric[best[0]] < thr:
+        best = best[1:]
+    return best
+
+
 def apply_arithmetic(rows):
     """Pass 2 — arithmetic_sum_of_above. Provisional data = has values and no
     'Total' keyword; a row scores True if its value equals the sum of the
@@ -83,7 +122,13 @@ def apply_arithmetic(rows):
             if v is not None:
                 s += v; member_rows.append(rows[j]["row"]); member_vals.append(round(v, 2))
             j -= 1
-        tol = max(1.0, abs(target) * 0.005) if isinstance(target, (int, float)) else None
+        # A real subtotal equals its members EXACTLY; a tiny $1 slack covers penny/dollar
+        # rounding only. NO percentage tolerance here — this is the sole evidence that an
+        # unmarked row is a subtotal, so it must be near-exact. A % slack scales with the
+        # value ($100 on a $20k row) and lets unrelated lines coincidentally "sum" to it
+        # (e.g. Cardinal row 30, off by $37) — a phantom subtotal that then drops real
+        # revenue from the NOI. Across the sample every genuine subtotal reconciles within $1.
+        tol = 1.0 if isinstance(target, (int, float)) else None
         if isinstance(target, (int, float)) and member_rows:
             match = abs(s - target) <= tol
         row["arithmetic_sum_of_above"] = match

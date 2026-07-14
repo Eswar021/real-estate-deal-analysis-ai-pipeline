@@ -1,20 +1,96 @@
 """Structure map — the column layout + boundaries a file is parsed against.
 
 - KNOWN formats: `build_known_map` fills columns from the format's fixed layout (no AI).
-- UNKNOWN formats: the AI structure agent proposes the map; `build_final_map` keeps it
-  verbatim and adds the arithmetically-validated subsection anchors.
+- UNKNOWN formats: `detect_structure_deterministic` reads the columns straight off the grid
+  and the anchor lock is the oracle (if the numbers reconcile, the columns were right); only
+  if the lock can't reconcile do we fall back to the AI structure agent, which proposes the
+  map that `build_final_map` keeps verbatim (+ arithmetically-validated subsection anchors).
 
-Ported verbatim from notebook Module 8b (+ `build_known_map` from the anchor-lock cell).
+Ported from notebook Modules 8a/8b; deterministic-first routing added (PLANNED_ENHANCEMENTS §2).
 """
+import re
+
 from openpyxl.utils import get_column_letter, column_index_from_string
 
 from .cell_grid import grid_row_map, gvalue
-from .signals import (detect_value_columns, CODE_COL, DESC_COL,
+from .signals import (detect_value_columns, detect_value_block, CODE_COL, DESC_COL,
                       EMB_DESC_COL, NOCODE_DESC_COL)
 from .structure_agent import run_structure_agent
 
 _MIN_MONTH_COLS = 6
 KNOWN_FORMATS = ("code_in_a_desc_in_b", "embedded_code_in_a", "no_code")
+
+# the extractor + lock drive the deterministic-first decision (the lock is the oracle);
+# CODE_PREFIX_RE (any known code style) is reused to guess whether codes are embedded.
+from .extract import CODE_PREFIX_RE, extract_anchor_rows
+from .anchor_lock import lock_anchors
+
+
+_LETTERS = re.compile(r"[A-Za-z]")
+
+
+def _is_code_column(grid, c, data_start):
+    """A column whose data-region cells are mostly bare account codes (digits/punctuation, no
+    letters) — e.g. Mesquite's column A '41000-000' with the label sitting in column B. Such a
+    column must NOT drive the description, or every row's 'description' is a code and no anchor
+    keyword ever matches (the ranker then mis-picks a coincidental gross-rent triple)."""
+    tot = code = 0
+    for grow in grid["rows"]:
+        if data_start and grow["row"] < data_start:
+            continue
+        v = gvalue(grow, c)
+        if isinstance(v, str) and v.strip():
+            tot += 1
+            if any(ch.isdigit() for ch in v) and not _LETTERS.search(v):
+                code += 1
+    return tot > 0 and code / tot > 0.5
+
+
+def _looks_embedded_code(grid, desc_cols_idx, data_start):
+    """Majority of description cells in the data region begin with an account code → the
+    file embeds codes in the description (so the extractor should strip them)."""
+    if not data_start:
+        return False
+    hit = tot = 0
+    for grow in grid["rows"]:
+        if grow["row"] < data_start:
+            continue
+        txt = next((gvalue(grow, c) for c in desc_cols_idx
+                    if isinstance(gvalue(grow, c), str) and gvalue(grow, c).strip()), None)
+        if txt:
+            tot += 1
+            if CODE_PREFIX_RE.match(txt):
+                hit += 1
+    return tot > 0 and hit / tot > 0.5
+
+
+def detect_structure_deterministic(grid):
+    """Deterministic column map for an UNKNOWN file — no AI. Values = the longest contiguous
+    numeric run; description = every column left of it (the extractor picks the first non-empty
+    text per row, which handles descriptions spread across columns in hierarchical layouts);
+    layout rows via the shared detector. R/E/NOI are left NULL for the anchor lock to fill — the
+    arithmetic lock is the oracle that says whether these columns were right. Returns the SAME
+    shape as `build_known_map` (subsections derived later in Stage 2), or None if no value block
+    is found (a grid the deterministic pass can't read → caller falls back to the AI agent)."""
+    value_cols = detect_value_block(grid)
+    if not value_cols:
+        return None
+    value_start = value_cols[0]
+    month_hdr, data_start = _detect_known_layout(grid, value_cols)
+    # every column left of the values is a description column, EXCEPT bare account-code columns
+    # (their codes would shadow the real labels the keyword ranker needs)
+    desc_cols_idx = [c for c in range(1, value_start) if not _is_code_column(grid, c, data_start)]
+    if not desc_cols_idx:
+        desc_cols_idx = list(range(1, value_start))
+    embedded = _looks_embedded_code(grid, desc_cols_idx, data_start)
+    return {
+        "description_columns": [get_column_letter(c) for c in desc_cols_idx],
+        "value_columns": [get_column_letter(c) for c in value_cols],
+        "code_column": None, "code_embedded_in_description": embedded, "code_pattern": None,
+        "month_header_row": month_hdr, "data_start_row": data_start,
+        "revenue_end_row": None, "expense_end_row": None, "noi_row": None,
+        "subsections": [], "validated_subsection_subtotal_rows": [], "subsection_header_rows": [],
+    }
 
 
 def validate_subsections(final, grid):
@@ -41,7 +117,7 @@ def validate_subsections(final, grid):
         members = [rr for rr in range(start, R)
                    if rr not in subtotal_set and cval(rr) is not None]
         msum = sum(cval(rr) for rr in members)
-        ok = target is not None and abs(msum - target) <= max(1.0, abs(target) * 0.005)
+        ok = target is not None and abs(msum - target) <= 10.0   # flat $10 (sum of leaf members; no %)
         results.append({"name": s["name"], "row": R, "header_row": H, "span": [start, R],
                         "member_rows": members, "member_values": [round(cval(rr), 2) for rr in members],
                         "members": len(members), "sum": round(msum, 2),
@@ -114,12 +190,19 @@ def build_known_map(fmt, grid):
 
 def run(state):
     """Step: resolve_columns — reads cell_grid, format; writes structure_map, sub_results,
-    structure_map_ai. Known formats use the template map (no AI); unknown → the AI agent."""
+    structure_map_ai, structure_source. KNOWN → template map (no AI). UNKNOWN →
+    deterministic-first: read the columns straight off the grid and let the anchor lock decide
+    — if any triple reconciles, the columns were right, so we skip the AI. Only a NONE lock (or
+    no detectable value block) falls back to the AI structure agent."""
     fmt, grid = state["format"]["format"], state["cell_grid"]
     if fmt in KNOWN_FORMATS:
         return {**state, "structure_map": build_known_map(fmt, grid),
-                "sub_results": [], "structure_map_ai": None}
+                "sub_results": [], "structure_map_ai": None, "structure_source": "known"}
+    det = detect_structure_deterministic(grid)
+    if det is not None and lock_anchors(extract_anchor_rows(grid, det), det)["status"] != "NONE":
+        return {**state, "structure_map": det, "sub_results": [],
+                "structure_map_ai": None, "structure_source": "deterministic"}
     ai = run_structure_agent(grid)
     final_map, sub_results = build_final_map(ai.model_dump(), grid)
     return {**state, "structure_map": final_map, "sub_results": sub_results,
-            "structure_map_ai": ai.model_dump()}
+            "structure_map_ai": ai.model_dump(), "structure_source": "ai"}

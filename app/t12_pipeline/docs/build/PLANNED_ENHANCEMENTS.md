@@ -66,9 +66,24 @@ files) — a robustness upgrade for novel vendors.
 
 ---
 
-## 2. 🔨 Deterministic-first structure finder (AI as fallback)
+## 2. ✅ Deterministic-first structure finder (AI as fallback) — DONE
 
-**Today:** known formats use a deterministic template map (`build_known_map`); *unknown*
+**Built** in `structure_map.detect_structure_deterministic` + `structure_map.run` (routing) +
+`signals.detect_value_block`. For unknown files we read the columns straight off the grid — value
+cols = the LONGEST contiguous numeric run (trailing junk columns trimmed), description = every
+column left of it minus bare account-code columns — then the **anchor lock is the oracle**: if
+any triple reconciles, the columns were right and we skip the AI; only a NONE lock (or no value
+block) falls back to `run_structure_agent`. Adds `state["structure_source"]` ∈ {known,
+deterministic, ai}.
+
+**Verified:** all 7 validated unknown-format sellers get anchors **identical to the AI baseline**
+with **zero AI calls**; the AI fallback was validated live once (returns the same anchors, its
+subsections make NOI pass). Across the full 24-file raw-seller corpus: 23/24 lock + pass NOI
+deterministically (the 1 failure is the Mirador bug, below — a classification issue, not columns).
+
+<details><summary>original design</summary>
+
+**Was:** known formats use a deterministic template map (`build_known_map`); *unknown*
 formats always go straight to the AI structure agent.
 
 **Change:** for unknown files, **try deterministic column detection first**, run the anchor
@@ -94,24 +109,54 @@ run the arithmetic anchor lock (section 1)
   **cost/latency optimization** (fewer AI calls), not a correctness need. Do after the AI path
   is validated once with the key.
 
+</details>
+
 ---
 
-## 3. 💡 Subsection derivation — nesting / odd order (no AI)
+## 3. ✅ Subsection derivation false-positives — DONE (tolerance fix)
 
-Subsections are derived arithmetically (`arithmetic_sum_of_above`): a row is a subtotal if its
-value = the sum of the consecutive data rows above it. Three cases:
+The subsection scan (`signals.apply_arithmetic` → `arithmetic_sum_of_above`) was mis-marking a
+**revenue leaf** as a subtotal: Cardinal row 30 "Cable/Vendor Commissions" ($20,001) because the 3
+unrelated lines above it summed to within $37 — *inside the old `max($1, 0.5%)` = $100 window*.
+That phantom subtotal was then dropped from the revenue sum, so NOI failed (and the feedback loop
+couldn't fix it — validated subtotals are locked). **Fix:** the subsection tolerance is now a
+flat **$1** (no percentage). A real subtotal equals its members to the dollar; the % just scaled
+the window with the value and let coincidences in. Across 24 files every real subtotal reconciles
+≤$1, and the nearest uncorroborated coincidence is $19 — so $1 is safe with wide margin.
 
-- **Grand totals (R/E/NOI):** handled by the anchor lock, not here. ✅
-- **Leaf subtotals:** the arithmetic scan catches them. ✅
-- **Nested (subtotal of subtotals):** iterate — once leaf subtotals are found, treat them as
-  members and re-scan for the next level up.
-- **Odd-ordered (subtotal not right after its members):** finding *which arbitrary set* of rows
-  sums to a value is a subset-sum search (expensive + ambiguous) — don't brute-force it; let the
-  **classifier's other signals** (bold, "Total" keyword) catch those rare rows.
+Still-valid future work (not blocking): **nested** subtotals (iterate: treat found leaf subtotals
+as members, re-scan up) and **odd-ordered** ones (leave to the classifier's bold/"Total" signals —
+don't brute-force subset-sum). Subsections aren't load-bearing (they only feed the "mark subtotal"
+override), so this is polish.
 
-**Rationale:** subsections are **not load-bearing** — they only feed the "mark subtotal"
-override, not the anchors or the NOI check. So we nail the clean + nested cases with math and
-let the rare odd ones fall to the classifier score. **No AI needed.**
+---
+
+## 3b. ✅ Reconciliation tolerances — all flat, no percentages
+
+Every `R−E=NOI`-family check dropped its `0.5%` component for a flat dollar tolerance, sized to
+the **vendor's own whole-dollar rounding** (our reader keeps full precision; vendors export
+integers). Verified across all 24 raw-seller files:
+
+| check | rows summed | max real drift | tolerance |
+| ----- | ----------- | -------------- | --------- |
+| anchor lock (`_amatch`) | 3 grand rows | $1 | **$1** |
+| subsection (`apply_arithmetic`) | a few | ≤$1 (phantom at $19) | **$1** |
+| NOI verify (`noi._match`) | ~130 leaves | $5 (Mesquite) | **$10** |
+| AI subsection validate (`validate_subsections`) | member rows | — | **$10** |
+
+Why flat beats %: on a $2M total, `0.5%` is a **$10,000** window that would silently pass a real
+$3k misclassification. The flat $10 covers legitimate rounding (max observed $5) yet is 1000×
+tighter, so real errors surface instead of hiding.
+
+---
+
+## 3c. 🐞 Known bug — Mirador NOI miscount
+
+`Mirador Seller T12.xlsx` (embedded_code_in_a) is the only file of 24 that **fails NOI** — off by
+**$6.4M**, not rounding. Anchors reconcile ($0 drift) and columns are right, so it's a **Stage-2
+classification** breakdown: a whole section's DATA rows are summed into the wrong section (or a
+large block is mis-bucketed). Isolated bug on one file; deterministic-first + tolerances are
+correct. To debug: dump its `verify_noi` rev/exp rows vs sections and find the misclassified block.
 
 ---
 
@@ -159,9 +204,14 @@ a `LOGGING` block in settings.
 
 ## Suggested order
 
-**#4 (quick win) ✅** → **#1 (robustness) ✅** → next: **#5 analytics (visible deliverable)**,
-with #2 / #3 / rulebook / sign / learning-loop as follow-ups. Validate the AI path once (needs
-`CLAUDE_API_KEY` + a raw unknown-format T12) before #2.
+Done: **#4** (view logging) → **#1** (arithmetic-first anchors) → **#2** (deterministic-first
+structure) → **#3 / #3b** (subsection + tolerance fixes). The deterministic core of the
+new workflow is now complete: 23/24 raw sellers lock + pass NOI with **no AI**.
+
+Next candidates: **Mirador bug** (§3c — one broken file) · **#5 analytics** (visible deliverable) ·
+**W1** config-driven known formats · **W2** delete dead old-batch code · rulebook coverage ·
+sign-normalization · learning-loop. (Learning-loop is now low value — #1 made keywords a ranker,
+not a gate.)
 
 > Note: #1 makes the **learning loop** in §5 much less critical — keywords no longer gate the
 > lock, so a novel anchor term no longer *has* to be added to `anchor_keywords.json` to lock;

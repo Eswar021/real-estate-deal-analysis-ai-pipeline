@@ -23,7 +23,10 @@ def load_anchor_keywords(path=ANCHOR_KEYWORDS_PATH):
 
 ANCHOR_KEYWORDS = load_anchor_keywords()
 
-_ATOL, _AFRAC, _MINCOLS = 1.0, 0.005, 6      # tolerance max($1, 0.5%); >=6 month columns
+_ATOL, _AFRAC, _MINCOLS = 1.0, 0.0, 6        # flat $1 tolerance; >=6 month columns
+# Flat $1, not a percentage: the anchors are 3 single grand-total rows, so the only error is
+# the vendor rounding each to whole dollars (observed max across 24 files: exactly $1). A % would
+# scale to thousands on a $2M total and let a coincidental triple slip through the arithmetic.
 
 
 def _mvals(row):

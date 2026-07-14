@@ -58,7 +58,11 @@ def verify_noi(classified, grid, final_map):
     def _match(a, c):
         if a is None or c is None:
             return None
-        return abs(a - c) <= max(1.0, abs(a) * 0.005)
+        # Flat $10, not a percentage. This sums ~130 leaf rows the vendor rounded to whole
+        # dollars, so the sum legitimately drifts a few $ from the vendor's grand total
+        # (observed max $5, Mesquite). $10 covers that with margin yet stays 1000x tighter than
+        # the old 0.5% ($10k on a $2M total), so a real misclassification no longer hides in it.
+        return abs(a - c) <= 10.0
 
     months, any_noi_fail = [], False
     for i in range(n):
