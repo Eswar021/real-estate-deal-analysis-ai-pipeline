@@ -17,6 +17,7 @@ Calls an LLM (OpenAI via LangChain structured output).
 """
 
 import json
+import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -26,6 +27,8 @@ from langchain_core.prompts import PromptTemplate
 from t12_pipeline.config.agent_llm_config import MAPPING_AI_AGENT
 from t12_pipeline.config.rulebook_utils import get_rulebook_categories, get_rulebook_examples
 from t12_pipeline.llm.llm_client import make_llm
+
+_log = logging.getLogger("t12.stage3")   # file-only, like the rest of the pipeline
 
 # GPT-5-nano TPM limit is 200K. Each call is ~2,200 tokens input.
 # 5 workers × ~4s per call ≈ 75 calls/min, staying safely under the cap.
@@ -104,17 +107,18 @@ def _process_single_row(row, file_name, column_headers, valid_categories_str, ma
             row["ai_confidence"] = result.confidence
             row["ai_reasoning"] = result.reasoning
             log_entry["llm_raw_output"] = result.model_dump()
-            print(f"  row {row['row']}: '{row.get('description')}' -> {result.suggested_category} ({result.confidence})", flush=True)
+            _log.debug("     row %s: '%s' → %s (conf %s)", row["row"], row.get("description"),
+                       result.suggested_category, result.confidence)
             break
         except Exception as e:
             if "429" in str(e) and attempt < len(_RETRY_DELAYS):
-                print(f"  row {row['row']}: rate limited, retrying in {_RETRY_DELAYS[attempt]}s...", flush=True)
+                _log.warning("     row %s: rate limited, retrying in %ss", row["row"], _RETRY_DELAYS[attempt])
                 continue
             row["ai_suggested_mapping"] = None
             row["ai_confidence"] = None
             row["ai_reasoning"] = str(e)
             log_entry["error"] = str(e)
-            print(f"  row {row['row']}: ERROR - {e}", flush=True)
+            _log.warning("     row %s: AI mapping ERROR — %s", row["row"], e)
             break
 
     return log_entry
@@ -144,7 +148,8 @@ def run_ai_mapping(file_data, rulebook, limit=None):
     if limit:
         unmapped_rows = unmapped_rows[:limit]
 
-    print(f"Processing {len(unmapped_rows)} unmapped rows for {file_name} ({MAX_WORKERS} workers)...", flush=True)
+    _log.info("[stage3] AI fallback: %d unmapped rows for %s (%d workers)",
+              len(unmapped_rows), file_name, MAX_WORKERS)
 
     if not unmapped_rows:
         return file_data, []

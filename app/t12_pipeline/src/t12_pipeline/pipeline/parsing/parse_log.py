@@ -37,18 +37,17 @@ def _anchor_table(rows):
     return "\n".join(out)
 
 
-def _classified_table(rows, verbose):
-    head = f"{'row':>4}  {'description':<34}  {'class':<20} {'section':<8} {'total':>13} {'conf':>5} lo"
-    if verbose:
-        head += "  signals"
-    out = [head]
+def _classified_table(rows):
+    """One table = the classification AND its scoring evidence: `conf` is the classifier's
+    score and `signals` is WHICH raw signals fired on that row — i.e. why it landed in that
+    class. Shown in every profile; without it a class is an unexplained assertion."""
+    out = [f"{'row':>4}  {'description':<34}  {'class':<20} {'section':<8} {'total':>13} "
+           f"{'conf':>5} lo  signals"]
     for r in rows:
-        line = (f"{r['row']:>4}  {r.get('description', '')[:34]:<34}  {r['class']:<20} "
-                f"{(r.get('section') or ''):<8} {_fmt(_last(r.get('values'))):>13} "
-                f"{(r.get('confidence') or 0):>5.2f} {'!' if r.get('low_confidence') else ' '}")
-        if verbose:
-            line += "  " + ",".join(r.get("_signals", []))
-        out.append(line)
+        out.append(f"{r['row']:>4}  {r.get('description', '')[:34]:<34}  {r['class']:<20} "
+                   f"{(r.get('section') or ''):<8} {_fmt(_last(r.get('values'))):>13} "
+                   f"{(r.get('confidence') or 0):>5.2f} {'!' if r.get('low_confidence') else ' '}"
+                   f"  {','.join(r.get('_signals', []))}")
     return "\n".join(out)
 
 
@@ -107,9 +106,8 @@ def stage2_classify(state):
     dist = Counter(r["class"] for r in rows)
     _S2.info("[stage2] classify + score: %d rows · %s", len(rows),
              " ".join(f"{k}={v}" for k, v in dist.items()))
-    if is_verbose():
-        _attach_signals(rows, state.get("signals"))
-    _S2.debug("[stage2] classification:\n%s", _classified_table(rows, is_verbose()))
+    _attach_signals(rows, state.get("signals"))
+    _S2.debug("[stage2] classification:\n%s", _classified_table(rows))
 
 
 def stage2_noi(state, phase):

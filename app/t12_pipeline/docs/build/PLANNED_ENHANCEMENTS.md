@@ -290,17 +290,25 @@ state** from a `tests/` folder. Neither needs a production escape hatch.
 Every fork is already **flow-owned** except the one marked ❌ — so the LangGraph-style
 "caller re-enters, graph decides" model is achievable by deleting a single flag.
 
-### Fix batch
-1. 🔨 **Remove `run_feedback` from the workflow** — always diagnose on NOI fail; make the
-   diagnose→**apply_fix**→re-verify sequence an explicit node chain in `stages.classify`. Tests mock
-   `run_diagnosis_agent` (they already mock `run_structure_agent`). Kills the whole bug class.
-2. 🔨 **NOI page: `continue` must NOT re-classify** (nothing changed → just map). `recompute`
-   re-enters the graph, which runs the AI if NOI fails.
-3. 🔨 **Log the corrected classification + final NOI after the diagnosis** — today `parse_log` prints
-   the classification table only ONCE (pre-diagnosis), so the log looks like nothing updated.
-4. 🔨 **`find_mapping.py` prints → logging** (`t12.stage3`, file not terminal) — 6 `print()`s remain
-   (only the bridge's were removed), which is the mapping noise still on the terminal.
-5. 🔨 **Show fired signals in the `summary` profile** (the "why this class"), not verbose-only.
+### Fix batch — ✅ DONE
+1. ✅ **`run_feedback` removed from the workflow** — NOI failing IS the trigger; the fork is the
+   graph's: `verify_noi → [fail] → diagnose → apply_fix → re-verify` (arithmetic-gated). No caller
+   can switch it off. `parse_file` dropped `run_feedback`/`max_iters`; tests mock
+   `run_diagnosis_agent` exactly as they already mock `run_structure_agent`.
+2. ✅ **NOI page: only `recompute` re-classifies** (user changed anchors → re-enter the graph).
+   `continue` just maps — it no longer discards the reviewed/corrected classification.
+3. ✅ **Corrected classification + final NOI now logged** after the diagnosis (you can watch
+   DATA 113→108 · COMPUTED_METRIC 1→3 land, then `NOI verify (final): PASS`).
+4. ✅ **`find_mapping` live prints → `t12.stage3` logging** (per-row AI mapping at DEBUG, the
+   unmapped-count at INFO, rate-limit/errors at WARNING). Only the dead batch block still prints
+   (goes away with W2).
+5. ✅ **Fired signals shown in every profile** — the classification table carries `conf` (score) +
+   `signals` (which raw signals fired), so a class is never an unexplained assertion.
+
+**Verified with no LLM call** (diagnosis mocked with the rows the real AI proposed): Mirador
+NOI FAIL → diagnose → apply_fix → re-verify → **PASS**, corrected classification persists.
+Corpus 23/24, anchors byte-identical, Django clean. **Remaining: re-run Mirador in the UI**
+end-to-end (gate → corrected classification → NOI PASS → mapping with no NOI difference).
 
 ---
 
