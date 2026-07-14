@@ -105,8 +105,19 @@ Every later step reads this; the workbook is never reopened.
 // structure_map now: revenue_end_row=47, expense_end_row=170, noi_row=172   (subsections still [])
 ```
 
-`status` = AUTO (one triple) · GATE (several) · DERIVED (NOI by N=R−E) · NONE (none). Also
-`state.anchor_rows` holds the light `{row, description, values}` list the gate renders.
+**Arithmetic-first** (done — [`PLANNED_ENHANCEMENTS.md`](./PLANNED_ENHANCEMENTS.md) §1): the
+`R − |E| = NOI` math finds every reconciling triple over *all* value-bearing rows (hash-join on
+the annual total, `O(n²)`); keywords only **rank** the survivors, they no longer gate which rows
+are candidates. So a novel vendor term still locks.
+
+- `status` = **AUTO** (one clear triple, NOI keyword-confirmed) · **DERIVED** (one clear triple,
+  but the NOI row carried no NOI keyword — found purely by the math) · **GATE** (several
+  contenders tie on keyword-confirmation + revenue magnitude) · **NONE** (nothing reconciled).
+- `passing` = the **contenders** only (winner + genuine either/or alternatives, e.g. Carmel's
+  single `[157]` vs split `[136,156]`). Coincidental sub-arithmetic triples rank below and are
+  dropped so the gate isn't spammed.
+- `candidates` = the keyword shortlist (now just the ranker / the gate's pre-populated selects).
+- `state.anchor_rows` holds the light `{row, description, values}` list the gate renders.
 
 ### 6 · 🛑 Anchor gate → user confirms → `state.anchors`
 

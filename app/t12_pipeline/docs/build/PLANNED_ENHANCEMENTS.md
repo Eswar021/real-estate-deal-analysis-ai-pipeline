@@ -9,15 +9,26 @@ Status legend: 💡 idea/decided · 🔨 to build · ✅ done
 
 ---
 
-## 1. 🔨 Arithmetic-first anchor detection
+## 1. ✅ Arithmetic-first anchor detection — DONE
 
-**Today:** keywords *nominate* a small candidate shortlist for R/E/NOI, then the `R − E = NOI`
-arithmetic picks the real triple. Keywords are a **gate** — a novel vendor term that isn't in
-`anchor_keywords.json` never gets nominated, so that anchor can't lock.
+**Built** in `parsing/anchor_lock.lock_anchors` (arithmetic-first rewrite; keyword-first
+retired). Verified **byte-identical** output (status / anchors / passing / candidates) on all 7
+sample files, and a synthetic novel-wording + negative-expense file now locks (status `DERIVED`)
+where keyword-first returned `NONE`. Wired unchanged through the bridge — gate re-verify /
+confirm / classify / NOI all green. **What changed vs. the design below:** kept the keyword
+split-pair list as the bounded pair set (a full all-pairs search invents phantom sums); the
+gate's `passing` list is trimmed to the *contenders* (winner + triples that tie it on
+keyword-confirmation + revenue magnitude) so coincidental sub-arithmetic triples don't spam it;
+`DERIVED` now means "one clear triple, but its NOI row carried no NOI keyword" (found purely by
+the math). Design as built:
 
-**Change:** let the **math find the triples first** over *all* value-bearing rows, then use
-keywords + position only to **rank** the (few) triples that reconcile. Keywords become a
-tie-breaker, not a gate → robust to unseen vendor wording.
+**Was:** keywords *nominate* a small candidate shortlist for R/E/NOI, then the `R − E = NOI`
+arithmetic picks the real triple. Keywords were a **gate** — a novel vendor term that isn't in
+`anchor_keywords.json` never got nominated, so that anchor couldn't lock.
+
+**Now:** the **math finds the triples first** over *all* value-bearing rows (hash-join on the
+annual total), then keywords + position only **rank** the (few) triples that reconcile. Keywords
+are a tie-breaker, not a gate → robust to unseen vendor wording.
 
 ### Algorithm (the "3SUM via hashing" / hash-join trick)
 
@@ -148,6 +159,10 @@ a `LOGGING` block in settings.
 
 ## Suggested order
 
-**#4 (quick win)** → **#1 (robustness)** → **#5 analytics (visible deliverable)**, with
-#2 / #3 / rulebook / sign / learning-loop as follow-ups. Validate the AI path once (needs
+**#4 (quick win) ✅** → **#1 (robustness) ✅** → next: **#5 analytics (visible deliverable)**,
+with #2 / #3 / rulebook / sign / learning-loop as follow-ups. Validate the AI path once (needs
 `CLAUDE_API_KEY` + a raw unknown-format T12) before #2.
+
+> Note: #1 makes the **learning loop** in §5 much less critical — keywords no longer gate the
+> lock, so a novel anchor term no longer *has* to be added to `anchor_keywords.json` to lock;
+> adding it now only bumps that triple's rank (AUTO/DERIVED labeling), not whether it locks.

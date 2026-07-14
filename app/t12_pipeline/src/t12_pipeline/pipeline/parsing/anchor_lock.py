@@ -1,13 +1,15 @@
-"""Stage 1 — Anchor Lock (R − E = N arithmetic decides).
+"""Stage 1 — Anchor Lock (arithmetic-first: R − |E| = NOI decides).
 
-Nominate candidate R / E / NOI rows (keywords from anchor_keywords.json UNION the
-AI's proposed rows), then let the month-by-month R − E = N arithmetic pick the real
-triple. Exactly one positionally-coherent passing triple auto-locks; zero/multiple
-→ gate; no NOI keyword match → derive N = R − E and find the matching row. Keywords
-only NOMINATE; the math DECIDES. Replaces the keyword state machine and kills the
-after-debt keyword collision (that row misses R−E=N by the debt service).
+The MATH finds the triples FIRST, over *all* value-bearing rows — not a keyword shortlist.
+We hypothesise (R above N), the pair implies the expense magnitude |E| = R_total − N_total,
+and we hash-look-up an expense unit carrying that total (the "3SUM via hashing" / hash-join
+trick — `O(n²)` probes instead of the `O(n³)` all-triples test), then verify R − |E| = NOI
+month-by-month. Keywords only RANK the survivors (they no longer GATE which rows qualify), so
+a novel vendor term still locks. One clear winner → AUTO (or DERIVED if its NOI row carried no
+NOI keyword); a genuine tie → GATE; nothing reconciles → NONE.
 
-Ported verbatim from the notebook anchor-lock cell (keywords loaded from config).
+The `abs()` on the expense covers both sign conventions (expenses stored positive or negative).
+See `docs/build/PLANNED_ENHANCEMENTS.md` §1 for the design.
 """
 import json
 
@@ -63,24 +65,51 @@ def nominate_anchors(rows, kw, ai_rows):
     return cands
 
 
-def _expense_units(rows, kw, exp_cands):
-    """Expense candidates as single rows PLUS split-pair sums (controllable + non-)."""
-    units = [[e] for e in exp_cands]
-    for pair in kw["expense"].get("split_pair_markers", {}).get("pairs", []):
+def _total(vals):
+    """The row's annual-total column — its last numeric value. Used as the hash key: the
+    grand total is the most distinctive number a row carries (collisions are verified away)."""
+    nums = [v for v in vals if isinstance(v, (int, float))]
+    return nums[-1] if nums else None
+
+
+def _expense_pairs(rows, kw):
+    """Split-pair expense units (controllable + non-controllable) from the keyword pairs.
+    These are the only pairs we index — a full all-pairs search would invent phantom sums;
+    the split pattern has standard wording, so the keyword pairs are the safe bounded set."""
+    pairs, seen = [], set()
+    for pm in kw["expense"].get("split_pair_markers", {}).get("pairs", []):
         legs = []
-        for m in pair:
+        for m in pm:
             legs.append([r["row"] for r in rows
                          if m in r["description"].strip().lower() and _ncount(_mvals(r)) >= _MINCOLS])
         for a in legs[0]:
             for b in legs[1]:
                 if a != b:
-                    units.append(sorted([a, b]))
-    seen, out = set(), []
-    for u in units:
-        k = tuple(u)
-        if k not in seen:
-            seen.add(k); out.append(u)
-    return out
+                    k = tuple(sorted([a, b]))
+                    if k not in seen:
+                        seen.add(k); pairs.append(list(k))
+    return pairs
+
+
+def _row_matches(desc, markers, exclusions):
+    d = (desc or "").strip().lower()
+    if any(x in d for x in exclusions):
+        return False
+    return any(m in d for m in markers)
+
+
+def _kw_score(rr, eunit, nr, byrow, kw):
+    """How many of the three anchors carry a known keyword (0–3). Arithmetic-first: keywords
+    only RANK the reconciling triples, they no longer gate which rows are candidates."""
+    def side(t, row):
+        cfg = kw[t]
+        return _row_matches(byrow[row]["description"],
+                            cfg["grand_markers"] + cfg.get("intermediate_markers", []),
+                            cfg.get("exclusions", []))
+    r_ok = side("revenue", rr)
+    e_ok = any(side("expense", e) for e in eunit)
+    n_ok = _row_matches(byrow[nr]["description"], kw["noi"]["grand_markers"], kw["noi"].get("exclusions", []))
+    return int(r_ok) + int(e_ok) + int(n_ok)
 
 
 def _triple_holds(rrow, eunit, nrow, byrow):
@@ -105,81 +134,98 @@ def _triple_holds(rrow, eunit, nrow, byrow):
 
 
 def lock_anchors(rows, final_map):
-    """Nominate → triple-test → lock. Returns dict(status, method, anchors, passing,
-    candidates). status ∈ {AUTO, GATE, DERIVED, NONE}. `anchors` gives revenue_end_row
-    / expense_end_row / noi_row (expense boundary = bottom-most of a split pair)."""
+    """Arithmetic-first R − |E| = NOI lock. The MATH finds every reconciling triple over ALL
+    value-bearing rows (not a keyword shortlist); keywords only RANK the survivors. Exactly one
+    clear winner → AUTO / DERIVED; a genuine tie → GATE; nothing reconciles → NONE. Returns
+    dict(status, method, anchors, passing, candidates). status ∈ {AUTO, DERIVED, GATE, NONE};
+    `anchors` gives revenue_end_row / expense_end_row / noi_row (expense boundary = bottom-most
+    of a split pair).
+
+    hash-join trick: we never know which rows are R/E/NOI up front, so we fix (R above N),
+    the pair implies |E| = R_total − N_total, and we hash-look-up an expense unit with that
+    total — O(n²) probes instead of the O(n³) all-triples test. See PLANNED_ENHANCEMENTS §1."""
+    from collections import defaultdict
+
     byrow = {r["row"]: r for r in rows}
+    vrows = [r for r in rows if _ncount(_mvals(r)) >= _MINCOLS]
+
+    # keyword nominations are no longer a gate — kept only for the ranker + the gate's shortlist
     ai_rows = {"revenue": final_map.get("revenue_end_row"),
                "expense": final_map.get("expense_end_row"),
                "noi": final_map.get("noi_row")}
     cands = nominate_anchors(rows, ANCHOR_KEYWORDS, ai_rows)
-    eunits = _expense_units(rows, ANCHOR_KEYWORDS, cands["expense"])
 
-    passing = []
-    for rr in cands["revenue"]:
-        for eu in eunits:
-            if rr in eu:
+    # index every expense unit (each single row + each keyword split-pair) by its |annual total|
+    units = [[r["row"]] for r in vrows] + _expense_pairs(vrows, ANCHOR_KEYWORDS)
+    by_abs_total = defaultdict(list)
+    for u in units:
+        legs = [_total(_mvals(byrow[e])) for e in u]
+        if all(t is not None for t in legs):
+            by_abs_total[round(sum(abs(t) for t in legs))].append(u)
+
+    # hash-join: for each (R above N), the implied |E| = R_total − N_total; look that unit up
+    passing, seen = [], set()
+    for R in vrows:
+        rt = _total(_mvals(R))
+        if rt is None:
+            continue
+        for N in vrows:
+            if N["row"] <= R["row"]:
                 continue
-            for nr in cands["noi"]:
-                if nr == rr or nr in eu:
-                    continue
-                if _triple_holds(rr, eu, nr, byrow):
-                    passing.append((rr, eu, nr))
-
-    coherent = [(rr, eu, nr) for (rr, eu, nr) in passing if rr < min(eu) and max(eu) < nr]
-    pool = coherent or passing
+            nt = _total(_mvals(N))
+            if nt is None or nt >= rt:                    # NOI sits below revenue in value
+                continue
+            target = round(rt - nt)
+            for d in (-1, 0, 1):                          # ±$1 rounding-boundary guard
+                for eu in by_abs_total.get(target + d, []):
+                    if R["row"] in eu or N["row"] in eu:
+                        continue
+                    if not (R["row"] < min(eu) and max(eu) < N["row"]):
+                        continue
+                    key = (R["row"], tuple(eu), N["row"])
+                    if key in seen or not _triple_holds(R["row"], eu, N["row"], byrow):
+                        continue
+                    seen.add(key)
+                    passing.append((R["row"], eu, N["row"]))
 
     def _pack(t):
         rr, eu, nr = t
         return {"revenue_end_row": rr, "expense_end_row": max(eu), "noi_row": nr,
                 "expense_split_rows": (eu if len(eu) > 1 else None)}
 
-    if len(pool) == 1:
-        return {"status": "AUTO", "method": "auto", "anchors": _pack(pool[0]),
-                "passing": pool, "candidates": cands}
-    if len(pool) > 1:
-        # bottom-most per anchor: the grand total is the LAST total of its kind
-        best = max(pool, key=lambda t: (t[0], max(t[1]), t[2]))
-        return {"status": "GATE", "method": "manual", "anchors": _pack(best),
-                "passing": pool, "candidates": cands}
+    if not passing:
+        return {"status": "NONE", "method": None, "anchors": None,
+                "passing": [], "candidates": cands}
 
-    # zero passing (no NOI keyword matched, e.g. a vendor typo "Net Operationg Income",
-    # or no NOI row at all) → DERIVE N = R − E and find the row whose values match it.
-    dmatched = []
-    for rr in cands["revenue"]:
-        rv = _mvals(byrow[rr])
-        for eu in eunits:
-            if rr in eu:
-                continue
-            ev = [None] * len(rv)
-            for er in eu:
-                for i, x in enumerate(_mvals(byrow[er])):
-                    if isinstance(x, (int, float)):
-                        ev[i] = (ev[i] or 0.0) + x
-            derived = [(rv[i] - abs(ev[i])) if (rv[i] is not None and ev[i] is not None) else None
-                       for i in range(len(rv))]
-            if sum(1 for v in derived if v is not None) < _MINCOLS:
-                continue
-            for r in rows:
-                nr = r["row"]
-                if nr == rr or nr in eu or not (rr < min(eu) < nr):
-                    continue
-                cv = _mvals(byrow[nr])
-                mm, ok = 0, True
-                for i in range(len(derived)):
-                    if derived[i] is None or cv[i] is None:
-                        continue
-                    if not _amatch(derived[i], cv[i]):
-                        ok = False; break
-                    mm += 1
-                if ok and mm >= _MINCOLS:
-                    dmatched.append((rr, eu, nr))
-    if dmatched:
-        best = max(dmatched, key=lambda t: (t[0], max(t[1]), t[2]))
-        return {"status": "DERIVED", "method": "derived-matched", "anchors": _pack(best),
-                "passing": dmatched, "candidates": cands}
-    return {"status": "NONE", "method": None, "anchors": None,
-            "passing": [], "candidates": cands}
+    def _rev_total(t):
+        return abs(_total(_mvals(byrow[t[0]])) or 0)
+
+    def _score(t):
+        # keyword-confirmed first, then grandest revenue, then bottom-most rows
+        return (_kw_score(t[0], t[1], t[2], byrow, ANCHOR_KEYWORDS), _rev_total(t), t[0], max(t[1]), t[2])
+
+    passing.sort(key=_score, reverse=True)
+    best = passing[0]
+    bk, brev = _kw_score(best[0], best[1], best[2], byrow, ANCHOR_KEYWORDS), _rev_total(best)
+
+    # The CONTENDERS are the winner plus any triple that TIES it on both keyword-confirmation
+    # and revenue magnitude — a genuine either/or. Coincidental sub-arithmetic triples (a
+    # subsection that happens to reconcile, an intermediate net) rank below and drop out, so
+    # the gate isn't spammed with them. Several contenders → GATE; one → AUTO/DERIVED.
+    contenders = [best] + [t for t in passing[1:]
+                           if _kw_score(t[0], t[1], t[2], byrow, ANCHOR_KEYWORDS) == bk
+                           and _amatch(_rev_total(t), brev)]
+    if len(contenders) > 1:
+        return {"status": "GATE", "method": "manual", "anchors": _pack(best),
+                "passing": contenders, "candidates": cands}
+
+    # one clear winner: AUTO if its NOI row carries a NOI keyword, else DERIVED (the triple
+    # reconciled but no NOI keyword matched — the NOI row was found purely by the arithmetic).
+    n_ok = _row_matches(byrow[best[2]]["description"],
+                        ANCHOR_KEYWORDS["noi"]["grand_markers"], ANCHOR_KEYWORDS["noi"].get("exclusions", []))
+    status = "AUTO" if n_ok else "DERIVED"
+    return {"status": status, "method": "auto" if n_ok else "derived-matched",
+            "anchors": _pack(best), "passing": contenders, "candidates": cands}
 
 
 def run(state):
