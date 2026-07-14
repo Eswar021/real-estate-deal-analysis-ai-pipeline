@@ -233,6 +233,77 @@ a `LOGGING` block in settings.
 
 ---
 
+## 4b. 🐞 Stage-2 state overwrite — `run_feedback` is a leaky flag (🔨 to fix)
+
+**Symptom (found in a real UI run of Mirador):** the gate's classify ran the AI diagnosis and fixed
+the classification (log: `FIXED at iter 1`), but data_review then showed an NOI difference of
+**6,453,290** — the original double-count. The saved state proved it:
+`run_feedback=False · diagnosis=null · row 23=DATA · row 29=DATA · overall_pass=False`.
+
+**Root cause:** `noi_verification/views.py` re-runs `classify` with **`run_feedback=False` on every
+POST, before it checks the action** — so **Save & Continue re-classifies from scratch without the
+AI and overwrites the corrected state**, then maps the wiped result. The log showed run #1 (the AI
+working); the state held run #2 (the wipe). Same run_id, clobbered.
+
+**The real flaw is architectural:** `run_feedback` is a **caller-controlled flag on a core workflow
+step** (it exists only so tests/CLI can skip AI cost). Any caller can therefore silently disable
+part of the workflow. The flow must own its own conditional edge instead (LangGraph-style):
+
+```
+classify → sections → verify_noi ──┬── pass ──→ flag → done
+                                   └── fail ──→ diagnose → apply_fix → verify_noi ─┐
+                                                    ▲                              │
+                                                    └──── loop (max 3 / no-progress)┘
+```
+Callers just **re-enter the graph**; the graph decides whether the AI runs. (The "fix module" already
+exists — `feedback.apply_corrections`, arithmetic-gated: the AI proposes, the math decides. And
+`feedback.history` already records each iteration's rows/from→to/reason/fail-cols.)
+
+### Flag audit — every caller-controlled input in the workflow
+Grepped all `state.get(...)` inputs + the bridge signature. Only **one** is a real problem:
+
+| input | where | verdict |
+| ----- | ----- | ------- |
+| **`run_feedback`** | `stages.classify` | ❌ **REMOVE** — lets a caller switch OFF a core workflow step (the cause of this bug). Not needed in production. |
+| `max_iters` | `feedback.run` | ⚠ tuning knob passed through the state; no caller sets it. Make it **config-only** (`DEFAULT_MAX_ITERS`), not a state input. |
+| `anchors` | `stages._apply_confirmed_anchors` | ✅ legit — real user data (the gate's picks), not a behaviour switch. |
+| `save`, `with_grid` | `bridge.run_step` / `get_state` | ✅ legit — persistence/perf plumbing; they don't change any workflow decision. |
+
+**Testing without flags:** either run the real graph with the AI agents **mocked** (as the current
+scripts already mock `run_structure_agent`), or call individual `run(state)` steps with **fixture
+state** from a `tests/` folder. Neither needs a production escape hatch.
+
+### Branch map — who decides each fork
+| stage | branch | decided by |
+| ----- | ------ | ---------- |
+| preflight | ok / reject (t12 · rent_roll · model · not_t12) | data |
+| stage 1 | format known / unknown | data (detector score) |
+| stage 1 | unknown → deterministic **vs** AI structure agent | **arithmetic** (trial anchor lock reconciles?) |
+| stage 1 | lock AUTO / DERIVED / GATE / NONE | arithmetic + keyword rank |
+| gate | confirm anchors | **user** (legit) |
+| stage 2 | NOI pass → done · fail → diagnose | data — **but today gated by `run_feedback` (caller)** ❌ |
+| stage 2 diag | DATA_PROBLEM / not-CLASSIFICATION_PROBLEM / no fixes → stop | AI verdict |
+| stage 2 diag | NOI reconciles → FIXED · no progress → stop | **arithmetic** |
+| stage 2 diag | max iterations | config |
+| stage 3 | unmapped rows → AI mapping | data |
+
+Every fork is already **flow-owned** except the one marked ❌ — so the LangGraph-style
+"caller re-enters, graph decides" model is achievable by deleting a single flag.
+
+### Fix batch
+1. 🔨 **Remove `run_feedback` from the workflow** — always diagnose on NOI fail; make the
+   diagnose→**apply_fix**→re-verify sequence an explicit node chain in `stages.classify`. Tests mock
+   `run_diagnosis_agent` (they already mock `run_structure_agent`). Kills the whole bug class.
+2. 🔨 **NOI page: `continue` must NOT re-classify** (nothing changed → just map). `recompute`
+   re-enters the graph, which runs the AI if NOI fails.
+3. 🔨 **Log the corrected classification + final NOI after the diagnosis** — today `parse_log` prints
+   the classification table only ONCE (pre-diagnosis), so the log looks like nothing updated.
+4. 🔨 **`find_mapping.py` prints → logging** (`t12.stage3`, file not terminal) — 6 `print()`s remain
+   (only the bridge's were removed), which is the mapping noise still on the terminal.
+5. 🔨 **Show fired signals in the `summary` profile** (the "why this class"), not verbose-only.
+
+---
+
 ## 5. 💡 Other remaining items
 
 - **Confidence-threshold tuning** — the low-confidence flag margin (0.15) needs calibration

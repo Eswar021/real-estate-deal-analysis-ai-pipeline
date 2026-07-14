@@ -48,8 +48,7 @@ def anchors(request, upload_id):
         try:
             if request.POST.get("action") == "continue":
                 # Stage 2 into the run-state (classify + AI diagnosis on NOI fail)
-                pipeline_bridge.run_step(upload_obj.id, "classify",
-                                         anchors=chosen, run_feedback=True)
+                pipeline_bridge.run_step(upload_obj.id, "classify", anchors=chosen)
                 upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
                 upload_obj.save(update_fields=["current_step", "updated_at"])
                 return redirect("noi_verify", upload_id=upload_obj.id)

@@ -12,11 +12,15 @@ from t12_pipeline.config.log_config import configure_logging
 from .stages import stage1, classify
 
 
-def parse_file(xlsx_path, *, run_feedback=True, max_iters=3):
-    """Stage 1 + Stage 2 in one pass; returns a flat result dict (for tests / scripts)."""
+def parse_file(xlsx_path):
+    """Stage 1 + Stage 2 in one pass; returns a flat result dict (for tests / scripts).
+
+    Runs the REAL graph — there is no 'skip the AI' flag (that escape hatch is what let a
+    re-classify silently drop the diagnosis's corrections). A test that must not hit the AI
+    mocks `feedback.run_diagnosis_agent`, the same way it already mocks `run_structure_agent`."""
     configure_logging()   # so CLI/test runs log to the same file as the UI
     state = stage1({"file": {"name": Path(xlsx_path).name, "path": str(xlsx_path)}})
-    state = classify({**state, "run_feedback": run_feedback, "max_iters": max_iters})
+    state = classify(state)
     cls = state["classification"]
     return {
         "format":              state["format"]["format"],

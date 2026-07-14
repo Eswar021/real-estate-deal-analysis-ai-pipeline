@@ -6,7 +6,10 @@ the bridge's `run_step` dispatches on and the views sequence.
 
   stage1  = extract_grid → detect_format → resolve_columns → extract_anchor_rows → lock_anchors
   classify = (apply confirmed anchors) → extract_signals → classify → sections → verify_noi
-             → (diagnose, only on NOI fail) → flag_low_confidence
+             → [NOI fail? → diagnose → apply_fix → re-verify (loop)] → flag_low_confidence
+
+Every fork here is owned by the FLOW (decided by the data / the arithmetic), never by a caller
+flag — a caller can only re-enter a step, not switch part of it off.
 
 See docs/build/RESTRUCTURE_PLAN.md.
 """
@@ -54,9 +57,10 @@ def _apply_confirmed_anchors(state):
 
 def classify(state):
     """STAGE 2 — apply the confirmed anchors, then extract signals → classify + fact override
-    → sections → NOI verify → (AI diagnosis only on NOI fail) → confidence flags.
-    reads: cell_grid, structure_map, anchors, run_feedback?, max_iters?.
-    writes: structure_map (anchors applied), signals, classification."""
+    → sections → verify_noi → (on FAIL: diagnose → apply_fix → re-verify) → confidence flags.
+    The NOI-fail fork belongs to the graph: callers just re-enter this step and it decides.
+    reads: cell_grid, structure_map, anchors. writes: structure_map (anchors applied), signals,
+    classification."""
     state = _apply_confirmed_anchors(state)
     state = extract.run_signals(state)
     parse_log.stage2_start(state)
@@ -65,9 +69,12 @@ def classify(state):
     state = noi.run(state)
     parse_log.stage2_classify(state)
     parse_log.stage2_noi(state, "initial")
-    if not state["noi"]["overall_pass"] and state.get("run_feedback", True) \
-            and state["structure_map"].get("noi_row"):
-        state = feedback.run(state)        # AI diagnosis loop
+    # The GRAPH owns this fork — there is deliberately no caller flag to switch it off (one used
+    # to exist and let a re-classify silently drop the AI's corrections). NOI failing IS the
+    # trigger: diagnose → apply_fix → re-verify, and a fix is kept only if the money reconciles.
+    if not state["noi"]["overall_pass"] and state["structure_map"].get("noi_row"):
+        state = feedback.run(state)        # diagnose → apply_fix → re-verify (arithmetic-gated)
+        parse_log.stage2_classify(state)   # the CORRECTED classification
         parse_log.stage2_noi(state, "final")
     state = classify_mod.run_flag(state)
     parse_log.stage2_end(state)

@@ -86,6 +86,7 @@ def run_feedback_loop(classified, grid, final_map, noi_res, max_iters=DEFAULT_MA
 def run(state):
     """Step: diagnose (on NOI fail) — AI-reclassify. reads classified, cell_grid,
     structure_map, noi; writes feedback + the corrected classified/noi."""
+    # max_iters is CONFIG, not a caller input — the workflow's own cap, no state flag.
     fb = run_feedback_loop(state["classified"], state["cell_grid"], state["structure_map"],
-                           state["noi"], max_iters=state.get("max_iters", DEFAULT_MAX_ITERS))
+                           state["noi"], max_iters=DEFAULT_MAX_ITERS)
     return {**state, "classified": fb["classified"], "noi": fb["noi"], "feedback": fb}

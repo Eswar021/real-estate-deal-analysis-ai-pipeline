@@ -6,9 +6,13 @@ URL:    /t12/<upload_id>/noi/
 Shows the Stage-2 result: NOI verification on top + every classified row bucketed by
 section. Every file stops here (pass or fail) before mapping.
 
-GET / POST action=recompute: read classification.json; on a POST, adjust the R / E / NOI
-                             anchors and re-run Stage 2 DETERMINISTICALLY (no AI); render.
-POST action=continue:        run the mapping stage, then redirect to /review/.
+GET:                  render the Stage-2 result from the run-state.
+POST action=recompute: the user changed the R / E / NOI anchors → re-enter the classify step;
+                      the GRAPH decides what runs (a failing NOI triggers the AI diagnosis).
+POST action=continue:  run the mapping stage, then redirect to /review/. Does NOT re-classify —
+                      re-running it here would discard the classification just reviewed (and the
+                      diagnosis's corrections), which is exactly the bug that produced a phantom
+                      multi-million NOI difference at data_review.
 
 Reads:  classification.json
 Writes: classification.json + annotated_blocks.json + comparison.json + actual_noi.json
@@ -38,20 +42,18 @@ def verify(request, upload_id):
     recompute_error = None
 
     if request.method == "POST":
-        corrections = {
-            "total_revenue_row": int_or_none(request.POST.get("total_revenue_row")),
-            "total_expense_row": int_or_none(request.POST.get("total_expense_row")),
-            "noi_row":           int_or_none(request.POST.get("noi_row")),
-        }
         action = request.POST.get("action", "recompute")
 
         try:
-            # deterministic recompute on the adjusted anchors (no AI) into the run-state
-            anchors = {"revenue_end_row": corrections["total_revenue_row"],
-                       "expense_end_row": corrections["total_expense_row"],
-                       "noi_row":         corrections["noi_row"]}
-            state = pipeline_bridge.run_step(upload_obj.id, "classify",
-                                             anchors=anchors, run_feedback=False)
+            if action == "recompute":
+                # ONLY a recompute re-classifies: the user changed the anchors, so we re-enter
+                # the graph and IT decides what runs (a failing NOI triggers the diagnosis).
+                # 'continue' must never re-classify — that would silently throw away the
+                # classification just reviewed on this page, including the diagnosis's fixes.
+                anchors = {"revenue_end_row": int_or_none(request.POST.get("total_revenue_row")),
+                           "expense_end_row": int_or_none(request.POST.get("total_expense_row")),
+                           "noi_row":         int_or_none(request.POST.get("noi_row"))}
+                state = pipeline_bridge.run_step(upload_obj.id, "classify", anchors=anchors)
         except Exception as e:
             recompute_error = str(e)
         else:
