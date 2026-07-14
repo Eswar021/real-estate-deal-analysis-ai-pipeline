@@ -8,11 +8,13 @@ stage by stage.
 """
 from pathlib import Path
 
+from t12_pipeline.config.log_config import configure_logging
 from .stages import stage1, classify
 
 
-def parse_file(xlsx_path, *, run_feedback=True, max_iters=5):
+def parse_file(xlsx_path, *, run_feedback=True, max_iters=3):
     """Stage 1 + Stage 2 in one pass; returns a flat result dict (for tests / scripts)."""
+    configure_logging()   # so CLI/test runs log to the same file as the UI
     state = stage1({"file": {"name": Path(xlsx_path).name, "path": str(xlsx_path)}})
     state = classify({**state, "run_feedback": run_feedback, "max_iters": max_iters})
     cls = state["classification"]

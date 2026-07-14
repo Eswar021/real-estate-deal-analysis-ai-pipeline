@@ -12,6 +12,7 @@ See docs/build/RESTRUCTURE_PLAN.md.
 """
 from . import cell_grid, format_detect, structure_map, extract, anchor_lock, sections, noi, feedback
 from . import classify as classify_mod
+from . import parse_log
 from .legacy_adapter import column_headers
 
 
@@ -23,6 +24,7 @@ def stage1(state):
     state = structure_map.run(state)       # resolve_columns (template / AI)
     state = extract.run_anchor_rows(state)  # light {row, description, values}
     state = anchor_lock.run(state)         # R − E = NOI lock
+    parse_log.stage1(state)
     return {**state, "step": "locked"}
 
 
@@ -57,13 +59,18 @@ def classify(state):
     writes: structure_map (anchors applied), signals, classification."""
     state = _apply_confirmed_anchors(state)
     state = extract.run_signals(state)
+    parse_log.stage2_start(state)
     state = classify_mod.run(state)        # derive subsections + classify + override
     state = sections.run(state)
     state = noi.run(state)
+    parse_log.stage2_classify(state)
+    parse_log.stage2_noi(state, "initial")
     if not state["noi"]["overall_pass"] and state.get("run_feedback", True) \
             and state["structure_map"].get("noi_row"):
         state = feedback.run(state)        # AI diagnosis loop
+        parse_log.stage2_noi(state, "final")
     state = classify_mod.run_flag(state)
+    parse_log.stage2_end(state)
 
     # Extract a JSON-clean diagnosis summary (the raw feedback holds a pydantic object that
     # doesn't survive the state.json round-trip). column_headers computed here (we have the

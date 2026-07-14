@@ -197,12 +197,21 @@ original-7 anchors byte-identical. **Live-AI end-to-end confirmation: re-run Mir
 
 ---
 
-## 4. ✅ View-level debug logging — DONE (report.py removed)
+## 4. ✅ Pipeline logging — DONE (v2: profile-driven, owned by the pipeline)
 
-Built: `app/ui/t12_mapping/debug_log.py` (per-page `t12.<page>` loggers; INFO one-liner +
-DEBUG anchor/NOI/classified tables) wired into all four views; `LOGGING` block in
-`config/settings.py` (console + optional file, `T12_LOG_LEVEL` / `T12_LOG_FILE` env). The old
-`report.py` CLI dump was deleted (its report-only helper `reconcile_leaf_data` too). Design below.
+**v2 (current):** logging moved OUT of the views and INTO the pipeline steps, so CLI/tests log
+the same as the UI. `pipeline/parsing/parse_log.py` renders every stage (banner → steps → end
+banner) with the anchor / classification+scoring / initial+final NOI tables + the diagnosis loop;
+`config/log_config.py::configure_logging()` sets up ONE rotating **file-only** handler from
+`config/logging.json` (called by `t12_mapping.apps.ready()` and `run_parse`). **Profiles**:
+`summary` (default) = banners + tables; `verbose` = + per-row fired-signals, anchor-rows table,
+full diagnosis reasons, and the exact LLM input/output (captured once in `llm_client` via a
+callback). Override with `T12_LOG_PROFILE` / `T12_LOG_FILE` / `T12_LOG_LEVEL`. Retired the
+view-level `debug_log.py` (which double-logged classify + printed to the terminal) and the bridge's
+Stage-3 `print()`s. Log at `app/logs/t12.log`.
+
+**v1 (superseded):** `app/ui/t12_mapping/debug_log.py` — per-page `t12.<page>` loggers wired into
+the four views; the old `report.py` CLI dump was deleted then (its helper `reconcile_leaf_data` too).
 
 
 

@@ -1,0 +1,9 @@
+{
+  "$schema_note": "T12 pipeline logging. profile ∈ {summary, verbose}: 'summary' (default) = human-readable stage banners + step summaries + the anchor/classification/NOI tables + a diagnosis summary; 'verbose' additionally logs the EXACT LLM input (prompt) and raw output for every agent call, full untruncated reasons, and the per-row scoring detail. File-only (no terminal). Override at runtime with env: T12_LOG_PROFILE, T12_LOG_FILE, T12_LOG_LEVEL. Log file defaults to app/logs/<file>.",
+  "version": "1.0",
+  "profile": "summary",
+  "file": "t12.log",
+  "level": "DEBUG",
+  "max_bytes": 5000000,
+  "backup_count": 5
+}

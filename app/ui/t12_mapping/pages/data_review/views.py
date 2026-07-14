@@ -17,7 +17,7 @@ POST (one row update):
 
 from django.shortcuts import get_object_or_404, render
 
-from t12_mapping import debug_log, pipeline_bridge
+from t12_mapping import pipeline_bridge
 from t12_mapping.models import Upload
 
 from .helpers import build_table_rows, compute_summary
@@ -49,7 +49,6 @@ def review(request, upload_id):
     noi_months = ((state.get("classification") or {}).get("noi") or {}).get("months") or []
     actual_noi = {"noi": {"by_month": [m["noi"][0] for m in noi_months]}}
 
-    debug_log.log_mapping(mapped)
     categories = pipeline_bridge.load_categories()
     summary    = compute_summary(mapped, actual_noi)
     rows       = build_table_rows(mapped)

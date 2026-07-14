@@ -29,6 +29,7 @@ from t12_pipeline.pipeline.parsing import stages
 from t12_pipeline.pipeline.parsing import legacy_adapter as la
 from t12_pipeline.pipeline.mapping.map_blocks import map_results
 from t12_pipeline.pipeline.mapping.find_mapping import run_ai_mapping
+from t12_pipeline.pipeline.parsing import parse_log
 
 
 # ── run-state: one accumulating dict per upload_id, persisted as state.json ──────────
@@ -125,27 +126,17 @@ def run_mapping(upload_id) -> dict:
     input (annotated shape) in-memory from the run-state, runs the rulebook lookup + AI
     fallback, and stores the result in state['mapping']. Synchronous; 30-180s depending on
     how many rows fall to the AI fallback."""
-    import time
-    t0 = time.time()
-    print(f"[bridge] Stage 3 starting for upload {upload_id}", flush=True)
-
     rulebook  = _load_latest_rulebook()
     state     = get_state(upload_id)                       # cell_grid needed for column headers
     annotated = la.to_annotated(_res_from_state(state), state["file"]["name"])
-
-    print(f"[bridge] Stage 3a — rulebook lookup (map_blocks)", flush=True)
-    auto_mapped = map_results(annotated, rulebook)
-    s = auto_mapped["summary"]
-    print(f"[bridge]   {s['data_rows']} data rows | {s['mapped']} mapped | {s['unmapped']} unmapped", flush=True)
-
-    print(f"[bridge] Stage 3b — AI fallback (find_mapping)", flush=True)
-    ai_mapped, run_logs = run_ai_mapping(auto_mapped, rulebook)
+    auto_mapped = map_results(annotated, rulebook)         # Stage 3a — rulebook lookup
+    ai_mapped, run_logs = run_ai_mapping(auto_mapped, rulebook)   # Stage 3b — AI fallback
 
     state["mapping"] = ai_mapped
     if run_logs:
         state["mapping_logs"] = run_logs
     save_state(upload_id, state)
-    print(f"[bridge] Stage 3 finished in {time.time() - t0:.1f}s", flush=True)
+    parse_log.stage3(ai_mapped, state["file"]["name"])
     return ai_mapped
 
 

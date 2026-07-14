@@ -22,7 +22,7 @@ Next:   noi_verification (the classification review)
 
 from django.shortcuts import get_object_or_404, redirect, render
 
-from t12_mapping import debug_log, pipeline_bridge
+from t12_mapping import pipeline_bridge
 from t12_mapping.models import Upload
 
 from .helpers import build_context, int_or_none
@@ -48,9 +48,8 @@ def anchors(request, upload_id):
         try:
             if request.POST.get("action") == "continue":
                 # Stage 2 into the run-state (classify + AI diagnosis on NOI fail)
-                s = pipeline_bridge.run_step(upload_obj.id, "classify",
-                                             anchors=chosen, run_feedback=True)
-                debug_log.log_classification(s)
+                pipeline_bridge.run_step(upload_obj.id, "classify",
+                                         anchors=chosen, run_feedback=True)
                 upload_obj.current_step = Upload.STEP_NOI_VERIFICATION
                 upload_obj.save(update_fields=["current_step", "updated_at"])
                 return redirect("noi_verify", upload_id=upload_obj.id)
@@ -62,5 +61,4 @@ def anchors(request, upload_id):
             error = str(e)
 
     ctx = build_context(upload_obj, state, chosen, reconciles, error)
-    debug_log.log_gate(ctx)
     return render(request, "anchor_gate/anchors.html", ctx)

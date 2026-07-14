@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -5,12 +6,42 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
+from langchain_core.callbacks import BaseCallbackHandler
 
 from t12_pipeline.config.agent_llm_config import DEFAULT_AGENT_NAME, get_agent_llm_config
+from t12_pipeline.config.log_config import is_verbose
 
 # Always load the shared app-level .env (app/.env), regardless of cwd.
 # parents: [0]=llm [1]=t12_pipeline [2]=src [3]=app/t12_pipeline [4]=app
 load_dotenv(Path(__file__).resolve().parents[4] / ".env")
+
+_llm_log = logging.getLogger("t12.llm")
+
+
+class _LLMIOHandler(BaseCallbackHandler):
+    """Logs the exact prompt + raw response of every LLM call — but only under the 'verbose'
+    log profile, so normal runs pay nothing. One handler covers all agents (structure /
+    diagnosis / mapping) since it's attached in make_llm."""
+    def on_chat_model_start(self, serialized, messages, **kwargs):
+        if not is_verbose():
+            return
+        for conv in messages:
+            text = "\n".join(getattr(m, "content", None) if isinstance(getattr(m, "content", None), str)
+                             else str(getattr(m, "content", m)) for m in conv)
+            _llm_log.debug("LLM input:\n%s", text)
+
+    def on_llm_end(self, response, **kwargs):
+        if not is_verbose():
+            return
+        try:
+            gen = response.generations[0][0]
+            text = gen.text or getattr(getattr(gen, "message", None), "content", "") or str(gen)
+        except Exception:
+            text = str(response)
+        _llm_log.debug("LLM output:\n%s", text)
+
+
+_IO_HANDLER = _LLMIOHandler()
 
 
 def make_llm(
@@ -51,6 +82,7 @@ def make_llm(
             model=model,
             api_key=api_key, # type: ignore
             temperature=temperature,
+            callbacks=[_IO_HANDLER],
         )
 
     # -------------------------
@@ -70,6 +102,7 @@ def make_llm(
             api_key=api_key, #type: ignore
             base_url=base_url,
             temperature=temperature,
+            callbacks=[_IO_HANDLER],
         )
 
     # -------------------------
@@ -89,6 +122,7 @@ def make_llm(
             model=model,
             api_key=api_key,
             temperature=temperature,
+            callbacks=[_IO_HANDLER],
         )
 
     # -------------------------
@@ -109,6 +143,7 @@ def make_llm(
             model=model,       # type: ignore
             api_key=api_key,   # type: ignore
             max_tokens=8192,   # Claude requires an explicit cap; large enough for our structured JSON
+            callbacks=[_IO_HANDLER],
         )
 
     raise ValueError(
