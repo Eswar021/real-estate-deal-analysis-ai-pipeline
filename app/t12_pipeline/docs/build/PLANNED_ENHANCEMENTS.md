@@ -413,8 +413,7 @@ is stripped at save, so this needs the history persisted first.
   `Upload.STEP_ANALYTICS` is declared but unreachable, so every run stays `draft`. (The run-state's
   own `step` field — "locked"/"classified" — tracks pipeline progress, which is a different thing.)
   Resolve when the ending is decided (analytics page, or just mark complete at data_review).
-- **Confidence-threshold tuning** — the low-confidence flag margin (0.15) needs calibration
-  against a few genuinely-ambiguous labelled files.
+- 🐞 **The low-confidence gate can never fire — it is dead, not mistuned.** See §7.
 - **Analytics page** — the last unbuilt UI page (charts/metrics over the mapped numbers).
 - **Rulebook coverage** — add the new vendors' line-item terms so fewer rows fall to AI mapping
   (a rulebook-building task, not code).
@@ -514,3 +513,84 @@ right tool for the rare case — it is just in the wrong place (and currently wi
 
 Nothing here blocks the demo either way — `flip_sign` cannot corrupt the money now that the
 summary reads Stage 2.
+
+---
+
+## 7. 🐞 `confidence` is a margin, not a confidence — and its gate is dead
+
+Raised from the logs: "the conf column is always ~0.2, does that mean 20% sure?" **No** — and
+checking it properly turned up something worse than a bad label.
+
+### What the number is
+
+`classify.classify_rows`: `confidence = top_score − runner_up_score`. And `score_row` gives each
+class **the fraction of that class's own signals the row satisfies**. So for `Gross Potential
+Rent`:
+
+| class | score | why |
+| --- | --- | --- |
+| **DATA** | **1.00** | 3/3 — `has_values` ✓ `not_subtotal_marked` ✓ `not_metric` ✓ |
+| SUBSECTION_SUBTOTAL | 0.80 | 4/5 — only `subtotal_marked` missing |
+| COMPUTED_METRIC | 0.667 | 2/3 |
+| … | | |
+
+`conf = 1.00 − 0.80 = 0.20`. The row is a **perfect** match for DATA. **0.2 is what a textbook
+classification looks like here**, not 20% doubt. The margin is structurally compressed because the
+classes share signals (`has_values`, `in_body`, `not_metric` appear in several), so the runner-up
+always scores high.
+
+### The gate is not mistuned — it cannot fire
+
+Measured across the 24-file corpus, **3,673 value-bearing rows**:
+
+- **top score = 1.00 for every single row** (3673/3673). The winning class always fits perfectly.
+- margin takes exactly **two values ever: 0.20 (3135 rows) and 0.25 (538)**.
+- `LOW_CONFIDENCE_MARGIN = 0.15` → **0 rows flagged. 0.0%. Ever.**
+
+So `low_confidence`, `low_confidence_rows`, the review page's `low-conf` badge and its
+"low_conf_count" are **dead** — structurally unreachable, not merely rare. The code comment
+("empirically tuned; clean files sit well above it") is wrong.
+
+### Worse: the margin does not correlate with being wrong
+
+Mirador is ground truth — the AI diagnosis had to fix five rows. Their scores:
+
+| row | description | we said | should be | top | margin | flagged? |
+| --- | --- | --- | --- | --- | --- | --- |
+| 29 | Leased Rents | DATA | SUBSECTION_SUBTOTAL | 1.00 | 0.20 | NO |
+| 23 | Economic Occupancy Rate | DATA | COMPUTED_METRIC | 1.00 | 0.20 | NO |
+| 27 | | DATA | COMPUTED_METRIC | 1.00 | 0.20 | NO |
+| 178 | | DATA | METADATA | 1.00 | 0.20 | NO |
+| 179 | Created on: 05/11/2026 … | DATA | METADATA | 1.00 | 0.20 | NO |
+
+**Every genuinely misclassified row scored a perfect 1.00 with the median margin.** They are
+indistinguishable from correct rows. That is not a threshold problem — the signals the classifier
+has (bold / caps / keyword / has_values) simply cannot tell a carry-forward subtotal from a data
+row. Only the **arithmetic** can, which is exactly why the NOI check + diagnosis loop is the real
+safety net, and why it caught all five.
+
+Note `arithmetic_sum_of_above` **is computed but is not in any class's `CLASS_SIGNALS`** — the
+strongest available signal is deliberately excluded from scoring and used by the fact-override
+layer instead (`validated_subsection_subtotal_rows`). That is the "AI proposes, arithmetic
+decides" design working; it just leaves the score with nothing decisive to say.
+
+### Done now (logging only, no behaviour change)
+
+- The log column is renamed **`conf` → `margin`**, and the `lo` column (which never fires) is
+  replaced by **`src`** (auto / ai / manual) — actually useful.
+- New **per-row scoring table** under the `verbose` profile, above the classification table: every
+  row scored against all 7 classes, `[x.xx]` marking the assigned class, plus the raw signals that
+  fired. Where the bracket is not on the highest number, the score did not decide it — the
+  arithmetic override, the AI, or the user did, and `src` says which. (E.g. Pointe Inverness row
+  12 `GROSS POTENTIAL RENT`: SECTION_SUBTOTAL scored 1.00 but the arithmetic override forced
+  SUBSECTION_SUBTOTAL at 0.80.)
+
+### To decide
+
+- **(a) Delete the gate** — `low_confidence`, `low_confidence_rows`, `LOW_CONFIDENCE_MARGIN`, the
+  UI badge and count. It has never fired and cannot. Recommended: it currently promises a review
+  signal that does not exist.
+- **(b) Replace it with something that discriminates.** The honest candidate is not a score at
+  all: flag rows the *arithmetic* finds suspicious (e.g. `arithmetic_sum_of_above` true but
+  classified DATA — precisely Mirador row 29). That is a real signal; the margin is not.
+- **(c) Leave it** and accept a permanently empty badge.

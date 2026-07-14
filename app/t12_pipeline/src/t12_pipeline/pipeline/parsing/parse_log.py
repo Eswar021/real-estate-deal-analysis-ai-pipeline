@@ -38,16 +38,56 @@ def _anchor_table(rows):
 
 
 def _classified_table(rows):
-    """One table = the classification AND its scoring evidence: `conf` is the classifier's
-    score and `signals` is WHICH raw signals fired on that row — i.e. why it landed in that
-    class. Shown in every profile; without it a class is an unexplained assertion."""
+    """One table = the classification AND its evidence: `margin` and `signals` (WHICH raw
+    signals fired) say why the row landed in that class. Shown in every profile; without it a
+    class is an unexplained assertion.
+
+    `margin` is NOT a confidence percentage — it is the winning class's score minus the
+    runner-up's. 0.20 is what a PERFECT classification looks like here (the winner scores 1.00,
+    the runner-up 0.80, because the classes share signals). Use the `verbose` profile's
+    per-row scoring table to see the actual per-class scores.
+    """
     out = [f"{'row':>4}  {'description':<34}  {'class':<20} {'section':<8} {'total':>13} "
-           f"{'conf':>5} lo  signals"]
+           f"{'margin':>6} {'src':<6} signals"]
     for r in rows:
         out.append(f"{r['row']:>4}  {r.get('description', '')[:34]:<34}  {r['class']:<20} "
                    f"{(r.get('section') or ''):<8} {_fmt(_last(r.get('values'))):>13} "
-                   f"{(r.get('confidence') or 0):>5.2f} {'!' if r.get('low_confidence') else ' '}"
-                   f"  {','.join(r.get('_signals', []))}")
+                   f"{(r.get('confidence') or 0):>6.2f} {(r.get('source') or 'auto'):<6}"
+                   f" {','.join(r.get('_signals', []))}")
+    return "\n".join(out)
+
+
+# short column heads for the 7 classes, in CLASSES order
+_ABBR = {"METADATA": "META", "SECTION_HEADER": "SECH", "SUBSECTION_HEADER": "SUBH",
+         "DATA": "DATA", "SUBSECTION_SUBTOTAL": "SUBT", "SECTION_SUBTOTAL": "SECT",
+         "COMPUTED_METRIC": "METR"}
+
+
+def _scoring_table(rows):
+    """Verbose: WHY each row got its class — its score against ALL SEVEN classes.
+
+    Read a cell as: the fraction of THAT class's own signals this row satisfies (see
+    classify.CLASS_SIGNALS). `[x.xx]` marks the class the row was ASSIGNED. So a `[1.00]`
+    means the row matched every signal its class asks for.
+
+    Where the bracket is NOT on the highest number, the assignment did not come from the
+    classifier — the arithmetic fact-override, the AI diagnosis, or the user changed it. The
+    `src` column says which, so a disagreement between score and class is readable at a glance.
+    """
+    head = " ".join(f"{a:^6}" for a in _ABBR.values())
+    out = [f"{'row':>4}  {'description':<30}  {head}  {'class':<20} {'margin':>6} {'src':<6} signals",
+           "      each cell = fraction of THAT class's signals satisfied · [x] = the class assigned",
+           "      [x] NOT on the highest = the score didn't decide it: the arithmetic fact-override"
+           " (locked anchor / validated subtotal, src=auto), the AI diagnosis (src=ai), or the user"
+           " (src=manual)"]
+    for r in rows:
+        sc = r.get("scores") or {}
+        cells = " ".join(
+            (f"[{sc[c]:4.2f}]" if c == r.get("class") else f" {sc[c]:4.2f} ") if c in sc else f"{'-':^6}"
+            for c in _ABBR)
+        out.append(f"{r['row']:>4}  {(r.get('description') or '')[:30]:<30}  {cells}  "
+                   f"{r.get('class', ''):<20} {(r.get('confidence') or 0):>6.2f} "
+                   f"{(r.get('source') or 'auto'):<6} {','.join(r.get('_signals', []))}")
     return "\n".join(out)
 
 
@@ -107,6 +147,8 @@ def stage2_classify(state):
     _S2.info("[stage2] classify + score: %d rows · %s", len(rows),
              " ".join(f"{k}={v}" for k, v in dist.items()))
     _attach_signals(rows, state.get("signals"))
+    if is_verbose():
+        _S2.debug("[stage2] per-row scoring (all 7 classes):\n%s", _scoring_table(rows))
     _S2.debug("[stage2] classification:\n%s", _classified_table(rows))
 
 
