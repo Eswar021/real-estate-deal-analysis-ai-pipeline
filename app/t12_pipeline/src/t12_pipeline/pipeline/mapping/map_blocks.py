@@ -114,15 +114,35 @@ def build_match_result(row, rulebook):
     }
 
 
-def apply_row_edit(mapped, row_number, category=None, flip_sign=False):
-    """The user's override of ONE mapped data row (data_review). Sets final_mapping /
-    flip_sign in place and returns `mapped`. Deliberately does not re-map or call the AI —
-    the user is the authority here. Raises ValueError if the row isn't a mapped data row."""
-    for r in mapped.get("rows", []):
+_UNSET = object()
+
+
+def apply_row_edit(mapped, row_number, category=_UNSET, flip_sign=_UNSET, valid_categories=None):
+    """The user's override of ONE mapped data row (data_review). Returns a copy of `mapped`
+    with ONLY the passed fields written. Deliberately does not re-map or call the AI — the
+    user is the authority here.
+
+    Pass a field only when the user actually changed it: the page posts the whole row on every
+    edit, so writing both would stamp final_mapping — a USER override — onto a row whose
+    category the rulebook or the AI picked and the user never touched. `category=None` is an
+    explicit "clear my override", distinct from not passing it at all. (Stage 2's class edits
+    are diffed the same way.)
+
+    Raises ValueError if the row isn't a mapped data row, or the category isn't in the
+    rulebook — mirroring Stage 2, where apply_corrections refuses a class outside CLASSES.
+    """
+    if category not in (_UNSET, None) and valid_categories is not None \
+            and category not in valid_categories:
+        raise ValueError(f"Unknown category: {category!r}")
+
+    out = {**mapped, "rows": [dict(r) for r in mapped.get("rows", [])]}
+    for r in out["rows"]:
         if r.get("row") == row_number and r.get("type") == "data":
-            r["final_mapping"] = category or None
-            r["flip_sign"] = bool(flip_sign)
-            return mapped
+            if category is not _UNSET:
+                r["final_mapping"] = category or None
+            if flip_sign is not _UNSET:
+                r["flip_sign"] = bool(flip_sign)
+            return out
     raise ValueError(f"Row {row_number} not found in mapped data")
 
 

@@ -15,7 +15,7 @@ flag — a caller can only re-enter a step, not switch part of it off.
 
 See docs/build/RESTRUCTURE_PLAN.md.
 """
-from t12_pipeline.config.rulebook_utils import load_latest_rulebook
+from t12_pipeline.config.rulebook_utils import get_rulebook_categories, load_latest_rulebook
 from ..mapping.map_blocks import map_results, apply_row_edit
 from ..mapping.find_mapping import run_ai_mapping
 from . import cell_grid, format_detect, structure_map, extract, anchor_lock, sections, noi, feedback
@@ -166,11 +166,16 @@ def stage3_update_mapping(state):
     """STAGE 3 re-entry — the user overrode one row's category / flip_sign on data_review.
     Applies the edit onto the EXISTING mapping. Deliberately does NOT re-map and does NOT call
     the AI: re-running the stage would discard the mapping being reviewed (the same mistake the
-    NOI page's Recompute made with the classification). reads/writes: mapping.
-    inputs: row_edit={row, category, flip_sign}."""
+    NOI page's Recompute made with the classification). Nor does it re-verify NOI — unlike a
+    Stage-2 class edit, a category is a label and flip_sign is an output sign convention;
+    neither changes a sum the pipeline verified, and data_review shows Stage 2's NOI directly.
+    reads/writes: mapping. inputs: row_edit={row, category?, flip_sign?} — only the keys the
+    user actually changed."""
     e = state.get("row_edit") or {}
-    mapped = apply_row_edit(state["mapping"], e.get("row"), e.get("category"),
-                            bool(e.get("flip_sign")))
+    edit = {k: e[k] for k in ("category", "flip_sign") if k in e}
+    mapped = apply_row_edit(state["mapping"], e.get("row"),
+                            valid_categories=get_rulebook_categories(load_latest_rulebook()),
+                            **edit)
     return {**state, "mapping": mapped}
 
 
