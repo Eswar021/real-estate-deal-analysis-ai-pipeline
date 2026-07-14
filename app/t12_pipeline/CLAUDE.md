@@ -24,6 +24,9 @@ No `sys.path` manipulation anywhere.
 # One-time setup (editable install — picks up source changes automatically)
 pip install -e ./app/t12_pipeline
 
+# Secrets: ONE key runs all three agents. app/.env is gitignored — never commit it.
+cp app/.env.example app/.env      # then fill in CLAUDE_API_KEY
+
 # The app (this is the real entry point)
 cd app/ui && python manage.py runserver
 
@@ -52,7 +55,8 @@ app/t12_pipeline/src/t12_pipeline/
 │   ├── anchor_keywords.json <- anchor markers (a RANKER, never a gate)
 │   ├── logging.json         <- log profile + file
 │   ├── log_config.py        <- configure_logging(); the pipeline owns its file logging
-│   └── agent_llm_config.py  <- model/provider per agent
+│   └── agent_llm_config.py  <- model/provider per agent; ALL 3 on Anthropic + CLAUDE_API_KEY
+│                               (mapping=sonnet-5, structure/diagnosis=opus-4-8)
 ├── llm/llm_client.py        <- make_llm(); logs LLM input/output at the 'verbose' profile
 └── pipeline/
     ├── parsing/             <- THE live parse pipeline (Stage 1 + Stage 2)
@@ -134,6 +138,11 @@ corrections; it was deleted. A caller may only re-enter a step, never disable pa
 - **Row classes:** METADATA · SECTION_HEADER · SUBSECTION_HEADER · DATA · SUBSECTION_SUBTOTAL ·
   SECTION_SUBTOTAL · COMPUTED_METRIC. `verify_noi` sums only DATA rows by section (capex
   excluded).
+- **The money is verified ONCE, at Stage 2.** `verify_noi` is the only place NOI is computed, and
+  `noi.NOI_TOLERANCE` is the only definition of "reconciles". Downstream pages *display*
+  `classification.noi` — they never re-derive it. (data_review did, and drifted: it summed
+  `rev − exp` vs the pipeline's `rev − |exp|`, so a negative-expense vendor showed a $730k
+  difference on a file Stage 2 had passed.) Mapping assigns categories; it cannot move money.
 - **A re-entry never re-runs the step it re-enters.** `stage2_reverify` / `stage3_update_mapping`
   apply the user's edit onto the reviewed result and re-verify; re-running `classify` / the
   mapping would recompute over the edit and discard it (the old Recompute bug). Each row carries

@@ -55,12 +55,11 @@ def review(request, upload_id):
             except Exception as e:
                 save_error = str(e)
 
-    # Original-NOI (per month) comes from the classification slice's NOI verification.
+    # The summary IS Stage 2's verified NOI result — this page never re-derives the money.
     noi_months = ((state.get("classification") or {}).get("noi") or {}).get("months") or []
-    actual_noi = {"noi": {"by_month": [m["noi"][0] for m in noi_months]}}
 
     categories = pipeline_bridge.load_categories()
-    summary    = compute_summary(mapped, actual_noi)
+    summary    = compute_summary(noi_months, mapped.get("column_headers", []))
     rows       = build_table_rows(mapped)
 
     return render(request, "data_review/review.html", {

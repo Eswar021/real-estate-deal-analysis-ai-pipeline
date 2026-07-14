@@ -7,8 +7,6 @@ Three responsibilities:
   - compute_summary()          — bottom rows: Net Rental Income / Calculated NOI / Original NOI / NOI Difference
 """
 
-from t12_mapping import pipeline_bridge
-
 
 def effective_mapping_of(row: dict) -> str | None:
     """User override → rulebook hit → AI suggestion → None."""
@@ -88,56 +86,37 @@ def build_table_rows(mapped_data: dict) -> list[dict]:
     return rows_out
 
 
-def compute_summary(mapped_data: dict, actual_noi: dict) -> dict:
+def compute_summary(noi_months: list[dict], column_headers: list) -> dict:
     """
-    Bottom summary rows. All use the same statement_side semantics as Stage 1:
-      revenue add, expense subtract, capex skipped (excluded from NOI).
-    Flip-sign is applied per row.
+    Bottom summary rows, read straight from Stage 2's verified NOI result: the same numbers,
+    and the same per-month pass/fail, that the classification gate showed.
+
+    The page does NOT re-derive them. It used to sum the mapped rows itself, which was a second
+    implementation of a question the pipeline had already answered — and it drifted: it summed
+    `revenue - expense` where the pipeline sums `revenue - |expense|`, so a vendor who signs
+    expenses negative (Chateau in the Woods) showed a $730k difference on a file Stage 2 had
+    passed. Mapping only assigns categories; it cannot move the money, so there is nothing here
+    for a second opinion to catch.
+
+    Each month of `noi_months` is {"rev"/"exp"/"noi": (vendor_actual, our_computed, match)}.
     """
-    column_headers = mapped_data.get("column_headers", [])
-    n = len(column_headers)
+    net_rental_income = [m["rev"][1] for m in noi_months]
+    calculated_noi    = [m["noi"][1] for m in noi_months]
+    original_noi      = [m["noi"][0] for m in noi_months]
 
-    rev_by_month  = [0.0] * n
-    exp_by_month  = [0.0] * n
-
-    for r in mapped_data.get("rows", []):
-        if r.get("type") != "data":
-            continue
-        side = r.get("statement_side")
-        if side not in ("revenue", "expense"):
-            continue
-        for i, v in enumerate(_signed_values(r)[:n]):
-            if not isinstance(v, (int, float)):
-                continue
-            if side == "revenue":
-                rev_by_month[i] += v
-            else:
-                exp_by_month[i] += v
-
-    rev_by_month = [round(v, 2) for v in rev_by_month]
-    exp_by_month = [round(v, 2) for v in exp_by_month]
-    calc_noi     = [round(rev_by_month[i] - exp_by_month[i], 2) for i in range(n)]
-
-    actual_noi_block = (actual_noi.get("noi") or {})
-    actual_noi_by_month = actual_noi_block.get("by_month") or [None] * n
-    actual_noi_by_month = [v if isinstance(v, (int, float)) else None for v in actual_noi_by_month][:n]
-    actual_noi_by_month += [None] * (n - len(actual_noi_by_month))
-
-    # A difference is only real if it clears the pipeline's NOI tolerance — the SAME rule
-    # Stage 2 passed the file on. Testing != 0 flagged the few cents of vendor rounding drift
-    # that survive a 100+ row sum, painting the page red under a column of zeros.
-    diff_by_month = [
-        {"value": round(calc_noi[i] - actual_noi_by_month[i], 2),
-         "material": abs(calc_noi[i] - actual_noi_by_month[i]) > pipeline_bridge.NOI_TOLERANCE}
-        if actual_noi_by_month[i] is not None else {"value": None, "material": False}
-        for i in range(n)
-    ]
+    diff_by_month = []
+    for m in noi_months:
+        actual, computed, match = m["noi"]
+        if actual is None or computed is None:
+            diff_by_month.append({"value": None, "material": False})
+        else:
+            diff_by_month.append({"value": round(computed - actual, 2), "material": match is False})
 
     return {
         "column_headers":         column_headers,
-        "net_rental_income":      rev_by_month,
-        "calculated_noi":         calc_noi,
-        "original_noi":           actual_noi_by_month,
+        "net_rental_income":      net_rental_income,
+        "calculated_noi":         calculated_noi,
+        "original_noi":           original_noi,
         "noi_difference":         diff_by_month,
         "any_diff_material":      any(d["material"] for d in diff_by_month),
     }
