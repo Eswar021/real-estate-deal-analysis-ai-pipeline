@@ -24,8 +24,12 @@ from shared import storage
 from t12_pipeline.config.rulebook_utils import get_rulebook_categories, load_latest_rulebook
 from t12_pipeline.pipeline.parsing.cell_grid import extract_cell_grid
 from t12_pipeline.pipeline.parsing.classify import CLASSES
+from t12_pipeline.pipeline.parsing.noi import NOI_TOLERANCE
 from t12_pipeline.pipeline.parsing.preflight import screen_name, screen_structure
 from t12_pipeline.pipeline.parsing import stages
+
+__all__ = ["NOI_TOLERANCE", "get_state", "save_state", "run_step", "run_preflight",
+           "load_categories", "load_classes"]
 
 
 # ── run-state: one accumulating dict per upload_id, persisted as state.json ──────────

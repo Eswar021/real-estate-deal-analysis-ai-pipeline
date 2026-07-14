@@ -10,6 +10,14 @@ from openpyxl.utils import column_index_from_string
 
 from .cell_grid import grid_row_map, gvalue
 
+# Flat $10, not a percentage. Comparing a ~130-leaf-row sum against the vendor's own grand
+# total: they rounded each leaf to whole dollars (some to cents), so the sum legitimately
+# drifts a few dollars/cents. $10 covers that with margin yet stays 1000x tighter than the old
+# 0.5% ($10k on a $2M total), so a real misclassification can't hide in it.
+# THE tolerance for "does the money reconcile" — anything asking that question (including
+# data_review's post-mapping summary) uses this, so one rule answers it everywhere.
+NOI_TOLERANCE = 10.0
+
 
 def _row_values(grid, row_num, value_cols):
     grow = grid_row_map(grid).get(row_num)
@@ -58,11 +66,7 @@ def verify_noi(classified, grid, final_map):
     def _match(a, c):
         if a is None or c is None:
             return None
-        # Flat $10, not a percentage. This sums ~130 leaf rows the vendor rounded to whole
-        # dollars, so the sum legitimately drifts a few $ from the vendor's grand total
-        # (observed max $5, Mesquite). $10 covers that with margin yet stays 1000x tighter than
-        # the old 0.5% ($10k on a $2M total), so a real misclassification no longer hides in it.
-        return abs(a - c) <= 10.0
+        return abs(a - c) <= NOI_TOLERANCE
 
     months, any_noi_fail = [], False
     for i in range(n):

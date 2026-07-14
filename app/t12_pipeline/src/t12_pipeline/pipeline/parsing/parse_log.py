@@ -149,9 +149,12 @@ def diagnosis_end(status, iters):
 
 
 # ── Stage 3 · mapping ─────────────────────────────────────────────────────────
-def stage3(mapped, file=None):
-    s = mapped.get("summary") or {}
+def stage3_start(file=None):
     _S3.info("%s", _banner(f"STAGE 3 · mapping{(' · ' + file) if file else ''}"))
+
+
+def stage3_end(mapped, file=None):
+    s = mapped.get("summary") or {}
     _S3.info("[stage3] %s data rows · %s mapped · %s unmapped",
              s.get("data_rows"), s.get("mapped"), s.get("unmapped"))
     if is_verbose():

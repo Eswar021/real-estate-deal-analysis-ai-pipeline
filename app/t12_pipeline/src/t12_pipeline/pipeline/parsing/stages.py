@@ -150,11 +150,12 @@ def stage3_mapping(state):
     the AI fallback for whatever it missed. The anchor flags ride in via to_annotated straight
     from the LOCKED anchors, so we map against the rows the user confirmed.
     reads: classification, structure_map, cell_grid, signals, file. writes: mapping, mapping_logs."""
+    parse_log.stage3_start(state["file"]["name"])
     rulebook = load_latest_rulebook()
     annotated = to_annotated(res_from_state(state), state["file"]["name"])
     auto_mapped = map_results(annotated, rulebook)                  # 3a — rulebook
     mapped, run_logs = run_ai_mapping(auto_mapped, rulebook)        # 3b — AI fallback
-    parse_log.stage3(mapped, state["file"]["name"])
+    parse_log.stage3_end(mapped, state["file"]["name"])
     out = {**state, "mapping": mapped, "step": "mapped"}
     if run_logs:
         out["mapping_logs"] = run_logs

@@ -255,6 +255,15 @@ remove it: (1) **add `section_path` / `section_context` onto the classified rows
 small step that walks the rows and accumulates the SECTION/SUBSECTION-header stack — the logic
 `to_annotated` does today), and (2) **update `map_blocks`** to read the new vocabulary
 (`class=="DATA"`, `section`, row-level `section_path`). Then the mapping stage reads
-`state.classification.rows` directly and `to_annotated` is deleted. Low priority / low harm (the
-adapter is 2 small functions and lives in the pipeline, not the bridge); risk sits in the
-AI-heavy mapping stage. **Best done alongside W3** (when we touch `mapping/` → `stage3_mapping/`).
+`state.classification.rows` directly and `to_annotated` is deleted.
+
+⚠ **Bigger blast radius than "update `map_blocks`".** `state["mapping"]` IS the adapter's output
+shape, so the **`data_review` page consumes the old vocabulary too** — `helpers.build_table_rows`
+and `compute_summary` read `type=="data"`, `statement_side`, `is_total_revenue` / `is_total_expense`
+/ `is_noi`, `section_context`. W5 must therefore update `data_review/helpers.py` + its template in
+the same change, or the page silently sums nothing (every `statement_side` lookup returns None →
+a $0 "Calculated NOI" that looks plausible). Verify with the data_review summary, not just the
+mapping output.
+
+Low priority; risk sits in the AI-heavy mapping stage AND the review page's money math. **Best
+done alongside W3** (when we touch `mapping/` → `stage3_mapping/`).

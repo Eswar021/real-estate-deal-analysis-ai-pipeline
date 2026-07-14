@@ -7,6 +7,8 @@ Three responsibilities:
   - compute_summary()          — bottom rows: Net Rental Income / Calculated NOI / Original NOI / NOI Difference
 """
 
+from t12_mapping import pipeline_bridge
+
 
 def effective_mapping_of(row: dict) -> str | None:
     """User override → rulebook hit → AI suggestion → None."""
@@ -121,9 +123,13 @@ def compute_summary(mapped_data: dict, actual_noi: dict) -> dict:
     actual_noi_by_month = [v if isinstance(v, (int, float)) else None for v in actual_noi_by_month][:n]
     actual_noi_by_month += [None] * (n - len(actual_noi_by_month))
 
+    # A difference is only real if it clears the pipeline's NOI tolerance — the SAME rule
+    # Stage 2 passed the file on. Testing != 0 flagged the few cents of vendor rounding drift
+    # that survive a 100+ row sum, painting the page red under a column of zeros.
     diff_by_month = [
-        round(calc_noi[i] - (actual_noi_by_month[i] or 0), 2)
-        if actual_noi_by_month[i] is not None else None
+        {"value": round(calc_noi[i] - actual_noi_by_month[i], 2),
+         "material": abs(calc_noi[i] - actual_noi_by_month[i]) > pipeline_bridge.NOI_TOLERANCE}
+        if actual_noi_by_month[i] is not None else {"value": None, "material": False}
         for i in range(n)
     ]
 
@@ -133,5 +139,5 @@ def compute_summary(mapped_data: dict, actual_noi: dict) -> dict:
         "calculated_noi":         calc_noi,
         "original_noi":           actual_noi_by_month,
         "noi_difference":         diff_by_month,
-        "any_diff_nonzero":       any(d not in (0, None) for d in diff_by_month),
+        "any_diff_material":      any(d["material"] for d in diff_by_month),
     }
