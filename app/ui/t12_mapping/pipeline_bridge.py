@@ -1,17 +1,16 @@
 """
 t12_mapping/pipeline_bridge.py
 
-The connection between the page views and the t12_pipeline. It runs the pipeline STAGE BY
-STAGE against a single accumulating run-state (one per upload_id), mirroring the app flow —
-nothing downstream fires until the user submits.
+The connection between the page views and the t12_pipeline — deliberately THIN:
 
-Restructure (Phase A, see app/t12_pipeline/docs/build/RESTRUCTURE_PLAN.md):
+    load the run-state → run ONE named workflow → save the run-state.
+
   - The run-state lives in `state.json` (+ `cell_grid.json` as a heavy side artifact).
-  - Every pipeline step is `run(state) -> state` (see pipeline.parsing.stages).
-  - `run_step(id, name, **inputs)` = load state → run the named step → save state.
-  - The stage entry points below still ALSO write the current per-page files
-    (anchor_lock / parse_state / classification / annotated_blocks / comparison /
-    actual_noi) so the existing pages keep working while the migration proceeds.
+  - Every workflow is `run(state) -> state` and is named in `stages.STEPS`
+    (`stage1_parse`, `stage1_check_anchors`, `stage2_classify`, `stage3_mapping`,
+    `stage3_update_mapping`). A view picks a workflow by NAME; it never assembles one.
+  - No pipeline logic lives here. The rulebook load, the mapping input adapter and the
+    stage composition all live in the pipeline, so every stage is runnable without Django.
 
 The t12_pipeline package is installed in editable mode (`pip install -e ./app/t12_pipeline`).
 """
@@ -21,15 +20,10 @@ from pathlib import Path
 
 from shared import storage
 
-from t12_pipeline.config.paths import DB_RULEBOOKS_DIR
-from t12_pipeline.config.rulebook_utils import get_rulebook_categories
+from t12_pipeline.config.rulebook_utils import get_rulebook_categories, load_latest_rulebook
 from t12_pipeline.pipeline.parsing.cell_grid import extract_cell_grid
 from t12_pipeline.pipeline.parsing.preflight import screen_name, screen_structure
 from t12_pipeline.pipeline.parsing import stages
-from t12_pipeline.pipeline.parsing import legacy_adapter as la
-from t12_pipeline.pipeline.mapping.map_blocks import map_results
-from t12_pipeline.pipeline.mapping.find_mapping import run_ai_mapping
-from t12_pipeline.pipeline.parsing import parse_log
 
 
 # ── run-state: one accumulating dict per upload_id, persisted as state.json ──────────
@@ -73,33 +67,11 @@ def run_step(run_id, name, *, save: bool = True, with_grid: bool = True, **input
     return state
 
 
-def _load_latest_rulebook() -> dict:
-    """Pick the newest mapping_rulebook_*.json from db/rulebooks/ — same logic as Stage 0."""
-    candidates = sorted(DB_RULEBOOKS_DIR.glob("mapping_rulebook_*.json"))
-    if not candidates:
-        raise FileNotFoundError(
-            f"No rulebook in {DB_RULEBOOKS_DIR}. "
-            "Run `python -m t12_pipeline.build_rulebook.run` first."
-        )
-    with open(candidates[-1]) as f:
-        return json.load(f)
-
-
 def _restore_cell_grid(cg: dict) -> dict:
     """Restore integer column keys after a JSON round-trip."""
     for row in cg["rows"]:
         row["cells"] = {int(k): v for k, v in row["cells"].items()}
     return cg
-
-
-def _res_from_state(state) -> dict:
-    """The flat `res` shape legacy_adapter consumes (mapping input + data_review's actual_noi),
-    built from run-state slices. legacy_adapter ignores feedback, so it's omitted."""
-    cls = state["classification"]
-    return {"format": state["format"]["format"], "final_map": state["structure_map"],
-            "cell_grid": state["cell_grid"], "anchor_lock": state["anchor_lock"],
-            "classified": cls["classified"], "noi": cls["noi"], "feedback": None,
-            "signal_rows": state["signals"], "low_confidence_rows": cls["low_confidence_rows"]}
 
 
 def run_preflight(xlsx_local_path) -> dict:
@@ -113,40 +85,9 @@ def run_preflight(xlsx_local_path) -> dict:
     return screen_structure(extract_cell_grid(str(xlsx_local_path)))
 
 
-# Every page reads the run-state directly via get_state — no per-page loader needed. Stage 3
-# builds its mapping input in-memory from the run-state (below); nothing mirrors to files.
-
-
-# ═══════════════════════════════════════════════════════════════════════
-#  Stage 3 — Mapping (rulebook lookup + AI fallback)
-# ═══════════════════════════════════════════════════════════════════════
-
-def run_mapping(upload_id) -> dict:
-    """Stage 3 — map every classified DATA row to a canonical category. Builds the mapping
-    input (annotated shape) in-memory from the run-state, runs the rulebook lookup + AI
-    fallback, and stores the result in state['mapping']. Synchronous; 30-180s depending on
-    how many rows fall to the AI fallback."""
-    rulebook  = _load_latest_rulebook()
-    state     = get_state(upload_id)                       # cell_grid needed for column headers
-    annotated = la.to_annotated(_res_from_state(state), state["file"]["name"])
-    auto_mapped = map_results(annotated, rulebook)         # Stage 3a — rulebook lookup
-    ai_mapped, run_logs = run_ai_mapping(auto_mapped, rulebook)   # Stage 3b — AI fallback
-
-    state["mapping"] = ai_mapped
-    if run_logs:
-        state["mapping_logs"] = run_logs
-    save_state(upload_id, state)
-    parse_log.stage3(ai_mapped, state["file"]["name"])
-    return ai_mapped
-
-
-def save_mapping(upload_id, mapped_data: dict) -> None:
-    """Persist data_review's per-row edits back into the run-state's mapping slice."""
-    state = get_state(upload_id, with_grid=False)
-    state["mapping"] = mapped_data
-    save_state(upload_id, state)
+# Every page reads the run-state directly via get_state — no per-page loader needed.
 
 
 def load_categories() -> list[str]:
     """Returns the sorted canonical category list from the latest rulebook (dropdown options)."""
-    return get_rulebook_categories(_load_latest_rulebook())
+    return get_rulebook_categories(load_latest_rulebook())

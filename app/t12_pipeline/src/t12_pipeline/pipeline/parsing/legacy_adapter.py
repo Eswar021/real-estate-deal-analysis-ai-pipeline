@@ -47,8 +47,20 @@ def column_headers(res):
     return out
 
 
+def res_from_state(state):
+    """Run-state → the flat `res` shape `to_annotated` consumes. Lives here (not in the UI
+    bridge) so Stage 3 is runnable without Django."""
+    cls = state["classification"]
+    return {"format": state["format"]["format"], "final_map": state["structure_map"],
+            "cell_grid": state["cell_grid"], "anchor_lock": state["anchor_lock"],
+            "classified": cls["classified"], "noi": cls["noi"], "feedback": None,
+            "signal_rows": state["signals"], "low_confidence_rows": cls["low_confidence_rows"]}
+
+
 def to_annotated(res, file_name="", file_path=""):
-    """parse_file result → legacy annotated_blocks dict (what the mapping stage reads)."""
+    """parse_file result → legacy annotated_blocks dict (what the mapping stage reads).
+    The anchor flags come straight from the LOCKED anchors in final_map (= structure_map after
+    the gate's picks are applied), so Stage 3 maps against the same rows the user confirmed."""
     fm = res["final_map"]
     rev_end, exp_end, noi_row = fm.get("revenue_end_row"), fm.get("expense_end_row"), fm.get("noi_row")
     rows_out, stack = [], []          # stack = [section_header, subsection_header]

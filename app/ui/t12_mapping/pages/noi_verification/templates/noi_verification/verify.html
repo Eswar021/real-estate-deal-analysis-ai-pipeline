@@ -53,24 +53,22 @@
     <form method="post">
       {% csrf_token %}
 
-      {# ── Anchor adjust (R / E / NOI) + recompute ── #}
+      {# ── Confirmed anchors — READ-ONLY. They were locked at the anchor gate; stages are
+            go/no-go, so this page never edits Stage-1 data (that's what Recompute did, and it
+            silently re-ran Stage 2 and threw away the classification below). ── #}
       <div class="card shadow-sm mb-3">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <h6 class="fw-bold mb-0">Confirmed anchors</h6>
-            <button type="submit" name="action" value="recompute" class="btn btn-sm btn-outline-dark">Recompute</button>
+            <span class="badge bg-secondary-subtle text-secondary-emphasis">locked at the gate</span>
           </div>
           <div class="row g-2">
             {% for sel in anchor_selects %}
             <div class="col-12 col-md-4">
               <label class="form-label small fw-semibold mb-1">{{ sel.label }}</label>
-              <select name="{{ sel.name }}" class="form-select form-select-sm">
-                {% for o in all_rows %}
-                <option value="{{ o.row }}" {% if o.row == sel.current %}selected{% endif %}>
-                  Row {{ o.row }} — {{ o.description }}{% if o.value != None %} (${{ o.value|floatformat:0|intcomma }}){% endif %}
-                </option>
-                {% endfor %}
-              </select>
+              <div class="form-control form-control-sm bg-light">
+                Row {{ sel.current }}{% for o in all_rows %}{% if o.row == sel.current %} — {{ o.description }}{% if o.value != None %} (${{ o.value|floatformat:0|intcomma }}){% endif %}{% endif %}{% endfor %}
+              </div>
             </div>
             {% endfor %}
           </div>

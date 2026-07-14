@@ -39,11 +39,21 @@ def review(request, upload_id):
     save_error = None
 
     if request.method == "POST":
+        # The user overrode one row's category / flip_sign. Re-enter Stage 3 through its
+        # edit workflow — which applies the override and nothing else (no re-map, no AI).
         try:
-            mapped = _apply_row_update(mapped, request.POST)
-            pipeline_bridge.save_mapping(upload_obj.id, mapped)
-        except Exception as e:
-            save_error = str(e)
+            row_edit = {"row":       int(request.POST.get("row_number")),
+                        "category":  (request.POST.get("new_category") or "").strip() or None,
+                        "flip_sign": request.POST.get("flip_sign") == "1"}
+        except (TypeError, ValueError):
+            save_error = "Missing or invalid row_number"
+        else:
+            try:
+                state = pipeline_bridge.run_step(upload_obj.id, "stage3_update_mapping",
+                                                 with_grid=False, row_edit=row_edit)
+                mapped = state["mapping"]
+            except Exception as e:
+                save_error = str(e)
 
     # Original-NOI (per month) comes from the classification slice's NOI verification.
     noi_months = ((state.get("classification") or {}).get("noi") or {}).get("months") or []
@@ -62,28 +72,3 @@ def review(request, upload_id):
         "save_error":   save_error,
     })
 
-
-def _apply_row_update(mapped: dict, post_data) -> dict:
-    """
-    Mutates mapped in place: sets final_mapping and/or flip_sign on the row.
-    Required POST keys:
-        row_number       — int, the T12 row being updated
-        new_category     — str (may be "" to clear an override)
-        flip_sign        — "1" or absent
-    Raises ValueError if row_number not found.
-    """
-    try:
-        row_number = int(post_data.get("row_number"))
-    except (TypeError, ValueError):
-        raise ValueError("Missing or invalid row_number")
-
-    new_category = (post_data.get("new_category") or "").strip()
-    flip_sign    = post_data.get("flip_sign") == "1"
-
-    for r in mapped.get("rows", []):
-        if r.get("row") == row_number and r.get("type") == "data":
-            r["final_mapping"] = new_category if new_category else None
-            r["flip_sign"]     = flip_sign
-            return mapped
-
-    raise ValueError(f"Row {row_number} not found in mapped data")

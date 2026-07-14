@@ -322,10 +322,41 @@ end-to-end (gate → corrected classification → NOI PASS → mapping with no N
 | 4 | **Take the 3 hardcoded templates out of the code into an input file** | ✅ **done** (W1: `config/known_formats.json`) |
 | 5 | **Anchor-keywords rulebook** — build a SECOND rulebook from the reviewed `.xlsm` (grand-total revenue/expense/NOI names), replacing the hand-made `anchor_keywords.json`. Shivam: keep it a **separate file** from the account-mapping rulebook so the two logic areas stay independent; `build_rulebook` emits both; the pipeline loads both. | 🔨 **TODO — his stated next step #1** |
 | 6 | **Per-row class dropdowns on the Stage-2 review** so the user can correct a classification | 🔨 **TODO** (design below, §4d) |
-| 7 | **Remove the Recompute button; enforce stage-gated flow** — "once stage 1 is locked you can't go back; stages are go/no-go gates" | 🔨 **TODO** (also removes the last re-classify path — see §4b) |
-| 8 | **Verify Stage 3 mapping uses the locked anchors** | 🔨 **TODO — verify** (`to_annotated` sets `is_total_revenue/expense/noi` from the fixed anchors; needs a check) |
+| 7 | **Remove the Recompute button; enforce stage-gated flow** — "once stage 1 is locked you can't go back; stages are go/no-go gates" | ✅ **done** — anchors are read-only on the NOI page; only the GATE can re-classify now |
+| 8 | **Verify Stage 3 mapping uses the locked anchors** | ✅ **verified** — `to_annotated` reads R/E/NOI from `final_map` (= `structure_map` after the gate's picks) and sets `is_total_revenue/expense/noi` + `statement_side` from them |
 | 9 | Template-inventory file (10 templates / vendor fingerprints across 25 files) as future template recognition | 💡 later — Shivam: "let's not do that immediately" |
 | — | UI polish / central platform | ❌ not ours — Shivam has a separate UI dev; keep ours "bare minimum demoable" |
+
+## 4e. ✅ The workflow registry — views run WORKFLOWS, never module steps
+
+`STEPS` used to expose 3 composites **plus 11 raw module steps** (`verify_noi`, `classify_rows`,
+`sections`, …) — **none of which anything ever called**. Loose node handles are the same hazard as
+the `run_feedback` flag one level up: they invite a caller to assemble its own pipeline (skip a
+node, reorder, re-enter mid-stage). Pruned to **named workflows only**, each a complete transition
+`<stage>_<user action>`:
+
+```python
+STEPS = {
+    "stage1_parse":          stage1,                # upload        → parse up to the anchor lock
+    "stage1_check_anchors":  check_anchors,         # gate          → re-verify picks (read-only)
+    "stage2_classify":       classify,              # gate confirm  → Stage 2 (AI on NOI fail)
+    "stage3_mapping":        stage3_mapping,        # review submit → rulebook + AI fallback
+    "stage3_update_mapping": stage3_update_mapping, # Stage-3 edit  → apply a mapping override
+}
+```
+(`stage2_reverify` joins this list with §4d.) **A new need = a new workflow, never a new handle.**
+Tests don't use the registry — they import modules directly and mock the AI agents.
+
+**Stage 3 is now a real workflow too.** It used to be hand-assembled *in the UI*
+(`bridge.run_mapping` did rulebook-load → adapter → `map_results` → `run_ai_mapping` → raw state
+write), and the mapping-edit path was worse — `_apply_row_update` lived in a **view** and the
+bridge raw-wrote `state["mapping"]`. Moved into the pipeline: `load_latest_rulebook`
+(`config/rulebook_utils`), `res_from_state` (`legacy_adapter`), `apply_row_edit` (`map_blocks`).
+The bridge is now only *load state → run named workflow → save state*, and every stage is runnable
+without Django. **The mapping logic itself was NOT rebuilt** — the rulebook cascade is sound; only
+its vocabulary is legacy (`type`/`statement_side` vs our `class`/`section`), which is W5's job.
+
+---
 
 ## 4d. 🔨 Stage-2 classification editing — design (from the 12-Jul discussion)
 

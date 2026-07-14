@@ -13,10 +13,13 @@ flag — a caller can only re-enter a step, not switch part of it off.
 
 See docs/build/RESTRUCTURE_PLAN.md.
 """
+from t12_pipeline.config.rulebook_utils import load_latest_rulebook
+from ..mapping.map_blocks import map_results, apply_row_edit
+from ..mapping.find_mapping import run_ai_mapping
 from . import cell_grid, format_detect, structure_map, extract, anchor_lock, sections, noi, feedback
 from . import classify as classify_mod
 from . import parse_log
-from .legacy_adapter import column_headers
+from .legacy_adapter import column_headers, res_from_state, to_annotated
 
 
 def stage1(state):
@@ -105,20 +108,44 @@ def classify(state):
     return {**keep, "classification": classification, "step": "classified"}
 
 
-# The step registry: composite stages + the individual steps (available for finer routing).
+def stage3_mapping(state):
+    """STAGE 3 — map every classified DATA row to a canonical category: rulebook lookup, then
+    the AI fallback for whatever it missed. The anchor flags ride in via to_annotated straight
+    from the LOCKED anchors, so we map against the rows the user confirmed.
+    reads: classification, structure_map, cell_grid, signals, file. writes: mapping, mapping_logs."""
+    rulebook = load_latest_rulebook()
+    annotated = to_annotated(res_from_state(state), state["file"]["name"])
+    auto_mapped = map_results(annotated, rulebook)                  # 3a — rulebook
+    mapped, run_logs = run_ai_mapping(auto_mapped, rulebook)        # 3b — AI fallback
+    parse_log.stage3(mapped, state["file"]["name"])
+    out = {**state, "mapping": mapped, "step": "mapped"}
+    if run_logs:
+        out["mapping_logs"] = run_logs
+    return out
+
+
+def stage3_update_mapping(state):
+    """STAGE 3 re-entry — the user overrode one row's category / flip_sign on data_review.
+    Applies the edit onto the EXISTING mapping. Deliberately does NOT re-map and does NOT call
+    the AI: re-running the stage would discard the mapping being reviewed (the same mistake the
+    NOI page's Recompute made with the classification). reads/writes: mapping.
+    inputs: row_edit={row, category, flip_sign}."""
+    e = state.get("row_edit") or {}
+    mapped = apply_row_edit(state["mapping"], e.get("row"), e.get("category"),
+                            bool(e.get("flip_sign")))
+    return {**state, "mapping": mapped}
+
+
+# ── The workflow registry — the ONLY things a view may run ────────────────────
+# Each entry is a complete, valid transition, named <stage>_<user action>. Individual module
+# steps are deliberately NOT exposed: handing a caller raw nodes invites it to assemble its own
+# pipeline (skip a node, reorder, re-enter mid-stage), which is how the NOI page silently wiped
+# the AI's corrections. A new need = a new workflow here, never a new handle.
+# Tests don't use this registry — they import the modules directly and mock the AI agents.
 STEPS = {
-    "stage1":          stage1,
-    "classify":        classify,
-    "check_anchors":   check_anchors,
-    "extract_grid":    cell_grid.run,
-    "detect_format":   format_detect.run,
-    "resolve_columns": structure_map.run,
-    "anchor_rows":     extract.run_anchor_rows,
-    "lock_anchors":    anchor_lock.run,
-    "signals":         extract.run_signals,
-    "classify_rows":   classify_mod.run,
-    "sections":        sections.run,
-    "verify_noi":      noi.run,
-    "diagnose":        feedback.run,
-    "flag":            classify_mod.run_flag,
+    "stage1_parse":          stage1,                # upload        → parse up to the anchor lock
+    "stage1_check_anchors":  check_anchors,         # gate          → re-verify picks (read-only)
+    "stage2_classify":       classify,              # gate confirm  → Stage 2 (AI on NOI fail)
+    "stage3_mapping":        stage3_mapping,        # review submit → rulebook + AI fallback
+    "stage3_update_mapping": stage3_update_mapping, # Stage-3 edit  → apply a mapping override
 }

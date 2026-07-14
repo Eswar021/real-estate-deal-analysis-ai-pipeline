@@ -114,6 +114,18 @@ def build_match_result(row, rulebook):
     }
 
 
+def apply_row_edit(mapped, row_number, category=None, flip_sign=False):
+    """The user's override of ONE mapped data row (data_review). Sets final_mapping /
+    flip_sign in place and returns `mapped`. Deliberately does not re-map or call the AI —
+    the user is the authority here. Raises ValueError if the row isn't a mapped data row."""
+    for r in mapped.get("rows", []):
+        if r.get("row") == row_number and r.get("type") == "data":
+            r["final_mapping"] = category or None
+            r["flip_sign"] = bool(flip_sign)
+            return mapped
+    raise ValueError(f"Row {row_number} not found in mapped data")
+
+
 def map_results(entry, rulebook):
     mapped_entry = {
         "file": entry["file"],

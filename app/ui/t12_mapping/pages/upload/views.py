@@ -70,7 +70,7 @@ def upload(request):
                 "property_name": property_name,
             })
         state = pipeline_bridge.run_step(                        # STAGE 1 only (no classification)
-            upload_obj.id, "stage1",
+            upload_obj.id, "stage1_parse",
             file={"name": Path(xlsx_path).name, "path": str(xlsx_path)})
     except Exception as e:
         upload_obj.delete()  # cascades file deletion via FileField

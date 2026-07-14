@@ -27,6 +27,18 @@ def load_rulebook(rulebook_path: Path) -> dict:
         return json.load(f)
 
 
+def load_latest_rulebook() -> dict:
+    """The newest mapping_rulebook_*.json in db/rulebooks/ — what Stage 3 maps against.
+    Lives here (not in the UI) so the mapping stage is runnable without Django."""
+    from t12_pipeline.config.paths import DB_RULEBOOKS_DIR
+    candidates = sorted(DB_RULEBOOKS_DIR.glob("mapping_rulebook_*.json"))
+    if not candidates:
+        raise FileNotFoundError(
+            f"No rulebook in {DB_RULEBOOKS_DIR}. "
+            "Run `python -m t12_pipeline.build_rulebook.run` first.")
+    return load_rulebook(candidates[-1])
+
+
 def validate_rulebook(rulebook: dict) -> None:
     missing = RULEBOOK_SECTION_KEYS - set(rulebook.keys())
     if missing:
