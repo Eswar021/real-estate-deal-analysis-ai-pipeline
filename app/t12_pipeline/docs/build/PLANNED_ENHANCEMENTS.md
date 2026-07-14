@@ -312,8 +312,56 @@ end-to-end (gate → corrected classification → NOI PASS → mapping with no N
 
 ---
 
+## 4c. 📋 Client meeting 12-Jul — action items (transcript in `master_docs/client_sent_docs/12th_july_new_workflow_dicussions/`)
+
+| # | item | status |
+| - | ---- | ------ |
+| 1 | **Keyword-based winner selection for ambiguous N-way matches** — when several triples reconcile, use keywords to pick/recommend a winner; user can override | ✅ **done** (§1: keywords RANK the reconciling triples; we return the winner + only genuine contenders) |
+| 2 | **Unknown path: keyword matching before AI** (not AI-only) | ✅ **done** (§2: deterministic columns → arithmetic lock w/ keyword ranking → AI only as fallback) |
+| 3 | **Reduce NOI diagnosis iterations to save credits** | ✅ **done** (max 3 + no-progress early-exit) |
+| 4 | **Take the 3 hardcoded templates out of the code into an input file** | ✅ **done** (W1: `config/known_formats.json`) |
+| 5 | **Anchor-keywords rulebook** — build a SECOND rulebook from the reviewed `.xlsm` (grand-total revenue/expense/NOI names), replacing the hand-made `anchor_keywords.json`. Shivam: keep it a **separate file** from the account-mapping rulebook so the two logic areas stay independent; `build_rulebook` emits both; the pipeline loads both. | 🔨 **TODO — his stated next step #1** |
+| 6 | **Per-row class dropdowns on the Stage-2 review** so the user can correct a classification | 🔨 **TODO** (design below, §4d) |
+| 7 | **Remove the Recompute button; enforce stage-gated flow** — "once stage 1 is locked you can't go back; stages are go/no-go gates" | 🔨 **TODO** (also removes the last re-classify path — see §4b) |
+| 8 | **Verify Stage 3 mapping uses the locked anchors** | 🔨 **TODO — verify** (`to_annotated` sets `is_total_revenue/expense/noi` from the fixed anchors; needs a check) |
+| 9 | Template-inventory file (10 templates / vendor fingerprints across 25 files) as future template recognition | 💡 later — Shivam: "let's not do that immediately" |
+| — | UI polish / central platform | ❌ not ours — Shivam has a separate UI dev; keep ours "bare minimum demoable" |
+
+## 4d. 🔨 Stage-2 classification editing — design (from the 12-Jul discussion)
+
+Adding per-row class dropdowns means user edits must re-enter the flow. **Do NOT add a
+`manual_fix` caller flag** — that repeats the `run_feedback` mistake (§4b). Two clean pieces:
+
+1. **Tag the source of every class.** Each classified row carries `source ∈ {auto, ai, manual}`
+   (today rows carry `class`/`section`/`confidence` but nothing says WHO set it). This gives the
+   UI its "AI-suggested" badge, and gives the diagnosis loop something to respect.
+2. **A user edit is a FACT, not a flag.** Rows with `source="manual"` join `feedback.locked`
+   (which already protects anchors + validated subsections), so the AI can still fix OTHER rows
+   but can never overwrite the user. No new branch inside `classify`.
+
+**Entry points (nodes the caller re-enters — legitimate, unlike a flag):**
+- `classify` (from the gate) — the full chain incl. auto-diagnosis on NOI fail. *(exists)*
+- `reverify` (Stage-2 edit) — apply the user's class edits → `verify_noi` → show. **No AI**, so
+  editing is fast/free and the user stays in control.
+- `diagnose` (an explicit "AI suggestions" button) — runs the diagnosis on demand and shows its
+  proposals; `feedback.history` already records every iteration (row, from→to, reason,
+  fail-cols before→after) and is the AI-suggestion history to render.
+
+---
+
 ## 5. 💡 Other remaining items
 
+- 🔨 **`tests/` folder (definite, not now)** — no test suite exists; the only checks are
+  throwaway scratchpad scripts that will rot. Plan: fixture **test state** (a saved `state.json`
+  per format) so individual `run(state)` steps are testable in isolation, plus full-graph runs
+  with `run_structure_agent` / `run_diagnosis_agent` mocked. This is what replaces the caller
+  flags we deleted.
+- 💡 **Export the reviewed/mapped T12** (Excel/CSV out of data_review) — a convenience, not core
+  functionality. The old batch had `utils/*_to_excel` exporters (dying with W2). Deferred.
+- 🐞 **The flow has no terminal state** — nothing sets `Upload.status = complete`;
+  `Upload.STEP_ANALYTICS` is declared but unreachable, so every run stays `draft`. (The run-state's
+  own `step` field — "locked"/"classified" — tracks pipeline progress, which is a different thing.)
+  Resolve when the ending is decided (analytics page, or just mark complete at data_review).
 - **Confidence-threshold tuning** — the low-confidence flag margin (0.15) needs calibration
   against a few genuinely-ambiguous labelled files.
 - **Analytics page** — the last unbuilt UI page (charts/metrics over the mapped numbers).

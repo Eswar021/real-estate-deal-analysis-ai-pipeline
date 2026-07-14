@@ -21,7 +21,12 @@ from t12_mapping import pipeline_bridge
 from t12_mapping.models import Upload
 
 
-ALLOWED_EXTENSIONS = {".xlsx", ".xls"}
+# .xlsx / .xlsm only. openpyxl cannot read the legacy .xls (BIFF) format at all — it raises
+# "openpyxl does not support the old .xls file format" — so accepting .xls only trades a clear
+# up-front message for a raw library traceback mid-parse. (Some vendor files ARE .xls; the user
+# re-saves them as .xlsx.)
+ALLOWED_EXTENSIONS = {".xlsx", ".xlsm"}
+LEGACY_EXTENSIONS = {".xls"}
 
 
 def upload(request):
@@ -36,8 +41,11 @@ def upload(request):
         errors["property_name"] = "Property name is required."
     if not file:
         errors["t12_file"] = "Please choose a file to upload."
+    elif Path(file.name).suffix.lower() in LEGACY_EXTENSIONS:
+        errors["t12_file"] = ("The legacy .xls format isn't supported. Please open the file in "
+                              "Excel and re-save it as .xlsx, then upload again.")
     elif Path(file.name).suffix.lower() not in ALLOWED_EXTENSIONS:
-        errors["t12_file"] = "Only .xlsx and .xls files are supported."
+        errors["t12_file"] = "Only .xlsx files are supported."
 
     if errors:
         return render(request, "upload/upload.html", {
