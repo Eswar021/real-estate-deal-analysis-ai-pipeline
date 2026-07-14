@@ -9,6 +9,7 @@ REPO_ROOT = PROJECT_ROOT.parent.parent
 # ── Package config files (shipped with the package) ──────────────────────────
 CONFIG_DIR           = Path(__file__).resolve().parent
 ANCHOR_KEYWORDS_PATH = CONFIG_DIR / "anchor_keywords.json"
+KNOWN_FORMATS_PATH   = CONFIG_DIR / "known_formats.json"
 
 # ── Data Directories (source Excel files) ────────────────────────────────────
 DATA_DIR              = PROJECT_ROOT / "data"

@@ -21,13 +21,15 @@ flowchart TD
 
     Raw --> Detect[Format detection<br/>reads cell_grid<br/>per-column signal scoring]
 
-    Detect -->|high score<br/>KNOWN| KMap[Template structure map — no AI<br/>columns + layout from the format<br/>+ candidate R / E / NOI rows]
-    Detect -->|low / no score<br/>UNKNOWN| AIMap[AI Structure Agent — Claude Opus<br/>structure map: columns + layout<br/>+ candidate R / E / NOI rows + subsections]
+    Detect -->|high score<br/>KNOWN| KMap[Template structure map — no AI<br/>columns + layout from the format]
+    Detect -->|low / no score<br/>UNKNOWN| DMap[Deterministic column detection — no AI<br/>value cols = longest numeric run · desc = cols left of it<br/>layout rows read from the grid]
 
     KMap --> Anchor
+    DMap -->|"columns reconcile — the anchor lock is the oracle"| Anchor
+    DMap -.->|"lock = NONE → fallback"| AIMap[AI Structure Agent — Claude Opus · FALLBACK only<br/>columns + layout + proposed R / E / NOI + subsections]
     AIMap --> Anchor
 
-    Anchor{{"STAGE 1 — Anchor lock · NO signal extraction yet<br/>read ONLY the candidate rows' monthly values<br/>R − E = NOI decides, month-by-month, tol max($1, 0.5%)<br/>status AUTO / DERIVED / GATE / NONE = only how the gate is pre-filled"}}
+    Anchor{{"STAGE 1 — Anchor lock · NO signal extraction yet<br/>arithmetic-first: hash-join over ALL value rows, keywords only RANK<br/>R − |E| = NOI decides, month-by-month, flat $1 tolerance<br/>status AUTO / DERIVED / GATE / NONE = only how the gate is pre-filled"}}
 
     Anchor ==> Gate
 
@@ -36,7 +38,7 @@ flowchart TD
     Gate ==>|user submits confirmed anchors| Extract[STAGE 2 — Dynamic feature extractor · ONE for all formats<br/>NOW extract the per-row signal vector + monthly values<br/>reads cell_grid through the resolved columns]
 
     Extract --> Classify[Classification — normalized signal-match, 7-class<br/>UNBIASED: score = fraction of a class's signals satisfied<br/>arithmetic-verified facts OVERRIDE the score<br/>runs INSIDE the locked R / E / capex regions]
-    Classify --> NOI{NOI verification<br/>our DATA-row sums by section vs the locked vendor anchors<br/>per month AND total}
+    Classify --> NOI{NOI verification<br/>our DATA-row sums by section vs the locked vendor anchors<br/>per month AND total · flat $10 tolerance}
 
     NOI -->|FAIL| Diagnose[AI Failure Diagnosis — Claude Opus<br/>reclassifies rows only; anchors are locked,<br/>so the NOI target can't move]
     Diagnose -.->|loop back, max 5×,<br/>accept only if NOI now reconciles| NOI

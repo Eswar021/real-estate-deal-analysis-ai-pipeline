@@ -16,15 +16,34 @@ _TYPE = {
 }
 
 
+def _label(v):
+    if hasattr(v, "strftime"):          # a real date cell → "Apr 2026"
+        return v.strftime("%b %Y")
+    return str(v).strip() if v not in (None, "") else ""
+
+
 def column_headers(res):
-    """The month/period header labels, from the month_header_row (falls back to the
-    value-column letters)."""
-    fm = res["final_map"]; grid = res["cell_grid"]; mh = fm.get("month_header_row")
-    grow = grid_row_map(grid).get(mh) if mh else None
+    """The month/period header labels. Handles MULTI-ROW headers (e.g. Mirador's
+    'Month Ending' / date / 'Actual' stack) by joining every header-band row per column —
+    the band is the contiguous text rows ending at month_header_row. Single-row headers are
+    unchanged. Falls back to the value-column letter when a column has no header text."""
+    fm = res["final_map"]; grid = res["cell_grid"]; rmap = grid_row_map(grid)
+    mh = fm.get("month_header_row")
+    value_cols = [column_index_from_string(c) for c in fm["value_columns"]]
+    if not mh:
+        return list(fm["value_columns"])
+    band, r = [], mh                     # walk up while rows carry text in the value columns
+    while r >= 1:
+        grow = rmap.get(r)
+        if not (grow and any(isinstance(gvalue(grow, c), str) and gvalue(grow, c).strip() for c in value_cols)):
+            break
+        band.append(grow); r -= 1
+    band.reverse()                       # top-to-bottom reading order
     out = []
-    for letter in fm["value_columns"]:
-        v = gvalue(grow, column_index_from_string(letter)) if grow else None
-        out.append(str(v).strip() if v not in (None, "") else letter)
+    for c, letter in zip(value_cols, fm["value_columns"]):
+        parts = [_label(gvalue(grow, c)) for grow in band]
+        parts = [p for p in parts if p]
+        out.append(" ".join(parts) if parts else letter)
     return out
 
 

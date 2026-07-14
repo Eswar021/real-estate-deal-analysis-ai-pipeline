@@ -12,13 +12,23 @@ import re
 
 from openpyxl.utils import get_column_letter, column_index_from_string
 
+import json
+
+from t12_pipeline.config.paths import KNOWN_FORMATS_PATH
 from .cell_grid import grid_row_map, gvalue
-from .signals import (detect_value_columns, detect_value_block, CODE_COL, DESC_COL,
-                      EMB_DESC_COL, NOCODE_DESC_COL)
+from .signals import detect_value_block
 from .structure_agent import run_structure_agent
 
 _MIN_MONTH_COLS = 6
-KNOWN_FORMATS = ("code_in_a_desc_in_b", "embedded_code_in_a", "no_code")
+
+
+def load_known_formats(path=KNOWN_FORMATS_PATH):
+    with open(path) as f:
+        return {k: v for k, v in json.load(f).items() if not k.startswith(("$", "version"))}
+
+
+KNOWN_FORMAT_LAYOUTS = load_known_formats()      # fmt -> column layout (from config)
+KNOWN_FORMATS = tuple(KNOWN_FORMAT_LAYOUTS)       # the known-format names
 
 # the extractor + lock drive the deterministic-first decision (the lock is the oracle);
 # CODE_PREFIX_RE (any known code style) is reused to guess whether codes are embedded.
@@ -163,26 +173,22 @@ def _detect_known_layout(grid, value_cols):
 
 
 def build_known_map(fmt, grid):
-    """A minimal 'template' structure map for a KNOWN format — columns come from the
-    format's fixed layout, the layout rows are detected, and the R/E/NOI boundaries are
-    left for the anchor lock to fill. Lets known files run the SAME dynamic-extract →
-    anchor-lock → classify path as unknown files (no AI structure agent needed)."""
-    if fmt == "code_in_a_desc_in_b":
-        desc_cols, start = [get_column_letter(DESC_COL)], DESC_COL + 1
-        code_col, embedded, pattern = get_column_letter(CODE_COL), False, None
-    elif fmt == "embedded_code_in_a":
-        desc_cols, start = [get_column_letter(EMB_DESC_COL)], EMB_DESC_COL + 1
-        code_col, embedded, pattern = None, True, "embedded"
-    else:  # no_code
-        desc_cols, start = [get_column_letter(NOCODE_DESC_COL)], NOCODE_DESC_COL + 1
-        code_col, embedded, pattern = None, False, None
-    value_cols = detect_value_columns(grid, start)
-    month_hdr, data_start = _detect_known_layout(grid, value_cols)
+    """A 'template' structure map for a KNOWN format — the columns (description / code /
+    value) come straight from `known_formats.json` (constant within a format), while the
+    layout rows are 'dynamic' (detected per file, since they move) unless the config pins
+    them to a literal. R/E/NOI are left for the anchor lock. Configuring value_columns keeps
+    stray cells (e.g. Mirador's 5-cent column O) from ever being read as a value column."""
+    cfg = KNOWN_FORMAT_LAYOUTS[fmt]
+    value_cols = [column_index_from_string(c) for c in cfg["value_columns"]]
+    det_mh, det_ds = _detect_known_layout(grid, value_cols)
+    mh, ds = cfg["month_header_row"], cfg["data_start_row"]
     return {
-        "description_columns": desc_cols,
-        "value_columns": [get_column_letter(c) for c in value_cols],
-        "code_column": code_col, "code_embedded_in_description": embedded, "code_pattern": pattern,
-        "month_header_row": month_hdr, "data_start_row": data_start,
+        "description_columns": list(cfg["description_columns"]),
+        "value_columns": list(cfg["value_columns"]),
+        "code_column": cfg["code_column"], "code_embedded_in_description": cfg["code_embedded_in_description"],
+        "code_pattern": cfg.get("code_pattern"),
+        "month_header_row": det_mh if mh == "dynamic" else mh,
+        "data_start_row": det_ds if ds == "dynamic" else ds,
         "revenue_end_row": None, "expense_end_row": None, "noi_row": None,
         "subsections": [], "validated_subsection_subtotal_rows": [], "subsection_header_rows": [],
     }

@@ -200,10 +200,12 @@ On **Save & Continue** → Stage 3 mapping (`state.mapping`).
 ## Planned work / cleanup (to do)
 
 ### W1 · Config-driven known-format templates
+
 Today the known-format columns are **hardcoded constants** in `parsing/signals.py` (`CODE_COL`,
 `DESC_COL`, `EMB_DESC_COL`, `NOCODE_DESC_COL`), used only in `structure_map.build_known_map`.
 Move them to **`config/known_formats.json`** (+ `config/paths.py` path), so `build_known_map`
 loads them and a new format is just a new entry — same pattern as `anchor_keywords.json`:
+
 ```json
 { "code_in_a_desc_in_b": { "description_columns":["B"], "code_column":"A",
     "code_embedded_in_description":false, "code_pattern":null, "value_start_column":"C" },
@@ -214,6 +216,7 @@ loads them and a new format is just a new entry — same pattern as `anchor_keyw
 ```
 
 ### W2 · Remove the dead old-batch code
+
 The new flow (UI) uses only `parsing/` + `mapping/{map_blocks,find_mapping}` + `config/` +
 `build_rulebook/`. The old batch pipeline is **unused** (verified: `parsing/` and `mapping/`
 import nothing from it, and `build_rulebook` only *mentions* the manifest in a comment). Delete:
@@ -222,6 +225,7 @@ import nothing from it, and `build_rulebook` only *mentions* the manifest in a c
 `t12_pipeline/CLAUDE.md` (it still documents the `run_pipeline` batch flow).
 
 ### W3 · Reorganize `parsing/` into stage folders
+
 ```
 parsing/
 ├── stage1_structure/   cell_grid · signals · format_detect · preflight ·
@@ -230,9 +234,11 @@ parsing/
 ├── stages.py  ·  run_parse.py  ·  legacy_adapter.py
 mapping/  → stage3_mapping/   (map_blocks · find_mapping)
 ```
+
 Mechanical (import refactor only — no data-path changes).
 
 ### W4 · Centralize the wiring so a reorg touches one place
+
 - **Data paths** already centralize in `config/paths.py` (keep using it; add `KNOWN_FORMATS_PATH`).
 - **Module wiring:** the bridge already calls steps by *name* via `stages.STEPS` (so it's decoupled
   from module locations). Close the last gap by **re-exporting the bridge's few direct helpers
@@ -242,6 +248,7 @@ Mechanical (import refactor only — no data-path changes).
   equivalent.)
 
 ### W5 · Retire `legacy_adapter` (one vocabulary end-to-end) — optional
+
 `legacy_adapter.to_annotated` only exists because the mapping stage still reads the OLD row
 vocabulary (`type` / `statement_side` / `section_path`). Not required — it's transitional. To
 remove it: (1) **add `section_path` / `section_context` onto the classified rows** in Stage 2 (a

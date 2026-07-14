@@ -150,13 +150,50 @@ tighter, so real errors surface instead of hiding.
 
 ---
 
-## 3c. 🐞 Known bug — Mirador NOI miscount
+## 3c. 🐞 Mirador — diagnosed. Two causes + a fix batch (🔨 to build)
 
-`Mirador Seller T12.xlsx` (embedded_code_in_a) is the only file of 24 that **fails NOI** — off by
-**$6.4M**, not rounding. Anchors reconcile ($0 drift) and columns are right, so it's a **Stage-2
-classification** breakdown: a whole section's DATA rows are summed into the wrong section (or a
-large block is mis-bucketed). Isolated bug on one file; deterministic-first + tolerances are
-correct. To debug: dump its `verify_noi` rev/exp rows vs sections and find the misclassified block.
+`Mirador Seller T12.xlsx` (embedded_code_in_a) was the only file of 24 to fail NOI ($6.4M off).
+Fully diagnosed — anchors + columns are correct; two independent issues:
+
+1. **Carry-forward double-count (revenue 2×).** Row 29 "Leased Rents" (6,452,283) is a *subtotal
+   carried forward* — it equals rows 19+20+21 ("Total Gross Scheduled Rent") but sits as the
+   opening line of the next block, with no "Total" keyword, not bold, and its members separated
+   by a header (so `arithmetic_sum_of_above` can't reach them). Plus row 23 "Economic Occupancy
+   Rate" (1,007) is a *rate*, not a dollar. `6,452,283 + 1,007 = 6,453,290` = the exact drift.
+   → This is the hard "odd-ordered subtotal" case (§3); the **AI diagnosis loop already fixes it**
+   (reclassifies 29→SUBSECTION_SUBTOTAL, 23→COMPUTED_METRIC). No deterministic change needed.
+2. **Spurious column O.** `detect_value_columns` (known path) includes any column with ≥5 numeric
+   cells. Mirador's col O has exactly **5 stray cents** (rows 22,38,62,65,115: −0.01, 10.51, …) so
+   it was swept in as a 14th value column; being last + empty in the anchor rows, it made
+   `overall_pass=None→False`. River Point has the *same* junk but only **4** cells → excluded.
+   A one-cell threshold coincidence. Confirmed fix: trim O **and** the diagnosis reclassify → PASS.
+
+**Root insight (verified across all known files):** value columns are **constant per format**
+(`code_in_a_desc_in_b`=C–O, `embedded_code_in_a`=B–N, `no_code`=B–N); only `month_header_row` +
+`data_start_row` vary. So the clean fix is **config**, not a threshold tweak.
+
+### Fix batch — ✅ DONE
+1. ✅ **`config/known_formats.json`** (lands W1). Per format: `description_columns`, `code_*`,
+   **explicit `value_columns`**, and `month_header_row` / `data_start_row` = `"dynamic"` (they vary;
+   the config *shape* still allows a literal like `[9,10]` for a future fixed-header format).
+   `structure_map.build_known_map` reads it via `KNOWN_FORMAT_LAYOUTS` → col O can never sneak in
+   (Mirador now B–N). Retired the hardcoded column constants + `detect_value_columns`. `paths.py`
+   gets `KNOWN_FORMATS_PATH`.
+2. ✅ **Month-label display** — `legacy_adapter.column_headers` now joins the whole header band per
+   column (Mirador → "Month Ending 04/30/2026 Actual"; single-row files unchanged; date cells
+   formatted "%b %Y").
+3. ✅ **Diagnosis logging + file logging.** `feedback.run_feedback_loop` logs each iteration
+   (verdict · proposed fixes · per-row reclassifications · fail-cols before→after) on `t12.diagnosis`.
+   `settings.py` file logging is ON by default (rolling `logs/t12.log`, full DEBUG; `T12_LOG_FILE`
+   override; console stays at `T12_LOG_LEVEL`).
+4. ✅ **`max_iters` 5 → 3** via `feedback.DEFAULT_MAX_ITERS` (overridable through `state["max_iters"]`).
+5. ✅ **No-progress early-exit** — the loop stops when a fix doesn't reduce the failing-column count
+   (`noi_fail_cols_after >= before`) — arithmetic, not trusting the model to self-declare.
+
+Result: **Mirador col O eliminated** (deterministic), and its double-count is fixed by the AI
+diagnosis (which now *succeeds* — reclassify-only passes once col O is gone; verified by simulation).
+Full corpus still 23/24 deterministic (Mirador the 1, resolved by the diagnosis loop in the UI),
+original-7 anchors byte-identical. **Live-AI end-to-end confirmation: re-run Mirador in the UI.**
 
 ---
 

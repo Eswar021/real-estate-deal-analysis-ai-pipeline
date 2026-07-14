@@ -36,3 +36,4 @@ master_docs/
 .claude/
 
 staticfiles/
+logs/

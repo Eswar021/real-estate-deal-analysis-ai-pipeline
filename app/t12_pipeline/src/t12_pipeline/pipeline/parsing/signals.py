@@ -1,15 +1,11 @@
 """Low-level per-row signal primitives — keyword/metric predicates, value-column
-detection, and the arithmetic sum-of-above check.
+detection (unknown formats), and the arithmetic sum-of-above check.
 
-Ported verbatim from notebook Modules 5 and 9. The known-format description-column
-constants are the fixed layouts `build_known_map` uses.
+Ported from notebook Modules 5 and 9. (Known-format columns now live in
+`config/known_formats.json`; the hardcoded column constants + `detect_value_columns`
+first-run helper were retired when `build_known_map` became config-driven.)
 """
 import re
-
-# ── known-format description / code columns (1-based) ─────────────────────────
-CODE_COL, DESC_COL = 1, 2   # code_in_a_desc_in_b: code in A, description in B, values from C
-EMB_DESC_COL       = 1      # embedded_code_in_a: code embedded in the description in A
-NOCODE_DESC_COL    = 1      # no_code: description in A
 
 TOTAL_KEYWORDS = [
     "net operating income", "effective gross income", "net rental revenue", "net rental income",
@@ -42,28 +38,6 @@ def total_keyword_hit(desc):
 def is_metric(desc):
     d = (desc or "").strip().lower()
     return any(k in d for k in METRIC_KEYWORDS)
-
-
-def detect_value_columns(grid, start_col, min_hits=5):
-    """Columns at/after start_col that hold numbers in enough rows = the value region.
-    Reads cell_grid. Returns only the FIRST CONTIGUOUS run: the 12 months + total sit in
-    adjacent columns, so a second numeric block further right (e.g. a duplicate embedded
-    'Income Statement' table, seen in some RealPage exports) is correctly excluded — it
-    starts after a column gap and would otherwise inflate every downstream sum."""
-    numeric = {}
-    for grow in grid["rows"]:
-        for c, cell in grow["cells"].items():
-            if c >= start_col and isinstance(cell["value"], (int, float)):
-                numeric[c] = numeric.get(c, 0) + 1
-    cols = sorted(c for c, n in numeric.items() if n >= min_hits)
-    if not cols:
-        return []
-    run = [cols[0]]
-    for c in cols[1:]:
-        if c != run[-1] + 1:
-            break
-        run.append(c)
-    return run
 
 
 def detect_value_block(grid, min_hits=5, min_len=6):

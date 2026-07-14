@@ -175,9 +175,12 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
 # ── T12 flow logging (t12_mapping.debug_log) ───────────────────────────────────
-# Per-view output: INFO = one-line summary per view; T12_LOG_LEVEL=DEBUG adds the full
-# detail (anchor/classified/NOI tables). Set T12_LOG_FILE=<path> to also write to a file.
+# T12 logging. The terminal shows INFO one-liners (T12_LOG_LEVEL controls its verbosity);
+# the FILE always gets full DEBUG detail (anchor/classified/NOI tables + the diagnosis loop's
+# per-iteration fixes) so a run is captured to disk instead of scrolling past. File logging is
+# ON by default at logs/t12.log (rolling); override with T12_LOG_FILE, or set it empty to disable.
 T12_LOG_LEVEL = os.environ.get('T12_LOG_LEVEL', 'INFO').upper()
+T12_LOG_FILE  = os.environ.get('T12_LOG_FILE', str(BASE_DIR / 'logs' / 't12.log'))
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -187,16 +190,19 @@ LOGGING = {
     },
     'handlers': {
         'console':     {'class': 'logging.StreamHandler', 'formatter': 'plain'},
-        't12_console': {'class': 'logging.StreamHandler', 'formatter': 't12'},
+        't12_console': {'class': 'logging.StreamHandler', 'formatter': 't12', 'level': T12_LOG_LEVEL},
     },
     'root': {'handlers': ['console'], 'level': 'WARNING'},
     'loggers': {
         'django.server': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
-        't12':           {'handlers': ['t12_console'], 'level': T12_LOG_LEVEL, 'propagate': False},
+        # logger passes everything; the handlers filter (console=T12_LOG_LEVEL, file=DEBUG)
+        't12':           {'handlers': ['t12_console'], 'level': 'DEBUG', 'propagate': False},
     },
 }
-if os.environ.get('T12_LOG_FILE'):
+if T12_LOG_FILE:
+    Path(T12_LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
     LOGGING['handlers']['t12_file'] = {
-        'class': 'logging.FileHandler', 'filename': os.environ['T12_LOG_FILE'], 'formatter': 't12',
+        'class': 'logging.handlers.RotatingFileHandler', 'filename': T12_LOG_FILE,
+        'maxBytes': 2_000_000, 'backupCount': 5, 'formatter': 't12', 'level': 'DEBUG',
     }
     LOGGING['loggers']['t12']['handlers'].append('t12_file')
