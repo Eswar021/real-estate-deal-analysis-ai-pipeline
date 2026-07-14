@@ -418,8 +418,13 @@ is stripped at save, so this needs the history persisted first.
 - **Analytics page** — the last unbuilt UI page (charts/metrics over the mapped numbers).
 - **Rulebook coverage** — add the new vendors' line-item terms so fewer rows fall to AI mapping
   (a rulebook-building task, not code).
-- **Auto sign-normalization** for negative-expense vendors downstream (today it's the manual
-  `flip_sign` on data_review).
+- ❓ **`flip_sign` is inert — decide what it's for (with the client)** — see §6 below.
+- 🧹 **Dev DB is noisy (later)** — `app/ui/db.sqlite3` holds ~98 test uploads: 4 stale Mirador
+  states saved before the W1 fix (their Stage 2 genuinely fails, so data_review correctly shows
+  red), plus orphaned rows whose `storage/<id>/` was cleaned — those render the "Upload data not
+  found" page (HTTP 200, so a status-code sweep does NOT catch them). Both the DB and `storage/`
+  are gitignored, so none of it ships; it only matters when demoing from this machine. Clean by
+  deleting the `Upload` rows (FileField cascade removes the folders).
 - **Learning loop** — when a user confirms an anchor with novel wording at the gate, add that
   term back into `anchor_keywords.json` so next time it's automatic. (Less critical if we adopt
   #1, since keywords stop being a gate.)
@@ -440,3 +445,72 @@ not a gate.)
 > Note: #1 makes the **learning loop** in §5 much less critical — keywords no longer gate the
 > lock, so a novel anchor term no longer *has* to be added to `anchor_keywords.json` to lock;
 > adding it now only bumps that triple's rank (AUTO/DERIVED labeling), not whether it locks.
+
+---
+
+## 6. ❓ `flip_sign` — inert today; needs a product decision (client)
+
+**Analysis only — no code changed.** Raised after the sign toggle on data_review appeared to "do
+nothing".
+
+### What it does today: nothing but the display
+
+Traced every reader in the repo. `flip_sign` is written by `apply_row_edit` and read in exactly
+**one** place — `data_review/helpers._signed_values`, called only from `build_table_rows` (the row
+values shown in the table). No pipeline module reads it. `build_rulebook` doesn't. The export that
+would consume it **doesn't exist yet** (§5).
+
+Until `1a1ad25` it also fed `compute_summary`, so a flip moved "Calculated NOI" and lit the page
+red. That was the *wrong* NOI — a second formula (`rev − exp`, missing the pipeline's `abs`) that
+also broke Chateau. With the summary now reading Stage 2's verified result, the flip legitimately
+moves nothing. **The toggle is a stored intent + a preview, awaiting a consumer.**
+
+### It cannot move to Stage 2 — that would break the verification
+
+Stage 2's job is to reproduce the vendor's own grand totals from the vendor's own rows. Flipping a
+row there changes our sum while the vendor's total stays put, so the reconciliation fails by
+**2 × the row** (measured: Pointe Inverness `Gross Potential Rent` → off by $7,306,458; Chateau
+`Gross Rent Potential` → off by $1,179,238).
+
+Note Chateau signs **expenses negative** and Stage 2 still passes, because NOI is
+`revenue − abs(expense)`. **A vendor's sign convention already needs no flip to verify.** Signs
+matter only for what we hand *downstream*, so `flip_sign` belongs at the **export boundary**, not
+in the verification path.
+
+### Could the sign be automatic instead of a manual toggle? Mostly NO
+
+Per-category sign across the 24-file corpus (rulebook-only). The question that matters isn't
+"does the sign vary" but **does it vary *between* files (a vendor convention, auto-fixable) or
+*within* one file (real data, must not be touched)**:
+
+| category | files | all + | all − | mixed *inside* one file | verdict |
+| --- | --- | --- | --- | --- | --- |
+| Vacancy Loss | 18 | 0 | 18 | 0 | uniform — never needs a flip |
+| Gross Potential Rent | 17 | 16 | 1 | 0 | **vendor convention** (1 vendor signs it negative) |
+| Rental Concessions | 16 | 0 | 14 | 2 | mostly convention, some real data |
+| Bad Debt | 20 | 2 | 5 | **13** | **real data** — recoveries (+) vs write-offs (−) |
+| Repairs And Maintenance | 20 | 15 | 0 | 5 | real data — credits/reversals |
+| Other Income Ops | 20 | 16 | 0 | 4 | real data |
+| (Loss) Gain To Lease | 15 | 2 | 10 | 3 | real data — a *gain* vs a *loss* |
+
+⚠ A naive "this category is always negative" rule would **destroy information**: Bad Debt is mixed
+*inside* 13 of 20 files, because a recovery genuinely is positive. Only **Gross Potential Rent**
+shows a clean convention split, and only in 1 file of 17. So a per-row manual override is the
+right tool for the rare case — it is just in the wrong place (and currently wired to nothing).
+
+### The question for the client
+
+1. What sign convention does Oakdale's model expect for the exported T12?
+2. Is a per-row manual flip needed at all, or does the mapped **category** imply the sign at export
+   time (with a manual override only for exceptions like the one negative-GPR vendor)?
+
+### Options (pending that answer)
+
+- **(a) Hide the toggle until the export exists.** Honest UI; nothing else changes. Best for a
+  demo — today it looks broken, and a control that does nothing invites exactly this question.
+- **(b) Keep it, label it "applies to the export".** Preserves intent; the row preview flips while
+  the (correct) summary doesn't — which is what caused the confusion.
+- **(c) Leave as-is.** Harmless, but unexplained.
+
+Nothing here blocks the demo either way — `flip_sign` cannot corrupt the money now that the
+summary reads Stage 2.
