@@ -10,9 +10,15 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Shared app-level .env (app/.env) — one file for both the UI and the t12_pipeline. Loaded
+# before the os.environ reads below; load_dotenv does NOT override real environment variables
+# (so Render's prod env still wins).
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # ── Secrets / debug / hosts ────────────────────────────────────────────────────
@@ -167,3 +173,19 @@ MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+# T12 pipeline logging is OWNED BY THE PIPELINE (t12_pipeline/config/logging.json →
+# app/logs/t12.log, file-only, profile-driven) and set up in t12_mapping.apps.ready() via
+# configure_logging() — so the CLI/tests get the same logs without Django. Here we only wire
+# Django's own console logging.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {'plain': {'format': '%(message)s'}},
+    'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'}},
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
+    'loggers': {
+        'django.server': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}

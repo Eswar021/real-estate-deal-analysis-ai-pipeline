@@ -20,16 +20,36 @@ from django.shortcuts import get_object_or_404, render
 from t12_mapping import pipeline_bridge
 from t12_mapping.models import Upload
 
-from .helpers import build_table_rows, compute_summary
+from .helpers import build_table_rows, compute_summary, effective_mapping_of
+
+
+def _row_edit(post, mapped) -> dict:
+    """The row the user touched, carrying ONLY the fields they actually changed. Every edit
+    posts the whole row (category + flip_sign), so passing both through would record a user
+    override on a category the rulebook or the AI chose and the user never picked. Mirrors
+    noi_verification's _class_edits, which diffs against the current classification."""
+    row = int(post.get("row_number"))
+    current = next((r for r in mapped.get("rows", []) if r.get("row") == row), {})
+
+    edit = {"row": row}
+    category = (post.get("new_category") or "").strip() or None
+    if category != effective_mapping_of(current):      # None = "clear my override"
+        edit["category"] = category
+    flip_sign = post.get("flip_sign") == "1"
+    if flip_sign != bool(current.get("flip_sign")):
+        edit["flip_sign"] = flip_sign
+    return edit
 
 
 def review(request, upload_id):
     upload_obj = get_object_or_404(Upload, pk=upload_id)
 
     try:
-        mapped     = pipeline_bridge.load_mapped(upload_obj.id)
-        actual_noi = pipeline_bridge.load_actual_noi(upload_obj.id)
+        state = pipeline_bridge.get_state(upload_obj.id, with_grid=False)
     except FileNotFoundError:
+        state = None
+    mapped = (state or {}).get("mapping")
+    if mapped is None:
         return render(request, "upload/upload.html", {
             "errors": {"t12_file": "Mapped data not found. Please run NOI verification and click Save & Continue."},
         })
@@ -37,14 +57,25 @@ def review(request, upload_id):
     save_error = None
 
     if request.method == "POST":
+        # The user overrode one row's category / flip_sign. Re-enter Stage 3 through its
+        # edit workflow — which applies the override and nothing else (no re-map, no AI).
         try:
-            mapped = _apply_row_update(mapped, request.POST)
-            pipeline_bridge.save_mapped(upload_obj.id, mapped)
-        except Exception as e:
-            save_error = str(e)
+            row_edit = _row_edit(request.POST, mapped)
+        except (TypeError, ValueError):
+            save_error = "Missing or invalid row_number"
+        else:
+            try:
+                state = pipeline_bridge.run_step(upload_obj.id, "stage3_update_mapping",
+                                                 with_grid=False, row_edit=row_edit)
+                mapped = state["mapping"]
+            except Exception as e:
+                save_error = str(e)
+
+    # The summary IS Stage 2's verified NOI result — this page never re-derives the money.
+    noi_months = ((state.get("classification") or {}).get("noi") or {}).get("months") or []
 
     categories = pipeline_bridge.load_categories()
-    summary    = compute_summary(mapped, actual_noi)
+    summary    = compute_summary(noi_months, mapped.get("column_headers", []))
     rows       = build_table_rows(mapped)
 
     return render(request, "data_review/review.html", {
@@ -56,28 +87,3 @@ def review(request, upload_id):
         "save_error":   save_error,
     })
 
-
-def _apply_row_update(mapped: dict, post_data) -> dict:
-    """
-    Mutates mapped in place: sets final_mapping and/or flip_sign on the row.
-    Required POST keys:
-        row_number       — int, the T12 row being updated
-        new_category     — str (may be "" to clear an override)
-        flip_sign        — "1" or absent
-    Raises ValueError if row_number not found.
-    """
-    try:
-        row_number = int(post_data.get("row_number"))
-    except (TypeError, ValueError):
-        raise ValueError("Missing or invalid row_number")
-
-    new_category = (post_data.get("new_category") or "").strip()
-    flip_sign    = post_data.get("flip_sign") == "1"
-
-    for r in mapped.get("rows", []):
-        if r.get("row") == row_number and r.get("type") == "data":
-            r["final_mapping"] = new_category if new_category else None
-            r["flip_sign"]     = flip_sign
-            return mapped
-
-    raise ValueError(f"Row {row_number} not found in mapped data")

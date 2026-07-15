@@ -180,8 +180,11 @@ app/t12_pipeline/
 │           └── ai_mapped/
 └── docs/
     ├── README.md               ← this file
-    ├── DECISIONS.md            ← structural decision log
-    └── detection_logic/        ← per-format row classification decision trees
+    ├── CONTEXT.md · DECISIONS.md · NAIVE_CODE_INVENTORY.md
+    ├── proposals/              ← anchor-first design (t12_parsing_proposal, anchor_first_workflow)
+    ├── build/                  ← implementation docs (PORTING_PLAN)
+    ├── system/                 ← the running system (workflow, architecture, deploy) + detection_logic/
+    └── audits/
 ```
 
 ---
@@ -190,6 +193,9 @@ app/t12_pipeline/
 
 | File | Purpose |
 |---|---|
-| [DECISIONS.md](DECISIONS.md) | Short decision log for structural choices and why they were made |
-| [detection_logic/](detection_logic/) | Per-format row classification decision trees with real row traces |
+| [proposals/](proposals/) | The anchor-first design — `t12_parsing_proposal.md` + `anchor_first_workflow.md` |
+| [build/PORTING_PLAN.md](build/PORTING_PLAN.md) | Plan to port the notebook workflow into `src` and wire the bridge + UI |
+| [NAIVE_CODE_INVENTORY.md](NAIVE_CODE_INVENTORY.md) | Running note of the heuristic / deterministic bits and their status |
+| [CONTEXT.md](CONTEXT.md) · [DECISIONS.md](DECISIONS.md) | Background reference + structural decision log |
+| [system/](system/) | The running system — workflow, architecture, deploy, and per-format `detection_logic/` |
 | [audits/](audits/) | Dated system-state audits |

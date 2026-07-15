@@ -27,7 +27,9 @@ def write_json(upload_id, filename: str, data: dict) -> None:
     path = _path(upload_id, filename)
     if default_storage.exists(path):
         default_storage.delete(path)
-    default_storage.save(path, ContentFile(json.dumps(data, indent=2)))
+    # default=str keeps the write total: Excel date cells arrive as datetime in the
+    # cell_grid; stringify them (as the pipeline's own save_cell_grid does) rather than crash.
+    default_storage.save(path, ContentFile(json.dumps(data, indent=2, default=str)))
 
 
 def exists(upload_id, filename: str) -> bool:

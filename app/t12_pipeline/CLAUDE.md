@@ -1,12 +1,20 @@
-# Mapping Rulebook — Claude Instructions
+# T12 Pipeline — Claude Instructions
 
-Real estate T12 financial statement mapping pipeline for Oakdale Capital.
-Reads raw Excel T12 files, maps every line item to a canonical category,
-and verifies the computed NOI matches the vendor's reported NOI.
+Real estate T12 financial statement pipeline for Oakdale Capital. Reads a raw Excel
+T12, locks the revenue / expense / NOI anchors by arithmetic, classifies every row,
+verifies the computed NOI against the vendor's, and maps each line item to a canonical
+category.
 
-Packaged as a proper Python package (`t12_pipeline`) — install in editable
-mode once with `pip install -e ./app/t12_pipeline`. All entry points are
-`python -m`, no `sys.path` manipulation anywhere.
+Packaged as an installable package (`t12_pipeline`) — `pip install -e ./app/t12_pipeline`.
+No `sys.path` manipulation anywhere.
+
+> **⚠ The live pipeline is `pipeline/parsing/` + `pipeline/mapping/`, driven by the Django
+> UI through `app/ui/t12_mapping/pipeline_bridge.py`.** The old batch runner
+> (`run_pipeline.py`, `manifest/`, `detection/`, `mapping/run_stage.py`, `utils/`,
+> `runner_utils.py`) and its `output_docs/` + `current_manifest.json` machinery are **DEAD
+> CODE** — nothing in the UI or `parsing/` imports them. They are scheduled for deletion
+> (W2 in `docs/build/PLANNED_ENHANCEMENTS.md`). Do not extend them; do not follow the
+> manifest pattern for new work.
 
 ---
 
@@ -16,143 +24,145 @@ mode once with `pip install -e ./app/t12_pipeline`. All entry points are
 # One-time setup (editable install — picks up source changes automatically)
 pip install -e ./app/t12_pipeline
 
-# Build rulebook (run once when new reviewed .xlsm files arrive)
+# Secrets: ONE key runs all three agents. app/.env is gitignored — never commit it.
+cp app/.env.example app/.env      # then fill in CLAUDE_API_KEY
+
+# The app (this is the real entry point)
+cd app/ui && python manage.py runserver
+
+# Parse one file end-to-end from the CLI (Stage 1 + Stage 2, no UI)
+python -c "from t12_pipeline.pipeline.parsing.run_parse import parse_file; \
+           r = parse_file('<path>.xlsx'); print(r['anchor_lock']['status'], r['noi']['overall_pass'])"
+
+# Build the rulebook (run when new reviewed .xlsm files arrive)
 python -m t12_pipeline.build_rulebook.run
-
-# Full pipeline (manifest + detection + mapping)
-python -m t12_pipeline.pipeline.run_pipeline --stages 0,1,2
-
-# Just detection + mapping (reuses current_manifest.json from last Stage 0)
-python -m t12_pipeline.pipeline.run_pipeline --stages 1,2
-
-# Limit AI calls per file while testing
-python -m t12_pipeline.pipeline.run_pipeline --stages 1,2 --ai-limit 5
-
-# Individual stages
-python -m t12_pipeline.pipeline.manifest.runner
-python -m t12_pipeline.pipeline.detection.run_stage
-python -m t12_pipeline.pipeline.mapping.run_stage
-
-# Utils (export to Excel for review)
-python -m t12_pipeline.pipeline.utils.auto_mapped_to_excel
-python -m t12_pipeline.pipeline.utils.ai_mapped_to_excel
-python -m t12_pipeline.pipeline.utils.convert_rulebook_to_excel
 ```
+
+**Logs** — the pipeline owns its own logging (`config/logging.json` → `app/logs/t12.log`,
+file-only, rotating). `profile` is ONE switch in that file, not a per-profile block:
+- `summary` (default) — stage banners + the anchor / classification / NOI tables.
+- `verbose` — adds the **per-row scoring table** (every row vs all 7 classes, `[x]` = the class
+  assigned), per-row signals, the anchor-rows table, and the exact LLM input/output per call.
+
+To switch: edit `"profile"` in `config/logging.json`. For a one-off run use the env override
+`T12_LOG_PROFILE=verbose python manage.py runserver` (also `T12_LOG_FILE`, `T12_LOG_LEVEL`).
+**Never put `T12_LOG_PROFILE` in `app/.env`** — env is read first, so it silently shadows
+`logging.json` and makes editing `profile` there do nothing.
 
 ---
 
-## Architecture
+## Architecture (the LIVE path)
 
 ```
-app/t12_pipeline/
-├── pyproject.toml                   <- declares the t12_pipeline package
-└── src/
-    ├── t12_pipeline/                <- the installable package
-    │   ├── build_rulebook/          <- one-time tool: builds db/rulebooks/ from .xlsm reviews
-    │   │   ├── run.py               <- entry: python -m t12_pipeline.build_rulebook.run
-    │   │   ├── build_rulebook.py
-    │   │   ├── build_client_review_rules.py
-    │   │   ├── extract_reviewed_row_history.py
-    │   │   └── build_historical_rule_support.py
-    │   ├── config/
-    │   │   ├── paths.py             <- all paths/dirs, single source of truth
-    │   │   ├── rulebook_runtime.py  <- build_rulebook module list + output path
-    │   │   ├── rulebook_utils.py    <- load/validate/flatten rulebook helpers
-    │   │   └── agent_llm_config.py  <- model/provider selection per agent
-    │   ├── llm/
-    │   │   └── llm_client.py        <- LLM client wrapper (OpenAI / Gemini / LM Studio)
-    │   └── pipeline/
-    │       ├── manifest/            <- Stage 0: writes current_manifest.json + dated run_manifest.json
-    │       ├── detection/           <- Stage 1: detect_blocks -> annotate_totals -> compute_noi -> compare_noi
-    │       │   └── corrections.py   <- UI correction layer (apply_corrections + recompute_noi)
-    │       ├── mapping/             <- Stage 2: map_blocks -> find_mapping (AI fallback)
-    │       ├── utils/               <- export scripts, not part of main pipeline flow
-    │       ├── runner_utils.py      <- run_python_module(): subprocess wrapper for `python -m`
-    │       └── run_pipeline.py      <- master stage runner
-    └── analysis/                    <- diagnostic notebooks, not part of the package
+app/t12_pipeline/src/t12_pipeline/
+├── config/
+│   ├── paths.py             <- all paths (single source of truth) + LOG_DIR
+│   ├── known_formats.json   <- per-format column layout; value_columns are CONFIG
+│   ├── anchor_keywords.json <- anchor markers (a RANKER, never a gate)
+│   ├── logging.json         <- log profile + file
+│   ├── log_config.py        <- configure_logging(); the pipeline owns its file logging
+│   └── agent_llm_config.py  <- model/provider per agent; ALL 3 on Anthropic + CLAUDE_API_KEY
+│                               (mapping=sonnet-5, structure/diagnosis=opus-4-8)
+├── llm/llm_client.py        <- make_llm(); logs LLM input/output at the 'verbose' profile
+└── pipeline/
+    ├── parsing/             <- THE live parse pipeline (Stage 1 + Stage 2)
+    │   ├── cell_grid.py        Layer 1: read the workbook ONCE -> cell_grid
+    │   ├── format_detect.py    known (3 formats) vs unknown
+    │   ├── structure_map.py    build_known_map (config) | detect_structure_deterministic
+    │   │                       | AI structure agent (FALLBACK only)
+    │   ├── structure_agent.py  AI: columns + proposed anchors + subsections
+    │   ├── extract.py          anchor_rows (Stage 1) + the full signal vector (Stage 2)
+    │   ├── signals.py          signal primitives + value-block detection + arithmetic
+    │   ├── anchor_lock.py      ARITHMETIC-FIRST R-|E|=NOI hash-join; keywords only RANK
+    │   ├── classify.py         7-class scoring + fact override + subsection derivation
+    │   ├── sections.py         revenue / expense / capex assignment
+    │   ├── noi.py              verify_noi: bottom-up sums vs the locked anchors
+    │   ├── diagnosis.py        AI: names mislabeled rows (only when NOI fails)
+    │   ├── feedback.py         diagnose -> apply_fix -> re-verify (arithmetic-gated)
+    │   ├── parse_log.py        ALL log rendering (banners + tables), profile-aware
+    │   ├── stages.py           STEPS registry + the composite stages
+    │   ├── run_parse.py        CLI/test one-shot runner
+    │   └── legacy_adapter.py   to_annotated: classified rows -> the mapping stage's shape
+    └── mapping/              <- Stage 3
+        ├── map_blocks.py       rulebook lookup (certain -> contextual -> no_conflict -> unresolved)
+        └── find_mapping.py     AI fallback for whatever the rulebook missed
 
-data/input_T12_docs/      <- raw .xlsx files (read-only)
-db/rulebooks/             <- versioned rulebook snapshots (written by t12_pipeline.build_rulebook)
-output_docs/              <- all run outputs
-    current_manifest.json <- always-latest pointer (overwritten each Stage 0 run)
-    <timestamp>/          <- per-run output dir (e.g. 2026_05_18_1430/)
-        run_manifest.json <- frozen snapshot for this run
-        1_detection/      <- folder kept numbered to preserve stage-N semantics in outputs
-            block_detection/
-            annotated_blocks/
-            noi_verification/
-        2_mapping/
-            auto_mapped/
-            ai_mapped/
+data/input_T12_docs/<format>/   raw .xlsx test corpus, organised by detected format
+db/rulebooks/                   versioned rulebook snapshots (written by build_rulebook)
+app/logs/t12.log                the pipeline's rotating log (file-only)
 ```
 
-Note: the **source folders** (`detection/`, `mapping/`, `manifest/`) dropped
-their digit prefix so they're valid Python identifiers (Python module names
-can't start with a digit). The **stage numbers** (0/1/2) still appear in
-`run_pipeline.py`'s `STAGE_MODULES` dict, in `output_docs/<ts>/` subfolder
-names, and in conversation ("Stage 0", "Stage 1", "Stage 2").
+**DEAD (W2, pending deletion):** `manifest/`, `detection/`, `run_pipeline.py`,
+`mapping/run_stage.py`, `utils/`, `runner_utils.py`, and the `output_docs/` +
+`current_manifest.json` flow they depend on. Nothing live imports them.
 
 ---
 
-## Manifest-Driven Pipeline
+## The workflow (one run-state, not files)
 
-`output_docs/current_manifest.json` is the single config source for stages 1 and 2.
-It is written by Stage 0 (`0_manifest/runner.py`) and embeds:
-- Full rulebook contents (`rulebook` key)
-- All input file paths (`l1.input_files`)
-- All Stage 1 output dirs (`l1.paths`: block_detection, annotated_blocks, actual_noi, computed_noi, noi_comparison)
-- AI provider/model config (`l2.ai`)
-- All Stage 2 output dirs (`l2.paths`: auto_mapped, ai_mapped, ai_mapping_logs)
-- Run metadata (run_id, output_base, rulebook_source)
+ONE `state.json` per upload (+ `cell_grid.json` as a heavy side artifact), enriched by each
+step. Every module exposes `run(state) -> state`; `stages.STEPS` is the name->step registry
+that `pipeline_bridge.run_step` dispatches on, and the views are just the router.
 
-Stages 1 and 2 read everything from `MANIFEST_PATH` — they never recompute date-stamped paths.
-This fixes the date-rollover bug where running stages the next day failed with FileNotFoundError.
+```
+Stage 0  preflight       screen_name -> screen_structure (reject rent rolls / model T12s)
+Stage 1  extract_grid -> detect_format -> resolve_columns -> extract_anchor_rows -> lock_anchors
+           known   -> build_known_map (known_formats.json)
+           unknown -> detect_structure_deterministic; the ANCHOR LOCK is the oracle
+                      (it reconciles => the columns were right); AI agent only if it can't
+🛑 ANCHOR GATE           every file stops here; the user confirms R / E / NOI
+Stage 2  apply anchors -> extract_signals -> classify -> sections -> verify_noi
+           -> [NOI FAIL -> diagnose -> apply_fix -> re-verify, loop max 3] -> flag_low_confidence
+🛑 CLASSIFICATION REVIEW  every file stops here
+           user edits a row's class -> stage2_reverify: apply_edits -> verify_noi -> flag
+           (re-enters the SAME noi node; never re-classifies, never calls the AI)
+Stage 3  map_blocks (rulebook) -> find_mapping (AI fallback) -> data_review
+```
 
-Stage 2 reads its input from `l1.paths.annotated_blocks_dir` (Stage 1 output).
+**Every fork belongs to the FLOW** — decided by the data or the arithmetic, never by a caller
+flag. (`run_feedback` once let a caller switch the diagnosis off, which silently discarded its
+corrections; it was deleted. A caller may only re-enter a step, never disable part of one.)
 
 ---
 
-## Stage Contracts
+## Key invariants (do not break these)
 
-**Detection output JSON row fields (keep stable):**
-- `row`, `type`, `description`, `section_context`, `section_path`, `values`
-- `statement_side` — `"revenue"` / `"expense"` / `"capex"`, set by detect_blocks
-- `is_total_revenue`, `is_total_expense`, `is_noi` — boolean flags, set by annotate_totals
+- **The AI proposes, the arithmetic decides.** The anchor lock is `R - |E| = NOI` over ALL
+  value-bearing rows (hash-join on the annual total); keywords only RANK the reconciling
+  triples, they never gate which rows qualify. The diagnosis loop applies the AI's
+  reclassifications and keeps them ONLY if NOI then reconciles. Locked anchors are never
+  reclassified, so the AI cannot move the target.
+- **Tolerances are flat dollars, never percentages.** Vendors export whole-dollar integers
+  (our reader keeps full precision), so the only real error is their rounding: anchor lock
+  **$1**, subsection **$1**, NOI verify **$10**. A percentage scales with the value ($10k on a
+  $2M total) and would hide a real misclassification.
+- **Known-format config supplies the column layout ONLY.** `value_columns` are constant within
+  a format (configured); `month_header_row` / `data_start_row` genuinely vary file-to-file and
+  are detected.
+- **`cell_grid` is the single source of truth** — the workbook is read exactly once; every
+  later step reads the grid.
+- **Row classes:** METADATA · SECTION_HEADER · SUBSECTION_HEADER · DATA · SUBSECTION_SUBTOTAL ·
+  SECTION_SUBTOTAL · COMPUTED_METRIC. `verify_noi` sums only DATA rows by section (capex
+  excluded).
+- **The money is verified ONCE, at Stage 2.** `verify_noi` is the only place NOI is computed, and
+  `noi.NOI_TOLERANCE` is the only definition of "reconciles". Downstream pages *display*
+  `classification.noi` — they never re-derive it. (data_review did, and drifted: it summed
+  `rev − exp` vs the pipeline's `rev − |exp|`, so a negative-expense vendor showed a $730k
+  difference on a file Stage 2 had passed.) Mapping assigns categories; it cannot move money.
+- **A re-entry never re-runs the step it re-enters.** `stage2_reverify` / `stage3_update_mapping`
+  apply the user's edit onto the reviewed result and re-verify; re-running `classify` / the
+  mapping would recompute over the edit and discard it (the old Recompute bug). Each row carries
+  `source` ∈ auto/ai/manual — display only, no behaviour hangs off it.
 
-**Mapping output row fields (added by Stage 2):**
-- `mapping`, `not_found`, `mapping_source`
-- `ai_suggested_mapping`, `ai_confidence`, `ai_reasoning` — added by find_mapping
+---
 
-**Rulebook shape:**
+## Rulebook shape (Stage 3)
+
 ```json
 { "certain": {}, "contextual": {}, "no_conflict": {}, "unresolved": {} }
 ```
 
-Lookup order in map_blocks: certain -> contextual -> no_conflict -> unresolved (-> AI)
-
----
-
-## Block Detection Logic
-
-Three formats: `code_in_a_desc_in_b`, `embedded_code_in_a`, `no_code` — per-format classifiers in `1_detection/formats/`.
-Row types: `data` / `subtotal` / `header` / `empty`.
-`statement_side` via two-flag state machine: revenue → expense (at EGI subtotal) → capex (at NOI subtotal).
-Subtotal rows get statement_side from state BEFORE the flip. Full decision trees: `docs/detection_logic/`.
-
----
-
-## NOI Verification (Stage 1c + 1d)
-
-Stage 1 computes and verifies NOI without mapping — uses `statement_side` directly.
-
-`compute_noi.py` produces two files per T12:
-- `actual_noi`: vendor's reported NOI from the `is_noi` subtotal row
-- `computed_noi`: row-method sum (revenue rows - expense rows), plus `is_total_revenue` subtotal anchor
-
-`compare_noi.py` runs two verification layers:
-1. **NOI check**: row-method computed NOI vs vendor's actual NOI (within $1 or 0.1%)
-2. **Revenue accuracy**: row-method revenue vs vendor's EGI (`is_total_revenue` subtotal)
-3. **Expense accuracy**: implied expense (EGI - actual_noi) vs row-method expense sum
+Lookup order in `map_blocks`: certain -> contextual -> no_conflict -> unresolved (-> AI).
 
 ---
 
@@ -167,20 +177,26 @@ Stage 1 computes and verifies NOI without mapping — uses `statement_side` dire
 - **Don't hardcode paths** — always use `t12_pipeline.config.paths`.
 - **Don't scatter model selection** — always use `t12_pipeline.config.agent_llm_config`.
 - **db/ is read-only for the pipeline.** `t12_pipeline.build_rulebook` writes to `db/rulebooks/`.
-- **Stage 1 only touches raw .xlsx in detect_blocks.** Downstream stages work from JSON only.
+- **Only `cell_grid.extract_cell_grid` opens the .xlsx.** Every other step reads `cell_grid`.
+- **No caller flags that disable part of the workflow.** A caller re-enters a step; the flow owns
+  its forks. (Tests mock the AI agents — `run_structure_agent` / `run_diagnosis_agent` — rather
+  than switching the graph off.)
 - **No `sys.path` manipulation.** The package is installed via `pip install -e`; use real imports.
 
 ---
 
 ## What Not To Do
 
-- Import from `archive/` or old analysis notebooks
+- **Extend the dead batch pipeline** (`manifest/`, `detection/`, `run_pipeline.py`,
+  `mapping/run_stage.py`, `utils/`) or follow its manifest/`output_docs` pattern — it's pending
+  deletion (W2). New work goes in `parsing/` + `mapping/` behind the run-state.
+- Import from `archive/` or the old analysis notebooks
 - Reintroduce multiple active rulebook versions into the runtime path
 - Make pipeline stages write to `db/` (only `t12_pipeline.build_rulebook` does)
-- Make downstream stages reopen raw Excel files
+- Reopen the raw Excel anywhere except `cell_grid`
 - Add `except: pass` or silent error swallowing
-- Add hidden keyword heuristics in Stage 1 without being asked
-- Reintroduce digit-prefixed package directories (`0_manifest`, `1_detection`, `2_mapping`) — stage numbers stay in `STAGE_MODULES` and output folders, not in source dir names
+- **Let keywords GATE the anchor lock** — they rank the arithmetic's results, nothing more
+- **Use a percentage tolerance** anywhere in the R−E=NOI family (see Key invariants)
 - Add `sys.path.append(...)` blocks back into modules
 - Add backwards-compatibility shims for removed code — just delete it cleanly
-- Hardcode paths — stages 1 and 2 must read all paths from the manifest
+- Hardcode paths — always use `t12_pipeline.config.paths`

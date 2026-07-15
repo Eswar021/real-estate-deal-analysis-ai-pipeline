@@ -1,23 +1,46 @@
-# noi_verification page
+# noi_verification page — Classification Review (Stage 2, 2nd hard stop)
 
 **URL:** `/t12/<upload_id>/noi/`
 
-**Reads:**
-- `annotated_blocks.json` — current row classifications and flags
-- `comparison.json` — pipeline NOI verification result
+The second hard stop. Every file lands here after the anchor gate is confirmed, pass or
+fail. Shows the NOI verification on top and **every classified row bucketed by section**
+(revenue / expense / capex), each with its 7-class label, total, and confidence — anchor
+rows and low-confidence rows flagged. The user can **correct any row's class** here and
+re-verify.
 
-**Writes** (on every Recompute, so a page refresh shows the latest state):
-- `annotated_blocks.json` — corrected with the user's row selections + re-walked statement_side
-- `comparison.json` — new NOI comparison against the corrected data
+**Reads:** the **run-state** via `bridge.get_state(id, with_grid=False)`. The page-local
+presenter (`helpers.build_view`) turns the run-state's `classification` slice + confirmed
+anchors into the review view (confirmed anchors, per-month NOI, every classified row with
+class / section / values / confidence / low_confidence / source). No cell_grid needed —
+`column_headers` were computed at classify time.
 
-**DB:** updates `Upload.current_step='noi_verification'` (or `'data_review'` on Save & Continue, future)
+**Writes:** the run-state.
+- **Re-verify** → `run_step(id, "stage2_reverify", class_edits={row: CLASS})` → rewrites
+  `classification.classified` / `.noi` / `.low_confidence_rows`.
+- **Save & Continue** → `run_step(id, "stage3_mapping")` → writes `state.mapping`, then
+  redirects to `data_review`.
 
-**Next:** `data_review` (on Save & Continue, future)
+**DB:** `Upload.current_step = 'data_review'` on Save & Continue.
 
-## NOI pass/fail logic (helpers.ui_pass)
+**Next:** `data_review`.
 
-1. `comparison["overall_pass"]` — pipeline's NOI match (catches wrong NOI row selection)
-2. `comparison["total_revenue_check"]["match"]` — catches wrong revenue row selection (vendor_egi comes from the flagged is_total_revenue row, so the check is row-dependent)
-3. Expense row cross-check — compares `is_total_expense` flagged row value against `total_expense_check["row_method"]` (expense data sum). Threshold mirrors the pipeline's `STRICT` flag via `comparison["tolerance_used"]`.
+## Pass/fail (helpers.ui_pass)
+Green only when **NOI reconciles AND** the revenue and expense totals both match — two green
+lights, since a net NOI check alone can hide compensating misclassifications. The totals come
+from the run-state's `classification.noi` (which already sums an expense split-pair and
+tolerates the vendor's sign convention).
 
-The expense cross-check is needed because the pipeline's `total_expense_check` uses `EGI − NOI` (not the flagged row), so changing the expense row wouldn't otherwise affect PASS/FAIL.
+## Behaviour
+- **Class dropdown** on every row except the locked anchors (R / E / NOI + any expense split
+  rows) — those are the target NOI is checked *against*, so the page doesn't offer to move them.
+  `stage2_reverify` refuses them too; the page isn't the enforcement point.
+- **Re-verify** applies the changed dropdowns and re-runs the NOI check — nothing else. It does
+  **not** re-classify (recomputing the scores would silently undo the edit — exactly what the
+  old Recompute did) and does **not** call the AI (it had its turn during `stage2_classify`;
+  re-running it would fight the user, one LLM call per edit). Changing a dropdown disables
+  **Save & Continue** until Re-verify runs, so an unapplied edit can never be what gets mapped.
+- **Source badge** — each row carries `source` ∈ `auto` | `ai` | `manual`. `AI` badge = the
+  diagnosis reclassified it (tooltip = its reason); `edited` = the user did. Display only: no
+  behaviour hangs off the tag, and no edit is ever locked (nothing re-runs to overwrite it).
+- **Save & Continue** runs mapping and moves on.
+- Low-confidence rows (small top-two class margin, value-bearing) are highlighted for review.

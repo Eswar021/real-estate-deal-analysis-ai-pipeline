@@ -10,6 +10,7 @@ from django.urls import include, path
 
 urlpatterns = [
     path("", include("t12_mapping.pages.upload.urls")),
+    path("", include("t12_mapping.pages.anchor_gate.urls")),
     path("", include("t12_mapping.pages.noi_verification.urls")),
     path("", include("t12_mapping.pages.data_review.urls")),
 ]

@@ -1,0 +1,31 @@
+{
+  "$schema_note": "Per-known-format column layout, read by structure_map.build_known_map. A T12 always has 12 monthly columns + (usually) a trailing total, and within one detected format those value_columns are constant (verified across the sample corpus) — so we CONFIGURE them here instead of detecting the span (which was letting stray cells, e.g. Mirador's 5-cent column O, sneak in). month_header_row / data_start_row genuinely vary file-to-file within a format, so they are 'dynamic' (detected). A future format with fixed header rows can put a literal list there, e.g. [9, 10].",
+  "version": "1.0",
+  "code_in_a_desc_in_b": {
+    "description_columns": ["B"],
+    "code_column": "A",
+    "code_embedded_in_description": false,
+    "code_pattern": null,
+    "value_columns": ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"],
+    "month_header_row": "dynamic",
+    "data_start_row": "dynamic"
+  },
+  "embedded_code_in_a": {
+    "description_columns": ["A"],
+    "code_column": null,
+    "code_embedded_in_description": true,
+    "code_pattern": "embedded",
+    "value_columns": ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"],
+    "month_header_row": "dynamic",
+    "data_start_row": "dynamic"
+  },
+  "no_code": {
+    "description_columns": ["A"],
+    "code_column": null,
+    "code_embedded_in_description": false,
+    "code_pattern": null,
+    "value_columns": ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"],
+    "month_header_row": "dynamic",
+    "data_start_row": "dynamic"
+  }
+}

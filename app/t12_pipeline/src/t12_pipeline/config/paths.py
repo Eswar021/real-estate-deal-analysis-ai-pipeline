@@ -6,6 +6,13 @@ from datetime import datetime
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 REPO_ROOT = PROJECT_ROOT.parent.parent
 
+# ── Package config files (shipped with the package) ──────────────────────────
+CONFIG_DIR           = Path(__file__).resolve().parent
+ANCHOR_KEYWORDS_PATH = CONFIG_DIR / "anchor_keywords.json"
+KNOWN_FORMATS_PATH   = CONFIG_DIR / "known_formats.json"
+LOGGING_CONFIG_PATH  = CONFIG_DIR / "logging.json"
+LOG_DIR              = PROJECT_ROOT.parent / "logs"    # app/logs (sibling of t12_pipeline + ui)
+
 # ── Data Directories (source Excel files) ────────────────────────────────────
 DATA_DIR              = PROJECT_ROOT / "data"
 INPUT_T12_DOCS_DIR    = DATA_DIR / "input_T12_docs"

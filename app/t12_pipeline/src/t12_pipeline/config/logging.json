@@ -1,0 +1,11 @@
+{
+  "$schema_note": "T12 pipeline logging. THIS FILE IS THE SETTING — flip 'profile' below to change it. There is no per-profile block: 'profile' is one switch, and the code checks log_config.is_verbose(). profile ∈ {summary, verbose}. 'summary' (default) = stage banners + step summaries + the anchor/classification/NOI tables + a diagnosis summary. 'verbose' ADDS: the per-row scoring table (every row vs all 7 classes), per-row signals, the anchor-rows table, and the EXACT LLM input (prompt) + raw output of every agent call. File-only (no terminal); log file is app/logs/<file>.",
+  "$profile_vs_level_note": "'profile' and 'level' are DIFFERENT knobs and they stack. level = the standard Python severity filter (how loud): stage banners + one-line summaries are logged at INFO, and EVERY table (anchor / classification / NOI / per-row scoring) plus the LLM input+output are logged at DEBUG — so level=INFO gives banners only, level=DEBUG (default) lets the tables through. profile = how much we GENERATE (summary vs verbose). Because verbose content is emitted at DEBUG, profile=verbose with level=INFO yields NOTHING extra. Keep level=DEBUG unless you want banners only.",
+  "$override_note": "env vars OVERRIDE this file and are read once at import: T12_LOG_PROFILE, T12_LOG_FILE, T12_LOG_LEVEL. Use them for a one-off run (T12_LOG_PROFILE=verbose python manage.py runserver). Do NOT set T12_LOG_PROFILE in app/.env — it would silently shadow this file for every run and make editing 'profile' here do nothing.",
+  "version": "1.0",
+  "profile": "summary",
+  "file": "t12.log",
+  "level": "DEBUG",
+  "max_bytes": 5000000,
+  "backup_count": 5
+}

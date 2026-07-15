@@ -1,0 +1,50 @@
+{
+  "$schema_note": "Consumed by the R-E=N anchor search. Markers are lowercase substrings matched case-insensitively against row descriptions. 'grand' = candidate for the file-level anchor; 'intermediate' = known sub-total, valid candidate only if no grand marker passes the R-E=N check; 'exclusion' = never an anchor even though it contains anchor words.",
+  "version": "1.0",
+  "generated_from": "22 raw seller T12s (corpus scan 2026-07-10)",
+  "revenue": {
+    "grand_markers": [
+      "total income", "total revenue", "total revenues", "effective gross income",
+      "total operating revenues", "total operating revenue",
+      "total residential & commercial income", "total property income"
+    ],
+    "intermediate_markers": [
+      "total rental income", "net rental income", "total net rental income",
+      "total other income", "total other rental", "potential rent"
+    ],
+    "exclusions": [
+      "total investment management revenue", "total reimbursable income", "total other revenue"
+    ]
+  },
+  "expense": {
+    "grand_markers": [
+      "total expenses", "total expense", "total operating expenses", "total operating expense",
+      "total operating costs", "total operating / non recoverable expenses",
+      "total operating expenses w/taxes & ins"
+    ],
+    "split_pair_markers": {
+      "$note": "When no single grand expense row passes R-E=N, test SUMS of these pairs (controllable + non-controllable pattern).",
+      "pairs": [
+        ["total controllable expenses", "total non-controllable expenses"],
+        ["total controllable expenses", "total non controllable expenses"],
+        ["total recoverable operating expenses", "total non recoverable operating expenses"]
+      ]
+    },
+    "intermediate_markers": [
+      "total controllable expenses", "total non-controllable expenses", "total non controllable expenses",
+      "total non recoverable operating expenses", "total general maintenance expenses",
+      "total office expenses", "total make ready expenses", "total administrative expenses",
+      "total contracted expenses"
+    ],
+    "exclusions": ["total partnership-level expenses", "below the line"]
+  },
+  "noi": {
+    "grand_markers": ["net operating income", "net operating income (loss)", "total net operating income"],
+    "exclusions": ["controllable noi", "total controllable noi", "after debt", "net operating income %"]
+  },
+  "matching_rules": {
+    "order": "exclusions first (reject), then grand, then intermediate",
+    "candidate_row_requirements": "row must carry numeric values in >=6 monthly columns",
+    "verification": "candidates only become anchors after passing R-E=N month-by-month within tolerance max($1, 0.5%)"
+  }
+}

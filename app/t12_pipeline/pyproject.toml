@@ -12,6 +12,9 @@ dependencies = [
     "pydantic>=2.0",
     "python-dotenv>=1.0",
     "langchain-core>=0.3",
+    # llm_client imports all three providers at module level, so all three must install even
+    # though every agent currently runs on Anthropic (see config/agent_llm_config.py).
+    "langchain-anthropic>=0.3",
     "langchain-openai>=0.2",
     "langchain-google-genai>=2.0",
 ]
