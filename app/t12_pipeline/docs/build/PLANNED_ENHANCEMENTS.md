@@ -594,3 +594,86 @@ decides" design working; it just leaves the score with nothing decisive to say.
   all: flag rows the *arithmetic* finds suspicious (e.g. `arithmetic_sum_of_above` true but
   classified DATA — precisely Mirador row 29). That is a real signal; the margin is not.
 - **(c) Leave it** and accept a permanently empty badge.
+
+### 7b · Why the other signals aren't in `CLASS_SIGNALS` — measured
+
+Asked directly: we compute `arithmetic_sum_of_above`, `top_border`, `has_formula`, `not_bold`,
+`total_keyword` — why does no class list them? A signal only earns a place if it **separates**
+classes. Fire rate per class across the 24-file corpus (% of rows *of that class* on which it
+fires):
+
+| signal | in CLASS_SIGNALS? | DATA (n=3312) | SUBSEC_SUBTOTAL (392) | SECTION_SUBTOTAL (69) | COMPUTED_METRIC (30) | METADATA (98) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `total_keyword` | **yes, indirectly** | 0% | 92% | 99% | 90% | 0% |
+| `top_border` | **NO** | 0% | 97% | 94% | 90% | 0% |
+| `arithmetic_sum_of_above` | **not scored — used as a FACT** | 0% | 84% | 0% | 0% | 0% |
+| `has_formula` | NO | 0% | 10% | 16% | 13% | 0% |
+| `not_bold` | NO | 100% | 26% | 20% | 20% | 56% |
+
+Three different answers:
+
+- **`total_keyword` IS used** — folded into `subtotal_marked` = `is_bold OR total_keyword`. Listing
+  both separately would *dilute* a subtotal marked by only one cue to a low fraction (the design
+  note at the top of the file). Not a gap.
+- **`arithmetic_sum_of_above` is used, but as a FACT, not a score** —
+  `_derive_subsection_subtotals` feeds `validated_subsection_subtotal_rows`, which
+  `apply_anchor_overrides` uses to **force** the class. As 1 of 5 signals it would contribute 0.2;
+  as a fact it decides outright. That is "the arithmetic decides" working, deliberately.
+- **`has_formula` (10–16%) and `not_bold` are correctly omitted** — too rare / already covered by
+  `not_subtotal_marked`.
+- ⚠ **`top_border` is a genuine gap.** 0% on DATA, 90–97% on every total-ish class — arguably the
+  single best discriminator we compute, and no class lists it. Worth adding on that evidence
+  alone.
+
+### 7c · But it would NOT have saved Mirador — the row is signal-less
+
+The five rows the AI had to fix, with every raw signal we compute:
+
+| row | should be | is_bold | all_caps | total_kw | is_metric | top_border | has_formula | arithmetic |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 29 `Leased Rents` | SUBSECTION_SUBTOTAL | – | – | – | – | – | – | – |
+| 23 `Economic Occupancy Rate` | COMPUTED_METRIC | – | – | – | – | – | – | – |
+| 27 (blank) | COMPUTED_METRIC | – | – | – | – | YES | YES | – |
+| 178 (blank) | METADATA | – | – | – | – | – | – | – |
+| 179 `Created on: …` | METADATA | – | – | – | – | – | YES | – |
+
+Row 29 fires **nothing**, and is identical on every signal to row 19 `Gross Potential Rent (GPR)`,
+a correct DATA row. Adding `top_border` catches only row 27. **No scoring signal can separate
+these** — which is exactly why the score's margin carries no information (§7) and why the
+arithmetic + AI is the real net.
+
+### 7d · The actual Mirador root cause — a CARRY-FORWARD, not a sum
+
+`arithmetic_sum_of_above` didn't fire on row 29 for a reason worth knowing: **row 29 isn't the sum
+of anything above it.**
+
+```
+row 22  Total Gross Scheduled Rent   6,452,283.25   <- subtotal (total_keyword fires)
+row 28  Revenue                            (none)   <- SUBSECTION_HEADER, no values
+row 29  Leased Rents                 6,452,283.25   <- IDENTICAL to row 22: a carry-forward
+```
+
+The vendor repeats row 22's subtotal under a new header. The scan walks up from row 29, hits the
+valueless header at row 28 immediately, so `member_rows` is **empty** — nothing to sum, no fire.
+The scan's model ("a subtotal equals the contiguous data rows directly above") simply doesn't
+describe this row.
+
+And it is the whole bug, to the cent:
+
+```
+NOI gap (ours − vendor's)          6,453,290.40
+  row 29 carry-forward             6,452,283.25   (99.98% of it)
+  row 23 occupancy RATE                1,007.26
+  row 27 stray                            -0.11
+                                   ------------
+                                   6,453,290.40   exact
+```
+
+**Proposed deterministic fix (replaces §7 option (b) with something concrete):** a *carry-forward
+detector* — if a row's value vector exactly equals that of an **already-identified subtotal above
+it**, it is a repeat, not new money → classify `SUBSECTION_SUBTOTAL` so the NOI sum doesn't
+double-count it. That is arithmetic evidence, not a style cue, so it works on a signal-less file
+and would fix Mirador **with no AI call** — taking the corpus to 24/24 deterministic.
+
+Not built. Needs care: a legitimate data row *could* coincidentally equal a subtotal (unlikely at
+13-month vector granularity, but the check should compare the whole vector, not one total).
