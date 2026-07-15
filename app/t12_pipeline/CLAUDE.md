@@ -39,9 +39,15 @@ python -m t12_pipeline.build_rulebook.run
 ```
 
 **Logs** — the pipeline owns its own logging (`config/logging.json` → `app/logs/t12.log`,
-file-only, rotating). Profiles: `summary` (default: stage banners + the anchor /
-classification+scoring / NOI tables) and `verbose` (adds per-row signals + the exact LLM
-input/output). Override: `T12_LOG_PROFILE=verbose`, `T12_LOG_FILE=…`, `T12_LOG_LEVEL=…`.
+file-only, rotating). `profile` is ONE switch in that file, not a per-profile block:
+- `summary` (default) — stage banners + the anchor / classification / NOI tables.
+- `verbose` — adds the **per-row scoring table** (every row vs all 7 classes, `[x]` = the class
+  assigned), per-row signals, the anchor-rows table, and the exact LLM input/output per call.
+
+To switch: edit `"profile"` in `config/logging.json`. For a one-off run use the env override
+`T12_LOG_PROFILE=verbose python manage.py runserver` (also `T12_LOG_FILE`, `T12_LOG_LEVEL`).
+**Never put `T12_LOG_PROFILE` in `app/.env`** — env is read first, so it silently shadows
+`logging.json` and makes editing `profile` there do nothing.
 
 ---
 
