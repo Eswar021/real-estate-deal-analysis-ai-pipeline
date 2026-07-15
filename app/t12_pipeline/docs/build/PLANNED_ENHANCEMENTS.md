@@ -729,3 +729,28 @@ may be unreachable by construction on any file the detector handles.
 Conclusion unchanged, with better evidence: the flag is dead weight for real files. The plumbing
 (margin → `low_confidence` → the UI badge) is never exercised, which is itself the argument for
 the synthetic-fixture work in §5 — a feature nothing can trigger is a feature nothing tests.
+
+### 7f · The badge's plumbing WORKS — only the signal is missing
+
+Asked: "does the yellow flag work if we really DO have a low-confidence item?" Tested by raising
+the threshold to 0.21 so real rows (margin 0.20) qualify, then running the real chain —
+`classify` → `flag_low_confidence` → view context → template:
+
+| threshold | flagged | 'low-conf' badges rendered | yellow rows | page counter |
+| --- | --- | --- | --- | --- |
+| 0.15 (today) | 0 | 0 | 0 | 0 |
+| 0.21 (pretend they're close calls) | **135** | **135** | **135** | **135** |
+
+**Nothing is broken in the wiring.** margin → `low_confidence` → `low_confidence_rows` → badge all
+work end-to-end. It is a working smoke alarm wired to a sensor that cannot detect smoke.
+
+That simplifies the decision: **there is nothing to fix.** Tuning the threshold is pointless (only
+two margins exist, 0.20/0.25 — any threshold flags everything or nothing). The only way the badge
+ever means something is to feed it a **real** signal, i.e. §7d's carry-forward detector: flag rows
+the *arithmetic* finds suspicious. That is signal work, not badge work.
+
+Method note: the first attempt at this test reported 0/0 and looked like proof the plumbing was
+broken. It wasn't — `LOW_CONFIDENCE_MARGIN` is bound as a **default argument**
+(`def flag_low_confidence(classified, threshold=LOW_CONFIDENCE_MARGIN)`), which Python evaluates
+at import, so patching the module constant had no effect. Patch `__defaults__` (or pass the
+threshold) when testing this.
