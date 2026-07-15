@@ -38,20 +38,29 @@ def _anchor_table(rows):
 
 
 def _classified_table(rows):
-    """One table = the classification AND its evidence: `margin` and `signals` (WHICH raw
-    signals fired) say why the row landed in that class. Shown in every profile; without it a
-    class is an unexplained assertion.
+    """One table = the classification AND its evidence: `score`, `margin` and `signals` (WHICH
+    raw signals fired) say why the row landed in that class. Shown in every profile; without it
+    a class is an unexplained assertion.
 
-    `margin` is NOT a confidence percentage — it is the winning class's score minus the
-    runner-up's. 0.20 is what a PERFECT classification looks like here (the winner scores 1.00,
-    the runner-up 0.80, because the classes share signals). Use the `verbose` profile's
-    per-row scoring table to see the actual per-class scores.
+    `score` = how well the row fits the class it was GIVEN — the fraction of that class's own
+    signals it satisfies (100% = every signal fired). This is the number to read.
+
+    `margin` is NOT a confidence percentage — it is the top class's score minus the runner-up's.
+    0.20 is what a PERFECT classification looks like here (winner 100%, runner-up 80%, because
+    the classes share signals), so a low margin does NOT mean a poor fit.
+
+    score < 100% means the score did not decide the class — the arithmetic fact-override, the AI
+    diagnosis or the user did (`src` says which). The `verbose` profile's per-row scoring table
+    shows all 7 class scores side by side.
     """
     out = [f"{'row':>4}  {'description':<34}  {'class':<20} {'section':<8} {'total':>13} "
-           f"{'margin':>6} {'src':<6} signals"]
+           f"{'score':>6} {'margin':>6} {'src':<6} signals"]
     for r in rows:
+        sc = r.get("scores") or {}
+        score = sc.get(r.get("class"))
         out.append(f"{r['row']:>4}  {r.get('description', '')[:34]:<34}  {r['class']:<20} "
                    f"{(r.get('section') or ''):<8} {_fmt(_last(r.get('values'))):>13} "
+                   f"{(f'{score:.0%}' if score is not None else '-'):>6} "
                    f"{(r.get('confidence') or 0):>6.2f} {(r.get('source') or 'auto'):<6}"
                    f" {','.join(r.get('_signals', []))}")
     return "\n".join(out)
