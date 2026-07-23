@@ -1,13 +1,36 @@
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
 
 RULEBOOK_SECTION_KEYS = {"certain", "contextual", "no_conflict", "unresolved"}
 
+# A leading account-code prefix in ANY vendor style, followed by the description:
+#   `5120 - Rent`  `4030-000 - Rent`  `33010 - Rent`  `1-5000-0005 Rent`  `5120.0000 Rent`
+#   `4010:Rent`  `5120 Gross Rent` (space-separated, Chateau)
+# This runs ONLY at rulebook lookup (map_blocks) — the pipeline's `description` keeps the code,
+# so classification / anchors / NOI are unaffected. The rulebook's own keys are already
+# code-free, so stripping the query here is what makes an embedded-code row (Reserve/Trails
+# `33010 - Vacancy Loss`) match the clean key `vacancy loss`.
+#
+# The dash / dot / colon separator is mandatory in those branches. The SPACE-separated branch is
+# looser (the space is the only separator), so it is fenced: 4-6 digits (a 3-digit `911 Phone`
+# is left alone), and a negative lookahead drops 19xx/20xx so a real leading YEAR ("2024 Budget")
+# is never stripped. Verified against the corpus: the only non-year leading `\d{4,6} text` cells
+# are Chateau's account codes.
+_CODE_PREFIX = re.compile(
+    r"^\s*(?:"
+    r"\d-\d{4}-\d+"                        # MRI          1-5000-0005
+    r"|\d{4,6}\s*-\s*\d*\s*-?"              # dashed       5120- / 4030-000- / 33010 -
+    r"|\d{4,6}[.:]\d*"                     # dotted/colon 5120.0000 / 4010:
+    r"|(?!(?:19|20)\d\d\b)\d{4,6}(?=\s+\D)"  # space-only   5120 Gross  (NOT a 19xx/20xx year)
+    r")\s*(?:[-–]\s*)?"                    # trailing whitespace + an optional dash (5295.008 - Desc)
+)
+
 
 def normalize_lookup_key(text: str) -> str:
-    return text.strip().lower()
+    return _CODE_PREFIX.sub("", text).strip().lower()
 
 
 def normalize_section_key(text: str) -> str:

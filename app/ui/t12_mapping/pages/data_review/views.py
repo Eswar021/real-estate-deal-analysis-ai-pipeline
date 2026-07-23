@@ -20,7 +20,7 @@ from django.shortcuts import get_object_or_404, render
 from t12_mapping import pipeline_bridge
 from t12_mapping.models import Upload
 
-from .helpers import build_table_rows, compute_summary, effective_mapping_of
+from .helpers import build_table_rows, compute_summary, effective_mapping_of, mapping_stats
 
 
 def _row_edit(post, mapped) -> dict:
@@ -84,6 +84,7 @@ def review(request, upload_id):
         "categories":   categories,
         "rows":         rows,
         "summary":      summary,
+        "map_stats":    mapping_stats(rows),
         "save_error":   save_error,
     })
 

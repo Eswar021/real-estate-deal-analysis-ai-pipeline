@@ -754,3 +754,59 @@ broken. It wasn't — `LOW_CONFIDENCE_MARGIN` is bound as a **default argument**
 (`def flag_low_confidence(classified, threshold=LOW_CONFIDENCE_MARGIN)`), which Python evaluates
 at import, so patching the module constant had no effect. Patch `__defaults__` (or pass the
 threshold) when testing this.
+
+---
+
+## 8. 🐞 Deployed, the pipeline logs are invisible — nothing to debug with
+
+Raised before the first Render deploy: "where do the logs go, and can we debug the deployed
+app?" **Investigated only — no code changed.**
+
+### The problem
+
+`log_config.configure_logging()` attaches **only** a `RotatingFileHandler` and sets
+`logger.propagate = False`, so the `t12` logger is **file-only by design** (deliberate: the local
+terminal stays clean). The file is `LOG_DIR / t12.log` = `app/logs/t12.log`, i.e. inside the repo
+checkout.
+
+On Render (or any PaaS) that combination means:
+
+- **The dashboard shows stdout/stderr only** → none of our logs appear. No anchor lock, no
+  classification table, no NOI verification, no diagnosis. Django's own console logging still
+  shows (request lines, tracebacks), so the *app* looks fine while the *pipeline* is silent.
+- **The container filesystem is ephemeral** → `app/logs/t12.log` is wiped on every restart and
+  every redeploy.
+- **The free tier has no shell** → even while it lives, nothing can read it.
+
+So the deployed app cannot be debugged from its logs at all.
+
+### The fix (designed, ~15 lines, not applied)
+
+Add an opt-in stdout handler alongside the file handler:
+
+- `STDOUT = env T12_LOG_STDOUT or logging.json "stdout"` (default **false**, so local behaviour is
+  unchanged — no terminal noise).
+- In `configure_logging`, if `STDOUT`, also attach `logging.StreamHandler(sys.stdout)` with the
+  same formatter. Then Render's live log view shows the same banners/tables as the file.
+- ⚠ Guard gotcha: `RotatingFileHandler` **subclasses** `StreamHandler`, so a naive
+  `isinstance(h, StreamHandler)` duplicate-check never fires. Exclude `logging.FileHandler`
+  explicitly.
+- Set `T12_LOG_STDOUT=true` in the Render env. Keep `profile=summary` there — `verbose` would
+  stream the full LLM prompts (which carry the property's financials) into the platform's log.
+
+Verified while prototyping (then rolled back): default → 0 lines on stdout; `T12_LOG_STDOUT=true`
+→ the STAGE 1 banner, the NOI table and the rest appear on stdout.
+
+Alternative/companion: mount a Render disk and point `T12_LOG_FILE` at it (persists across
+restarts) — but without a shell you still can't read it, so stdout is the one that enables
+debugging.
+
+### Deploy env vars (needed regardless — `app/.env` is gitignored and does not travel)
+
+| var | why |
+| --- | --- |
+| `CLAUDE_API_KEY` | all three agents; nothing runs without it |
+| `DEBUG=False` | **defaults to True** in settings.py — unsafe in production |
+| `ALLOWED_HOSTS` | the `.onrender.com` host, or every request 400s |
+| `MEDIA_ROOT_PATH` | a mounted disk — otherwise every upload + its `state.json` vanishes on restart |
+| `T12_LOG_STDOUT=true` | once §8 is built |
