@@ -41,6 +41,21 @@ def _signed_values(row: dict) -> list:
     return values
 
 
+def mapping_stats(rows: list[dict]) -> dict:
+    """Counts for the header banner — how the Stage-3 mapping landed, over the DATA rows only.
+    `mapped` = has an effective category (rulebook, AI suggestion, or user override);
+    `unmapped` = none yet (needs a manual pick); `ai_suggested` = category came from the AI
+    fallback, not the rulebook (worth a glance)."""
+    data = [r for r in rows if r.get("is_data")]
+    unmapped = sum(1 for r in data if r.get("is_unmapped"))
+    return {
+        "total":        len(data),
+        "mapped":       len(data) - unmapped,
+        "unmapped":     unmapped,
+        "ai_suggested": sum(1 for r in data if r.get("is_ai_only")),
+    }
+
+
 def build_table_rows(mapped_data: dict) -> list[dict]:
     """
     One entry per non-empty row (data + subtotal + header).
