@@ -15,12 +15,17 @@ POST (one row update):
     - Re-render with recomputed summary
 """
 
+import re
+from io import BytesIO
+
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
 from t12_mapping import pipeline_bridge
 from t12_mapping.models import Upload
 
-from .helpers import build_table_rows, compute_summary, effective_mapping_of, mapping_stats
+from .helpers import (build_export_workbook, build_table_rows, compute_summary,
+                      effective_mapping_of, mapping_stats)
 
 
 def _row_edit(post, mapped) -> dict:
@@ -87,4 +92,32 @@ def review(request, upload_id):
         "map_stats":    mapping_stats(rows),
         "save_error":   save_error,
     })
+
+
+def export(request, upload_id):
+    """Download the reviewed mapping as an .xlsx (line items + a by-category rollup)."""
+    upload_obj = get_object_or_404(Upload, pk=upload_id)
+    try:
+        state = pipeline_bridge.get_state(upload_obj.id, with_grid=False)
+    except FileNotFoundError:
+        state = None
+    mapped = (state or {}).get("mapping")
+    if mapped is None:
+        return render(request, "upload/upload.html", {
+            "errors": {"t12_file": "Mapped data not found. Run the mapping step first."},
+        })
+
+    noi_months = ((state.get("classification") or {}).get("noi") or {}).get("months") or []
+    prop = upload_obj.property_name or mapped.get("file", "")
+    wb = build_export_workbook(mapped, noi_months, property_name=prop)
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    safe = re.sub(r"[^\w.-]+", "_", (prop or "t12")).strip("_") or "t12"
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    resp["Content-Disposition"] = f'attachment; filename="{safe}_mapped.xlsx"'
+    return resp
 

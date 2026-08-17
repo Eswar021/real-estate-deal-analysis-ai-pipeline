@@ -1,8 +1,15 @@
 # upload page
 
-**URL:** `/t12/`
+**URL:** `/t12/`  (also the "Continue anyway" override POST target)
 
 **Reads:** nothing (entry point)
+
+**Pre-check (Stage 0) is a warning, not a wall.** `pipeline_bridge.run_preflight` still flags
+rent rolls / Model-T12 / non-T12 files, but a rejection no longer deletes the upload — the file
+is kept and the page shows the reason + a **"Continue anyway"** button (a POST with
+`bypass_upload_id`). Clicking it skips the pre-check and runs Stage 1. (The check can't recognise
+every vendor's wording — e.g. Pratt, a valid T12 whose expense total omits the word "Total"; and
+a genuinely-wrong file just hits a wall at the anchor gate, so the override is safe.)
 
 **Writes** (via `pipeline_bridge.run_detection` — **STAGE 1 only**, up to the R − E = NOI
 anchor lock; classification is deferred to the anchor gate):

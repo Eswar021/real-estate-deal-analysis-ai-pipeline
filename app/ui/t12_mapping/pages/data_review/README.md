@@ -11,6 +11,11 @@
 
 **DB:** updates `Upload.current_step='data_review'`
 
+**Export:** `GET /t12/<id>/review/export/` (`data_review_export`) streams an `.xlsx` — sheet 1
+"Mapped T12" (every line item + category + monthly values, mirrors the page) and sheet 2
+"Summary by Category" (values summed per canonical category, revenue/expense, verified NOI at the
+bottom — the standardized rollup). Built by `helpers.build_export_workbook` with openpyxl.
+
 **Next:** analytics page (future)
 
 ## Three mapping layers

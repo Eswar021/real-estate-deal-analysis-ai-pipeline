@@ -3,18 +3,18 @@ pages/upload/views.py
 
 URL:    /t12/
 Reads:  nothing (entry point)
-Screens: STAGE 0 via pipeline_bridge.run_preflight — rejects rent rolls / Model-T12 files /
-         non-T12 spreadsheets before any parsing (deletes the Upload, re-renders the error).
-Writes: STAGE 1 ONLY via pipeline_bridge.run_detection — anchor_lock.json,
-        parse_state.json, cell_grid.json. Classification (annotated_blocks / comparison /
-        actual_noi) is NOT written here — the anchor gate writes it on Confirm.
+Screens: STAGE 0 via pipeline_bridge.run_preflight — flags rent rolls / Model-T12 files /
+         non-T12 spreadsheets before parsing. A rejection is NOT final: the file is kept and
+         the page offers a "Continue anyway" override (the check can't recognise every vendor's
+         wording, and a genuinely-wrong file just hits a wall at the anchor gate — no harm).
+Writes: STAGE 1 via pipeline_bridge.run_step(stage1_parse) — cell_grid + parse state.
 DB:     creates Upload row (status=draft, current_step='upload')
 Next:   anchor_gate (always — Stage 2 runs only after the anchors are confirmed there)
 """
 
 from pathlib import Path
 
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from shared import storage
 from t12_mapping import pipeline_bridge
@@ -32,6 +32,12 @@ LEGACY_EXTENSIONS = {".xls"}
 def upload(request):
     if request.method == "GET":
         return render(request, "upload/upload.html")
+
+    # "Continue anyway" — the user is overriding a pre-check rejection on a file we already
+    # saved. Skip the pre-check entirely and take it straight into Stage 1.
+    bypass_id = request.POST.get("bypass_upload_id")
+    if bypass_id:
+        return _parse_and_go(request, get_object_or_404(Upload, pk=bypass_id))
 
     file = request.FILES.get("t12_file")
     property_name = request.POST.get("property_name", "").strip()
@@ -63,24 +69,38 @@ def upload(request):
     try:
         xlsx_path = storage.get_local_path(upload_obj.file)
         preflight = pipeline_bridge.run_preflight(xlsx_path)  # STAGE 0 — screen before parsing
-        if not preflight["ok"]:
-            upload_obj.delete()  # not a T12 input — reject cleanly, nothing parsed
-            return render(request, "upload/upload.html", {
-                "errors": {"t12_file": preflight["reason"]},
-                "property_name": property_name,
-            })
-        state = pipeline_bridge.run_step(                        # STAGE 1 only (no classification)
-            upload_obj.id, "stage1_parse",
-            file={"name": Path(xlsx_path).name, "path": str(xlsx_path)})
     except Exception as e:
-        upload_obj.delete()  # cascades file deletion via FileField
+        upload_obj.delete()  # couldn't even read the file — cascades file deletion
         return render(request, "upload/upload.html", {
-            "errors": {"t12_file": f"Pipeline error: {e}"},
+            "errors": {"t12_file": f"Could not read the file: {e}"},
             "property_name": property_name,
         })
 
-    # TRUE STAGING — every upload stops at the anchor gate. Classification (Stage 2) runs
-    # ONLY after the user confirms the R / E / NOI anchors there, never at upload. A clean
-    # AUTO lock just arrives pre-filled and already reconciling (a one-click confirm).
-    # current_step stays 'upload' until the gate is confirmed (the gate bumps it to 'noi').
+    if not preflight["ok"]:
+        # NOT a hard reject. Keep the file and let the user decide — the pre-check is a warning,
+        # not a wall (see Pratt: a valid T12 whose expense total lacks the word "Total").
+        return render(request, "upload/upload.html", {
+            "reject_reason": preflight["reason"],
+            "reject_kind": preflight.get("kind"),
+            "bypass_upload_id": upload_obj.id,
+            "property_name": property_name,
+        })
+
+    return _parse_and_go(request, upload_obj)
+
+
+def _parse_and_go(request, upload_obj):
+    """Run Stage 1 (parse up to the anchor lock) and hand off to the anchor gate. Every upload
+    stops at the gate; Stage 2 (classification) runs only after the user confirms the anchors."""
+    try:
+        xlsx_path = storage.get_local_path(upload_obj.file)
+        pipeline_bridge.run_step(
+            upload_obj.id, "stage1_parse",
+            file={"name": Path(xlsx_path).name, "path": str(xlsx_path)})
+    except Exception as e:
+        upload_obj.delete()
+        return render(request, "upload/upload.html", {
+            "errors": {"t12_file": f"Pipeline error: {e}"},
+            "property_name": upload_obj.property_name,
+        })
     return redirect("anchor_gate", upload_id=upload_obj.id)

@@ -12,6 +12,14 @@
       <div>
         <h2 class="h4 fw-bold mb-1">Stage 1 — Confirm R / E / NOI anchors</h2>
         <p class="text-muted small mb-0">{{ file_name }}</p>
+        {# Recognized vs new layout — sets the expectation for mapping accuracy downstream. #}
+        {% if format_known %}
+          <span class="badge rounded-pill bg-success-subtle text-success-emphasis border border-success-subtle mt-1"
+                title="A layout the tool recognizes — expect high mapping accuracy">✓ Recognized format</span>
+        {% else %}
+          <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle mt-1"
+                title="A layout the tool hasn't seen before — the numbers still reconcile, but double-check the category mapping">⚠ New format — review mapping closely</span>
+        {% endif %}
       </div>
       {% if reconciles %}
         <span class="badge bg-success fs-6 px-3 py-2">R − E = NOI ✓</span>

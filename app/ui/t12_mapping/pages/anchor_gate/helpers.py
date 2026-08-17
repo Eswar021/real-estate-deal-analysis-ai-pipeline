@@ -65,9 +65,16 @@ def build_context(upload, state, chosen=None, reconciles=None, error=None):
     if reconciles is None:                       # GET — no explicit re-verify this request
         reconciles = bool(anchor_lock.get("anchors"))
 
+    # Recognized-layout badge: the 3 templated formats are "recognized"; anything the detector
+    # couldn't place is "new layout" (still processed — just worth a closer look at the mapping).
+    fmt = (state.get("format") or {}).get("format") or "unknown"
+    format_known = fmt != "unknown"
+
     return {
         "upload_id":   upload.id,
         "file_name":   (state.get("file") or {}).get("name") or upload.file_name,
+        "format":      fmt,
+        "format_known": format_known,
         "status":      status,
         "status_tone": tone,
         "status_explain": explain,

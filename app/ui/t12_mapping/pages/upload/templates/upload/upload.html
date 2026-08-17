@@ -12,6 +12,30 @@
       <p class="text-muted small">Required Fields</p>
     </div>
 
+    {% if bypass_upload_id %}
+    {# The pre-check flagged the file but it may still be a valid T12 (it can't recognise every
+       vendor's wording). Let the user override instead of dead-ending. #}
+    <div class="card shadow-sm border-warning mb-3">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-start mb-2">
+          <span class="badge bg-warning text-dark me-2 mt-1">Heads up</span>
+          <div>
+            <div class="fw-semibold mb-1">This doesn't look like a standard T12</div>
+            <p class="text-muted small mb-0">{{ reject_reason }}</p>
+          </div>
+        </div>
+        <p class="small mb-3">If you're sure this is a valid T12 income statement, you can
+          continue — the next step lets you confirm the revenue / expense / NOI rows yourself.</p>
+        <form method="post" class="d-flex justify-content-end gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="bypass_upload_id" value="{{ bypass_upload_id }}">
+          <a href="{% url 't12_upload' %}" class="btn btn-outline-secondary">Upload a different file</a>
+          <button type="submit" class="btn btn-warning px-4">Continue anyway &rarr;</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card shadow-sm">
       <div class="card-body p-4">
         <form method="post" enctype="multipart/form-data" novalidate>

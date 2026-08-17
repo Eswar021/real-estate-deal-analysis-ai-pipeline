@@ -41,6 +41,90 @@ def _signed_values(row: dict) -> list:
     return values
 
 
+def build_export_workbook(mapped_data: dict, noi_months: list[dict], property_name: str = ""):
+    """Excel export of the reviewed mapping — two sheets:
+      1. "Mapped T12"        — every line item with its category, section and monthly values
+                               (what the review page shows), so the mapping can be audited.
+      2. "Summary by Category" — the standardized rollup: values summed per canonical category,
+                               grouped revenue/expense, with the verified NOI at the bottom.
+                               This is the normalized T12 that feeds a downstream model.
+    Returns an openpyxl Workbook. openpyxl is already a pipeline dependency.
+    """
+    import openpyxl
+    from openpyxl.styles import Font
+
+    headers = mapped_data.get("column_headers", [])
+    n = len(headers)
+    rows = mapped_data.get("rows", [])
+    bold = Font(bold=True)
+
+    def _cell(v):
+        return v if isinstance(v, (int, float)) else None
+
+    wb = openpyxl.Workbook()
+
+    # ── Sheet 1 · line items (mirrors the UI) ─────────────────────────────────
+    ws = wb.active
+    ws.title = "Mapped T12"
+    if property_name:
+        ws.append([property_name]); ws["A1"].font = bold; ws.append([])
+    head = ["Row", "Description", "Category", "Section", *headers]
+    ws.append(head)
+    for c in ws[ws.max_row]:
+        c.font = bold
+    for r in rows:
+        if r.get("type") == "empty":
+            continue
+        is_data = r.get("type") == "data"
+        category = effective_mapping_of(r) if is_data else (_row_type_label(r) or "")
+        values = _signed_values(r)
+        ws.append([r.get("row"), r.get("description", ""), category or "",
+                   r.get("statement_side") or "", *[_cell(v) for v in values[:n]]])
+
+    # ── Sheet 2 · rollup by canonical category ────────────────────────────────
+    ws2 = wb.create_sheet("Summary by Category")
+    buckets = {"revenue": {}, "expense": {}}          # side -> {category -> [monthly sums]}
+    for r in rows:
+        if r.get("type") != "data":
+            continue
+        side = r.get("statement_side")
+        cat = effective_mapping_of(r)
+        if side not in buckets or not cat:
+            continue
+        acc = buckets[side].setdefault(cat, [0.0] * n)
+        for i, v in enumerate(_signed_values(r)[:n]):
+            if isinstance(v, (int, float)):
+                acc[i] += v
+
+    ws2.append(["Category", *headers])
+    for c in ws2[1]:
+        c.font = bold
+    rev_total = [0.0] * n
+    exp_total = [0.0] * n
+    for side, label, running in (("revenue", "REVENUE", rev_total), ("expense", "EXPENSE", exp_total)):
+        ws2.append([label]); ws2[ws2.max_row][0].font = bold
+        for cat in sorted(buckets[side]):
+            vals = buckets[side][cat]
+            ws2.append([cat, *[round(v, 2) for v in vals]])
+            for i, v in enumerate(vals):
+                running[i] += v
+        ws2.append([f"Total {label.title()}", *[round(v, 2) for v in running]])
+        for c in ws2[ws2.max_row]:
+            c.font = bold
+    # NOI — from Stage 2's verified result (the vendor-reported figure), not re-summed here
+    noi_vendor = [m["noi"][0] for m in noi_months][:n]
+    ws2.append([])
+    ws2.append(["NET OPERATING INCOME (verified)", *[_cell(v) for v in noi_vendor]])
+    for c in ws2[ws2.max_row]:
+        c.font = bold
+
+    for sheet in (ws, ws2):
+        sheet.column_dimensions["A"].width = 16
+        sheet.column_dimensions["B"].width = 40
+        sheet.column_dimensions["C"].width = 26
+    return wb
+
+
 def mapping_stats(rows: list[dict]) -> dict:
     """Counts for the header banner — how the Stage-3 mapping landed, over the DATA rows only.
     `mapped` = has an effective category (rulebook, AI suggestion, or user override);
