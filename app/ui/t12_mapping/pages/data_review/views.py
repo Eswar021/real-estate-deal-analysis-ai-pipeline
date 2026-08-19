@@ -60,8 +60,16 @@ def review(request, upload_id):
         })
 
     save_error = None
+    learn_result = None
 
-    if request.method == "POST":
+    if request.method == "POST" and request.POST.get("action") == "add_to_rulebook":
+        # Fold every mapped row's approved category into a NEW rulebook snapshot (future runs
+        # pick it up). New/agreeing -> certain; a conflict with an existing mapping -> unresolved.
+        try:
+            learn_result = pipeline_bridge.add_to_rulebook(upload_obj.id, upload_obj.property_name)
+        except Exception as e:
+            save_error = f"Add to rulebook failed: {e}"
+    elif request.method == "POST":
         # The user overrode one row's category / flip_sign. Re-enter Stage 3 through its
         # edit workflow — which applies the override and nothing else (no re-map, no AI).
         try:
@@ -91,6 +99,7 @@ def review(request, upload_id):
         "summary":      summary,
         "map_stats":    mapping_stats(rows),
         "save_error":   save_error,
+        "learn_result": learn_result,
     })
 
 

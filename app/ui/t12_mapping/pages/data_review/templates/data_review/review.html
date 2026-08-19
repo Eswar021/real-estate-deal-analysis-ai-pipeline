@@ -44,8 +44,33 @@
       <a href="{% url 'data_review_export' upload_id=upload_id %}" class="btn btn-dark">
         ⭳ Export to Excel
       </a>
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_to_rulebook">
+        <button type="submit" class="btn btn-outline-dark"
+                title="Teach the rulebook these categories — future uploads will map them automatically">
+          ✓ Add to rulebook
+        </button>
+      </form>
     </div>
   </div>
+
+  {% if learn_result %}
+  <div class="alert alert-success py-2 small mb-3">
+    <strong>Rulebook updated.</strong>
+    Added <strong>{{ learn_result.added }}</strong> new mapping{{ learn_result.added|pluralize }}·
+    {{ learn_result.reinforced }} already known·
+    {% if learn_result.conflicted %}<span class="text-danger">{{ learn_result.conflicted }} conflict{{ learn_result.conflicted|pluralize }} sent to review</span>{% else %}0 conflicts{% endif %}.
+    Future uploads will use these.
+    {% if learn_result.conflicts %}
+      <div class="mt-1">
+        {% for c in learn_result.conflicts %}
+          <div class="text-muted">⚠ “{{ c.0 }}”: rulebook had <em>{{ c.1 }}</em>, you approved <em>{{ c.2 }}</em> → needs review.</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
 
   {# ── mapping result: how many rows the rulebook + AI mapped, and what still needs a pick ── #}
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3">

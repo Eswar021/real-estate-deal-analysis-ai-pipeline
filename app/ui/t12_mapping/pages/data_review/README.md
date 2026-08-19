@@ -16,6 +16,13 @@
 "Summary by Category" (values summed per canonical category, revenue/expense, verified NOI at the
 bottom — the standardized rollup). Built by `helpers.build_export_workbook` with openpyxl.
 
+**Add to rulebook** (POST `action=add_to_rulebook` → `bridge.add_to_rulebook`): folds every
+mapped row's approved category into a **new rulebook snapshot** in `db/rulebooks/` (via
+`build_rulebook.learn`) so future uploads map them automatically. new/agree → `certain`;
+conflict → `unresolved` (both candidates kept). Writes a fresh snapshot, never mutates the live
+file. ⚠ In production `db/rulebooks/` must be on the persistent disk or learned snapshots reset
+on redeploy.
+
 **Next:** analytics page (future)
 
 ## Three mapping layers

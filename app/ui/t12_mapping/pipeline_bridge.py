@@ -98,3 +98,19 @@ def load_categories() -> list[str]:
 def load_classes() -> list[str]:
     """The pipeline's row classes — the Stage-2 review dropdown's options."""
     return list(CLASSES)
+
+
+def add_to_rulebook(run_id, property_name: str = "") -> dict:
+    """Fold this upload's approved mappings into a NEW rulebook snapshot (data_review action).
+    Every mapped DATA row's effective category is an approval; the learn step decides certain vs
+    conflict->unresolved and writes a fresh snapshot. Returns the summary."""
+    from t12_pipeline.build_rulebook.learn import learn_from_approved
+    mapped = (get_state(run_id, with_grid=False).get("mapping")) or {}
+    approved = []
+    for r in mapped.get("rows", []):
+        if r.get("type") != "data":
+            continue
+        category = r.get("final_mapping") or r.get("mapping") or r.get("ai_suggested_mapping")
+        if category:
+            approved.append({"description": r.get("description", ""), "category": category})
+    return learn_from_approved(approved, source=property_name)
