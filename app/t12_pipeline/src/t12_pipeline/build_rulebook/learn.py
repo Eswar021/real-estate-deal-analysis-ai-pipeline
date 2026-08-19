@@ -21,15 +21,18 @@ from t12_pipeline.config.rulebook_utils import (load_latest_rulebook, normalize_
 
 
 def _resolve(key, rulebook):
-    """(state, current_mapping) for a key. state ∈ {contextual, definite, none};
-    'none' = no single mapping today (absent OR unresolved) → an approval promotes it."""
+    """(state, current_mapping) for a key. state ∈ {contextual, definite, unresolved, absent}.
+    Both 'unresolved' and 'absent' get promoted to `certain` on approval, but are counted
+    separately (an unresolved→certain move is the useful validation signal)."""
     if key in rulebook["contextual"]:
         return "contextual", None
     if key in rulebook["certain"]:
         return "definite", rulebook["certain"][key]["mapping"]
     if key in rulebook["no_conflict"]:
         return "definite", rulebook["no_conflict"][key]["mapping"]
-    return "none", None
+    if key in rulebook["unresolved"]:
+        return "unresolved", None
+    return "absent", None
 
 
 def apply_approved(approved, rulebook, source=""):
@@ -46,18 +49,22 @@ def apply_approved(approved, rulebook, source=""):
         if key and cat:
             latest[key] = (desc, cat)
 
-    summary = {"added": 0, "reinforced": 0, "conflicted": 0, "skipped_contextual": 0,
-               "conflicts": [], "added_list": []}
+    summary = {"added": 0, "promoted": 0, "reinforced": 0, "conflicted": 0,
+               "skipped_contextual": 0, "conflicts": [], "added_list": [], "promoted_list": []}
     for key, (desc, cat) in latest.items():
         state, current = _resolve(key, rulebook)
         if state == "contextual":
             summary["skipped_contextual"] += 1
-        elif state == "none":
+        elif state in ("absent", "unresolved"):
             rulebook["unresolved"].pop(key, None)                       # promote if it was unresolved
             rulebook["certain"][key] = {"row_description": desc, "mapping": cat,
                                         "review_note": None, **prov}
-            summary["added"] += 1
-            summary["added_list"].append([desc, cat])
+            if state == "unresolved":                                   # moved out of review → certain
+                summary["promoted"] += 1
+                summary["promoted_list"].append([desc, cat])
+            else:                                                       # brand-new account
+                summary["added"] += 1
+                summary["added_list"].append([desc, cat])
         elif current == cat:
             summary["reinforced"] += 1
         else:  # conflict — never silently overwrite; flag for review
@@ -89,5 +96,6 @@ def learn_from_approved(approved, source=""):
     anything actually changed). Returns the summary with `snapshot` set to the new path or None."""
     rulebook = load_latest_rulebook()
     summary = apply_approved(approved, rulebook, source=source)
-    summary["snapshot"] = str(write_snapshot(rulebook)) if (summary["added"] or summary["conflicted"]) else None
+    changed = summary["added"] or summary["promoted"] or summary["conflicted"]
+    summary["snapshot"] = str(write_snapshot(rulebook)) if changed else None
     return summary
