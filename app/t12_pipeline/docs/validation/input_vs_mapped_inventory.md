@@ -1,51 +1,44 @@
 # Input ↔ Mapped (Model T12) Inventory
 
-_Generated 2026-08-20. Maps each raw-T12 **input** file (`data/input_T12_docs/`) to its reviewed **Model T12** ground-truth file (`data/mapped_T12_docs/`), for the mapping-accuracy check._
+_Generated 2026-08-20. Each raw-T12 **input** (`data/input_T12_docs/`) and its reviewed **Model T12** ground-truth file (`data/mapped_T12_docs/`), for the mapping-accuracy check. A `—` means we don't have a mapped file for that property yet._
 
-**Totals:** 33 inputs · **16 have** a mapped file (the validation set) · 17 without · 26 mapped-only properties (no raw input).
-
-## Validation set — inputs WITH a mapped ground-truth file
+**Totals:** 33 inputs · **16 with** a mapped file (the validation set) · 17 without · 26 mapped-only properties (no raw input).
 
 | # | Input file | Detected format | Mapped (Model T12) file |
 |---|------------|-----------------|--------------------------|
-| 1 | Lincoln Townhomes Seller T12.xlsx | code in A / desc in B | Lincoln Townhomes Model T12.xlsx |
-| 2 | Willows of Coventry T12 11-25.xlsx | code in A / desc in B | 02252026_Willows of Coventry_V4 (1).xlsm |
-| 3 | Creekside Seller T12.xlsx | embedded code in A | Creekside Apartment Homes Model T12.xlsx |
-| 4 | Lockhart Seller T-12.xlsx | embedded code in A | Lockhart Model T12.xlsx |
-| 5 | Mirador Seller T12 .xlsx | embedded code in A | Mirador Model T12.xlsx |
-| 6 | River Point Seller T12 Feb.xlsx | embedded code in A | River Point Model T12.xlsx |
-| 7 | River Point West Seller T12.xlsx | embedded code in A | River Point West Model T12.xlsx |
-| 8 | Wythe Seller T12.xlsx | embedded code in A | Wythe Model T12.xlsx |
-| 9 | Ladera Seller T12.xlsx | no code | Ladera Model T12.xlsx |
-| 10 | RESERVE AT WHITE ROCK Seller T12.xlsx | no code | Reserve_at_White_Rock Model T12.xlsx |
-| 11 | TRAILS AT WHITE ROCK Seller T12.xlsx | no code | TRAILS OF WHITE ROCK Model T12.xlsx |
-| 12 | Arbor Gates at Buckhead Seller T12.xlsx | unknown (deterministic) | Arbor Gates at Buckhead Model T12.xlsx |
-| 13 | Cardinal Seller T12.xlsx | unknown (deterministic) | Cardinal Model T12.xlsx |
-| 14 | Eleven11 Lexington at Flower Mound Seller T12.xlsx | unknown (deterministic) | Eleven11 Lexington at Flower Mound Model T12.xlsx |
-| 15 | Holden Seller T12.xlsx | unknown (deterministic) | Holden Model T12.xlsx |
-| 16 | Mesquite Seller T-12.xlsx | unknown (deterministic) | Mesquite Model T12.xlsx |
-
-## Inputs WITHOUT a mapped file (can't auto-validate yet)
-
-| # | Input file | Detected format |
-|---|------------|-----------------|
-| 1 | 04.2024-03.2025 T-12 Brackett.xlsx | code in A / desc in B |
-| 2 | Carmel Woods T12 09-25.xlsx | code in A / desc in B |
-| 3 | Cornelius Jan 2025 T-12_Month_Statement.xlsx | code in A / desc in B |
-| 4 | Pointe Inverness T12 11-25.xlsx | code in A / desc in B |
-| 5 | Pratt T12 March 2025.xlsx | code in A / desc in B |
-| 6 | T12 - Sienna Park (02.2025).xlsx | code in A / desc in B |
-| 7 | Brownsburg Crossing T12 05-25.xlsx | embedded code in A |
-| 8 | Pebble Brook Village T12 03-25.xlsx | embedded code in A |
-| 9 | Pebble Brook Village T12 09-25.xlsx | embedded code in A |
-| 10 | Echo Park at Perry Crossing T12 12-24.xlsx | no code |
-| 11 | Link Apartments_12 Month Statement_2025-02-28.xlsx | no code |
-| 12 | Miars Farm 4.26 T12..xlsx | no code |
-| 13 | Mural Apartments_12 Month Statement_2025-02-28.xlsx | no code |
-| 14 | Swiss Gables_12_Month_Statement_ri007_Accrual.xlsx | no code |
-| 15 | 12_Month_Statement_walocvis_Cash (1).xlsx | unknown (deterministic) |
-| 16 | Chateau in the  Woods T12 08-25.xlsx | unknown (deterministic) |
-| 17 | Crystal Lake_T-12_04.2026.xlsx | unknown (deterministic) |
+| 1 | 04.2024-03.2025 T-12 Brackett.xlsx | code in A / desc in B | — |
+| 2 | Carmel Woods T12 09-25.xlsx | code in A / desc in B | — |
+| 3 | Cornelius Jan 2025 T-12_Month_Statement.xlsx | code in A / desc in B | — |
+| 4 | Lincoln Townhomes Seller T12.xlsx | code in A / desc in B | Lincoln Townhomes Model T12.xlsx |
+| 5 | Pointe Inverness T12 11-25.xlsx | code in A / desc in B | — |
+| 6 | Pratt T12 March 2025.xlsx | code in A / desc in B | — |
+| 7 | T12 - Sienna Park (02.2025).xlsx | code in A / desc in B | — |
+| 8 | Willows of Coventry T12 11-25.xlsx | code in A / desc in B | 02252026_Willows of Coventry_V4 (1).xlsm |
+| 9 | Brownsburg Crossing T12 05-25.xlsx | embedded code in A | — |
+| 10 | Creekside Seller T12.xlsx | embedded code in A | Creekside Apartment Homes Model T12.xlsx |
+| 11 | Lockhart Seller T-12.xlsx | embedded code in A | Lockhart Model T12.xlsx |
+| 12 | Mirador Seller T12 .xlsx | embedded code in A | Mirador Model T12.xlsx |
+| 13 | Pebble Brook Village T12 03-25.xlsx | embedded code in A | — |
+| 14 | Pebble Brook Village T12 09-25.xlsx | embedded code in A | — |
+| 15 | River Point Seller T12 Feb.xlsx | embedded code in A | River Point Model T12.xlsx |
+| 16 | River Point West Seller T12.xlsx | embedded code in A | River Point West Model T12.xlsx |
+| 17 | Wythe Seller T12.xlsx | embedded code in A | Wythe Model T12.xlsx |
+| 18 | Echo Park at Perry Crossing T12 12-24.xlsx | no code | — |
+| 19 | Ladera Seller T12.xlsx | no code | Ladera Model T12.xlsx |
+| 20 | Link Apartments_12 Month Statement_2025-02-28.xlsx | no code | — |
+| 21 | Miars Farm 4.26 T12..xlsx | no code | — |
+| 22 | Mural Apartments_12 Month Statement_2025-02-28.xlsx | no code | — |
+| 23 | RESERVE AT WHITE ROCK Seller T12.xlsx | no code | Reserve_at_White_Rock Model T12.xlsx |
+| 24 | Swiss Gables_12_Month_Statement_ri007_Accrual.xlsx | no code | — |
+| 25 | TRAILS AT WHITE ROCK Seller T12.xlsx | no code | TRAILS OF WHITE ROCK Model T12.xlsx |
+| 26 | 12_Month_Statement_walocvis_Cash (1).xlsx | unknown (deterministic) | — |
+| 27 | Arbor Gates at Buckhead Seller T12.xlsx | unknown (deterministic) | Arbor Gates at Buckhead Model T12.xlsx |
+| 28 | Cardinal Seller T12.xlsx | unknown (deterministic) | Cardinal Model T12.xlsx |
+| 29 | Chateau in the  Woods T12 08-25.xlsx | unknown (deterministic) | — |
+| 30 | Crystal Lake_T-12_04.2026.xlsx | unknown (deterministic) | — |
+| 31 | Eleven11 Lexington at Flower Mound Seller T12.xlsx | unknown (deterministic) | Eleven11 Lexington at Flower Mound Model T12.xlsx |
+| 32 | Holden Seller T12.xlsx | unknown (deterministic) | Holden Model T12.xlsx |
+| 33 | Mesquite Seller T-12.xlsx | unknown (deterministic) | Mesquite Model T12.xlsx |
 
 ## Mapped-only properties (reviewed Model T12 exists, but no raw input on hand)
 
