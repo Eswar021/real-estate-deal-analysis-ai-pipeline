@@ -70,3 +70,38 @@ _Not usable for input-accuracy checks until we get their raw vendor T12._
 - 260312_Melville Apartments_V18-HNW BRIDGE.xlsm
 - Golfview Manor - 03.31.2025.xlsm
 - Grande Reserve at Geist Model T12.xlsx
+
+---
+
+## Mapping Accuracy — Deterministic (rulebook) validation
+
+_Generated 2026-08-20. For the 16 inputs with a Model T12, we ran the pipeline **without AI** and compared each **rulebook** category to the client's `Final_Mapping` (Model T12 col Z), matched by account description (col T). These `.xlsx` Model T12s were NOT part of the rulebook build (which used the `.xlsm` files), so this is a held-out test._
+
+**Rulebook precision: 1668/1747 = 95.5%** — when the rulebook maps a ground-truth account, it matches the client's mapping ~19 in 20 times. A further **129** ground-truth accounts were left for the AI fallback (accuracy of that portion needs a separate AI run).
+
+Columns: **rows** = data line items · **rulebook-mapped** = mapped deterministically (no AI) · **rb ∩ GT** = rulebook-mapped accounts also present in the Model T12 · **correct** = of those, match the client's Final_Mapping · **precision** = correct / (rb ∩ GT) · **→ AI** = ground-truth accounts the rulebook didn't map (go to the AI fallback).
+
+| Input | rows | rulebook-mapped | rb ∩ GT | correct | precision | → AI |
+|-------|-----:|----------------:|--------:|--------:|----------:|-----:|
+| Lincoln Townhomes Seller | 118 | 95 | 95 | 95 | 100% | 8 |
+| Lockhart Seller | 155 | 144 | 144 | 141 | 98% | 11 |
+| Mirador Seller | 113 | 90 | 90 | 88 | 98% | 7 |
+| Cardinal Seller | 153 | 136 | 136 | 133 | 98% | 6 |
+| RESERVE AT WHITE ROCK | 92 | 83 | 83 | 81 | 98% | 9 |
+| TRAILS AT WHITE ROCK | 87 | 78 | 78 | 76 | 97% | 9 |
+| Eleven11 | 119 | 110 | 110 | 106 | 96% | 6 |
+| River Point Seller T12 Feb | 113 | 107 | 107 | 103 | 96% | 5 |
+| River Point West | 113 | 107 | 107 | 103 | 96% | 5 |
+| Mesquite | 135 | 108 | 107 | 103 | 96% | 5 |
+| Arbor Gates | 112 | 98 | 98 | 94 | 96% | 14 |
+| Creekside Seller | 186 | 137 | 129 | 123 | 95% | 9 |
+| Ladera Seller | 117 | 101 | 99 | 94 | 95% | 14 |
+| Wythe Seller | 195 | 138 | 131 | 123 | 94% | 12 |
+| Willows of Coventry | 127 | 124 | 124 | 116 | 94% | 1 |
+| Holden Seller | 128 | 109 | 109 | 89 | 82% | 8 |
+| **TOTAL (16 files)** | **2063** | | **1747** | **1668** | **95.5%** | **129** |
+
+**Notes:**
+- **Holden 82%** is the low outlier — worth reviewing which accounts the rulebook mis-maps there.
+- Below-NOI / non-operating rows (mortgage interest, casualty, capex) aren't in the Model T12's operating mapping, so they're correctly excluded from the match set, not counted as errors.
+- This measures the **rulebook** only. The **AI-fallback accuracy** (the ~129 accounts above, plus non-ground-truth rows) is a separate pass — it runs live Claude calls, so it's pending your go-ahead.
