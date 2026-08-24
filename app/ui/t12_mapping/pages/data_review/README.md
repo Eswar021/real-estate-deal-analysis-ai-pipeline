@@ -11,6 +11,12 @@
   preserving the original `mapping` and `ai_suggested_mapping` for audit. The row edit carries
   only the field(s) the user actually changed (category / flip / note), each diffed separately.
 
+**Bulk mapping** (POST `action=bulk_map`, `bulk_rows=[row#…]`, `bulk_category`): tick any set of
+data rows (first-column checkboxes + a select-all), pick one category, and apply it to all of them
+in a single POST via `run_step(id, "stage3_bulk_update_mapping", bulk={rows, category})`. Sets
+`final_mapping` on every selected row (an empty category clears the override on all of them);
+like the single-row edit it never re-maps, calls the AI, or re-verifies NOI.
+
 **Display-only columns** (no state change): the money values are shown with thousands-separator
 commas (`humanize.intcomma`), and each row gets a **Last 3 Mo** / **Last 6 Mo** total computed
 from the trailing monthly columns (the last value column is the annual total, so the 3/6-month

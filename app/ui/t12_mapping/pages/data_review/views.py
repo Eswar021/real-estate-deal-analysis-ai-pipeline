@@ -73,6 +73,19 @@ def review(request, upload_id):
             learn_result = pipeline_bridge.add_to_rulebook(upload_obj.id, upload_obj.property_name)
         except Exception as e:
             save_error = f"Add to rulebook failed: {e}"
+    elif request.method == "POST" and request.POST.get("action") == "bulk_map":
+        # The user checked several rows and set ONE category for all of them at once.
+        rows = [int(r) for r in request.POST.getlist("bulk_rows") if r.isdigit()]
+        category = (request.POST.get("bulk_category") or "").strip() or None
+        if not rows:
+            save_error = "Select at least one row to bulk-map."
+        else:
+            try:
+                state = pipeline_bridge.run_step(upload_obj.id, "stage3_bulk_update_mapping",
+                                                 with_grid=False, bulk={"rows": rows, "category": category})
+                mapped = state["mapping"]
+            except Exception as e:
+                save_error = str(e)
     elif request.method == "POST":
         # The user overrode one row's category / flip_sign. Re-enter Stage 3 through its
         # edit workflow — which applies the override and nothing else (no re-map, no AI).

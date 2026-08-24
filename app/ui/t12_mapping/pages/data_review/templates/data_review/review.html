@@ -101,6 +101,20 @@
     {% endif %}
   </div>
 
+  {# ── bulk mapping: tick rows, set one category for all of them at once ── #}
+  <form method="post" id="bulk-form" class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 rounded border bg-light">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="bulk_map">
+    <span class="small fw-semibold">Bulk map:</span>
+    <span class="badge rounded-pill bg-secondary" id="bulk-count">0 selected</span>
+    <select name="bulk_category" class="form-select form-select-sm" style="max-width:260px;">
+      <option value="">— clear category —</option>
+      {% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary" id="bulk-apply" disabled>Apply to selected</button>
+    <span class="small text-muted">Tick rows in the first column, choose a category, then apply.</span>
+  </form>
+
   {% if save_error %}
   <div class="alert alert-danger small mb-3">Save error: {{ save_error }}</div>
   {% endif %}
@@ -109,6 +123,9 @@
     <table class="table table-sm table-bordered align-middle mb-0" style="font-size: 0.8rem;">
       <thead class="table-light">
         <tr>
+          <th style="width:32px;" class="text-center">
+            <input type="checkbox" class="form-check-input" id="bulk-select-all" title="Select all rows">
+          </th>
           <th style="width:28px;">#</th>
           <th style="min-width:200px;">T12 Row Description</th>
           <th style="min-width:200px;">Mapped Category</th>
@@ -124,6 +141,12 @@
       <tbody>
         {% for row in rows %}
         <tr class="{% if row.is_header %}table-secondary{% elif row.is_final_subtotal %}table-primary{% elif row.is_subtotal %}table-light{% elif row.is_unmapped %}table-danger{% elif row.is_ai_only and not row.is_user_override %}table-warning{% endif %}">
+          <td class="text-center">
+            {% if row.is_data %}
+              <input type="checkbox" class="form-check-input bulk-check" name="bulk_rows"
+                     value="{{ row.row }}" form="bulk-form">
+            {% endif %}
+          </td>
           <td class="text-muted small">{{ row.row }}</td>
           <td class="{% if not row.is_data %}fw-semibold{% endif %}">{{ row.description }}</td>
           <td>
@@ -192,7 +215,7 @@
 
       <tfoot class="table-light">
         <tr class="fw-bold">
-          <td colspan="5" class="text-end">Net Rental Income (Revenue)</td>
+          <td colspan="6" class="text-end">Net Rental Income (Revenue)</td>
           {% for v in summary.net_rental_income %}
             <td class="text-end font-monospace">{{ v|floatformat:0|intcomma }}</td>
           {% endfor %}
@@ -200,7 +223,7 @@
           <td class="text-end font-monospace">{% if summary.net_rental_income_t6 == None %}—{% else %}{{ summary.net_rental_income_t6|floatformat:0|intcomma }}{% endif %}</td>
         </tr>
         <tr class="fw-bold table-success">
-          <td colspan="5" class="text-end">Calculated NOI</td>
+          <td colspan="6" class="text-end">Calculated NOI</td>
           {% for v in summary.calculated_noi %}
             <td class="text-end font-monospace">{{ v|floatformat:0|intcomma }}</td>
           {% endfor %}
@@ -208,7 +231,7 @@
           <td class="text-end font-monospace">{% if summary.calculated_noi_t6 == None %}—{% else %}{{ summary.calculated_noi_t6|floatformat:0|intcomma }}{% endif %}</td>
         </tr>
         <tr class="fw-bold table-info">
-          <td colspan="5" class="text-end">Original NOI (vendor-reported)</td>
+          <td colspan="6" class="text-end">Original NOI (vendor-reported)</td>
           {% for v in summary.original_noi %}
             <td class="text-end font-monospace">
               {% if v == None %}<span class="text-muted">—</span>{% else %}{{ v|floatformat:0|intcomma }}{% endif %}
@@ -218,7 +241,7 @@
           <td class="text-end font-monospace">{% if summary.original_noi_t6 == None %}—{% else %}{{ summary.original_noi_t6|floatformat:0|intcomma }}{% endif %}</td>
         </tr>
         <tr class="fw-bold">
-          <td colspan="5" class="text-end">NOI Difference</td>
+          <td colspan="6" class="text-end">NOI Difference</td>
           {% for d in summary.noi_difference %}
             <td class="text-end font-monospace">
               {% if d.value == None %}
@@ -251,6 +274,31 @@
 </div>
 
 <script>
+  // Bulk mapping: keep the count / Apply-button / select-all box in sync with the row ticks.
+  (function () {
+    const checks = Array.prototype.slice.call(document.querySelectorAll('.bulk-check'));
+    const selectAll = document.getElementById('bulk-select-all');
+    const countEl = document.getElementById('bulk-count');
+    const applyBtn = document.getElementById('bulk-apply');
+    function sync() {
+      const n = checks.filter(function (c) { return c.checked; }).length;
+      countEl.textContent = n + ' selected';
+      applyBtn.disabled = n === 0;
+      if (selectAll) {
+        selectAll.checked = n > 0 && n === checks.length;
+        selectAll.indeterminate = n > 0 && n < checks.length;
+      }
+    }
+    checks.forEach(function (c) { c.addEventListener('change', sync); });
+    if (selectAll) {
+      selectAll.addEventListener('change', function () {
+        checks.forEach(function (c) { c.checked = selectAll.checked; });
+        sync();
+      });
+    }
+    sync();
+  })();
+
   // Category dropdown change submits its row's form.
   document.querySelectorAll('.category-select').forEach(function (sel) {
     sel.addEventListener('change', function () {

@@ -179,6 +179,20 @@ def stage3_update_mapping(state):
     return {**state, "mapping": mapped}
 
 
+def stage3_bulk_update_mapping(state):
+    """STAGE 3 re-entry — the user set ONE category on many selected rows at once (data_review
+    bulk action). Applies the SAME override to every listed row; like stage3_update_mapping it
+    only overrides `final_mapping` (no re-map, no AI, no NOI re-verify). `category` may be None to
+    clear the override on all selected rows. inputs: bulk={rows:[int], category:str|None}."""
+    b = state.get("bulk") or {}
+    category = b.get("category") or None
+    valid = get_rulebook_categories(load_latest_rulebook())
+    mapped = state["mapping"]
+    for row in b.get("rows", []):
+        mapped = apply_row_edit(mapped, row, category=category, valid_categories=valid)
+    return {**state, "mapping": mapped}
+
+
 # ── The workflow registry — the ONLY things a view may run ────────────────────
 # Each entry is a complete, valid transition, named <stage>_<user action>. Individual module
 # steps are deliberately NOT exposed: handing a caller raw nodes invites it to assemble its own
@@ -192,4 +206,5 @@ STEPS = {
     "stage2_reverify":       reverify,              # Stage-2 edit  → re-verify NOI (no AI)
     "stage3_mapping":        stage3_mapping,        # review submit → rulebook + AI fallback
     "stage3_update_mapping": stage3_update_mapping, # Stage-3 edit  → apply a mapping override
+    "stage3_bulk_update_mapping": stage3_bulk_update_mapping,  # Stage-3 bulk → one category, many rows
 }
