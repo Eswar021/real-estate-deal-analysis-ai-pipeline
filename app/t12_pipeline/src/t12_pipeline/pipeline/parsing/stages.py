@@ -169,10 +169,10 @@ def stage3_update_mapping(state):
     NOI page's Recompute made with the classification). Nor does it re-verify NOI — unlike a
     Stage-2 class edit, a category is a label and flip_sign is an output sign convention;
     neither changes a sum the pipeline verified, and data_review shows Stage 2's NOI directly.
-    reads/writes: mapping. inputs: row_edit={row, category?, flip_sign?} — only the keys the
-    user actually changed."""
+    reads/writes: mapping. inputs: row_edit={row, category?, flip_sign?, note?} — only the keys
+    the user actually changed."""
     e = state.get("row_edit") or {}
-    edit = {k: e[k] for k in ("category", "flip_sign") if k in e}
+    edit = {k: e[k] for k in ("category", "flip_sign", "note") if k in e}
     mapped = apply_row_edit(state["mapping"], e.get("row"),
                             valid_categories=get_rulebook_categories(load_latest_rulebook()),
                             **edit)

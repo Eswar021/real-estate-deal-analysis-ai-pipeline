@@ -43,6 +43,10 @@ def _row_edit(post, mapped) -> dict:
     flip_sign = post.get("flip_sign") == "1"
     if flip_sign != bool(current.get("flip_sign")):
         edit["flip_sign"] = flip_sign
+    if "note" in post:
+        note = (post.get("note") or "").strip()
+        if note != (current.get("review_note") or ""):
+            edit["note"] = note
     return edit
 
 

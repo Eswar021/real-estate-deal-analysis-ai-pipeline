@@ -41,6 +41,20 @@ def _signed_values(row: dict) -> list:
     return values
 
 
+def _trailing_totals(values: list) -> tuple:
+    """(last-3-months total, last-6-months total) — the client's model needs T3/T6 alongside
+    the 12 monthly columns. The LAST value column is the annual total (noi.py treats months[-1]
+    as the year total), so the monthly columns are `values[:-1]`; T3/T6 are the rightmost
+    (most-recent) 3 and 6 of those. Sums only numeric cells; None if a window has none."""
+    monthly = (values or [])[:-1]
+
+    def _sum(window):
+        nums = [v for v in window if isinstance(v, (int, float))]
+        return round(sum(nums), 2) if nums else None
+
+    return _sum(monthly[-3:]), _sum(monthly[-6:])
+
+
 def build_export_workbook(mapped_data: dict, noi_months: list[dict], property_name: str = ""):
     """Excel export of the reviewed mapping — two sheets:
       1. "Mapped T12"        — every line item with its category, section and monthly values
@@ -68,7 +82,7 @@ def build_export_workbook(mapped_data: dict, noi_months: list[dict], property_na
     ws.title = "Mapped T12"
     if property_name:
         ws.append([property_name]); ws["A1"].font = bold; ws.append([])
-    head = ["Row", "Description", "Category", "Section", *headers]
+    head = ["Row", "Description", "Category", "Section", *headers, "Last 3 Mo", "Last 6 Mo", "Note"]
     ws.append(head)
     for c in ws[ws.max_row]:
         c.font = bold
@@ -78,8 +92,11 @@ def build_export_workbook(mapped_data: dict, noi_months: list[dict], property_na
         is_data = r.get("type") == "data"
         category = effective_mapping_of(r) if is_data else (_row_type_label(r) or "")
         values = _signed_values(r)
+        t3, t6 = _trailing_totals(values)
+        note = (r.get("review_note") or "") if is_data else ""
         ws.append([r.get("row"), r.get("description", ""), category or "",
-                   r.get("statement_side") or "", *[_cell(v) for v in values[:n]]])
+                   r.get("statement_side") or "", *[_cell(v) for v in values[:n]],
+                   _cell(t3), _cell(t6), note])
 
     # ── Sheet 2 · rollup by canonical category ────────────────────────────────
     ws2 = wb.create_sheet("Summary by Category")
@@ -161,6 +178,9 @@ def build_table_rows(mapped_data: dict) -> list[dict]:
             r.get("is_total_revenue") or r.get("is_total_expense") or r.get("is_noi")
         )
 
+        signed = _signed_values(r)
+        t3, t6 = _trailing_totals(signed)
+
         rows_out.append({
             "row":               r["row"],
             "description":       r.get("description", ""),
@@ -175,7 +195,10 @@ def build_table_rows(mapped_data: dict) -> list[dict]:
             "effective_mapping": effective_mapping_of(r) if is_data else None,
             "original_mapping":  (r.get("mapping") or r.get("ai_suggested_mapping")) if is_data else None,
             "flip_sign":         bool(r.get("flip_sign")) if is_data else False,
-            "values":            _signed_values(r),
+            "values":            signed,
+            "trailing_3":        t3,
+            "trailing_6":        t6,
+            "note":              r.get("review_note") or "" if is_data else "",
             "ai_suggested":      r.get("ai_suggested_mapping") if is_data else None,
             "ai_confidence":     r.get("ai_confidence") if is_data else None,
             "is_user_override":  is_data and (r.get("final_mapping") is not None),
@@ -211,6 +234,12 @@ def compute_summary(noi_months: list[dict], column_headers: list) -> dict:
         else:
             diff_by_month.append({"value": round(computed - actual, 2), "material": match is False})
 
+    diff_values = [d["value"] for d in diff_by_month]
+    nri_t3, nri_t6 = _trailing_totals(net_rental_income)
+    cnoi_t3, cnoi_t6 = _trailing_totals(calculated_noi)
+    onoi_t3, onoi_t6 = _trailing_totals(original_noi)
+    diff_t3, diff_t6 = _trailing_totals(diff_values)
+
     return {
         "column_headers":         column_headers,
         "net_rental_income":      net_rental_income,
@@ -218,4 +247,8 @@ def compute_summary(noi_months: list[dict], column_headers: list) -> dict:
         "original_noi":           original_noi,
         "noi_difference":         diff_by_month,
         "any_diff_material":      any(d["material"] for d in diff_by_month),
+        "net_rental_income_t3":   nri_t3, "net_rental_income_t6": nri_t6,
+        "calculated_noi_t3":      cnoi_t3, "calculated_noi_t6": cnoi_t6,
+        "original_noi_t3":        onoi_t3, "original_noi_t6": onoi_t6,
+        "noi_difference_t3":      diff_t3, "noi_difference_t6": diff_t6,
     }

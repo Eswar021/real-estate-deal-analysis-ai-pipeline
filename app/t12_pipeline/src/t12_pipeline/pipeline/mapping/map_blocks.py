@@ -117,7 +117,8 @@ def build_match_result(row, rulebook):
 _UNSET = object()
 
 
-def apply_row_edit(mapped, row_number, category=_UNSET, flip_sign=_UNSET, valid_categories=None):
+def apply_row_edit(mapped, row_number, category=_UNSET, flip_sign=_UNSET, note=_UNSET,
+                   valid_categories=None):
     """The user's override of ONE mapped data row (data_review). Returns a copy of `mapped`
     with ONLY the passed fields written. Deliberately does not re-map or call the AI — the
     user is the authority here.
@@ -142,6 +143,8 @@ def apply_row_edit(mapped, row_number, category=_UNSET, flip_sign=_UNSET, valid_
                 r["final_mapping"] = category or None
             if flip_sign is not _UNSET:
                 r["flip_sign"] = bool(flip_sign)
+            if note is not _UNSET:
+                r["review_note"] = (note or "").strip() or None
             return out
     raise ValueError(f"Row {row_number} not found in mapped data")
 

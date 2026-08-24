@@ -112,5 +112,6 @@ def add_to_rulebook(run_id, property_name: str = "") -> dict:
             continue
         category = r.get("final_mapping") or r.get("mapping") or r.get("ai_suggested_mapping")
         if category:
-            approved.append({"description": r.get("description", ""), "category": category})
+            approved.append({"description": r.get("description", ""), "category": category,
+                             "review_note": r.get("review_note") or None})
     return learn_from_approved(approved, source=property_name)

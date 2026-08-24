@@ -7,20 +7,29 @@
 - `state.classification.noi.months` — Stage 2's verified NOI result. **The whole bottom summary is this** — the page does not compute NOI itself.
 
 **Writes** (on every row update POST, via `run_step(id, "stage3_update_mapping")`):
-- `state.mapping` — patches `final_mapping` and `flip_sign` on the targeted row, preserving the original `mapping` and `ai_suggested_mapping` for audit
+- `state.mapping` — patches `final_mapping`, `flip_sign` and `review_note` on the targeted row,
+  preserving the original `mapping` and `ai_suggested_mapping` for audit. The row edit carries
+  only the field(s) the user actually changed (category / flip / note), each diffed separately.
+
+**Display-only columns** (no state change): the money values are shown with thousands-separator
+commas (`humanize.intcomma`), and each row gets a **Last 3 Mo** / **Last 6 Mo** total computed
+from the trailing monthly columns (the last value column is the annual total, so the 3/6-month
+windows are the rightmost monthly columns — see `helpers._trailing_totals`), respecting flip-sign.
 
 **DB:** updates `Upload.current_step='data_review'`
 
 **Export:** `GET /t12/<id>/review/export/` (`data_review_export`) streams an `.xlsx` — sheet 1
-"Mapped T12" (every line item + category + monthly values, mirrors the page) and sheet 2
+"Mapped T12" (every line item + category + monthly values + Last 3 Mo / Last 6 Mo totals + Note,
+mirrors the page) and sheet 2
 "Summary by Category" (values summed per canonical category, revenue/expense, verified NOI at the
 bottom — the standardized rollup). Built by `helpers.build_export_workbook` with openpyxl.
 
 **Add to rulebook** (POST `action=add_to_rulebook` → `bridge.add_to_rulebook`): folds every
-mapped row's approved category into a **new rulebook snapshot** in `db/rulebooks/` (via
-`build_rulebook.learn`) so future uploads map them automatically. new/agree → `certain`;
-conflict → `unresolved` (both candidates kept). Writes a fresh snapshot, never mutates the live
-file. ⚠ In production `db/rulebooks/` must be on the persistent disk or learned snapshots reset
+mapped row's approved category (and its `review_note`, if any) into a **new rulebook snapshot** in
+`db/rulebooks/` (via `build_rulebook.learn`) so future uploads map them automatically. new/agree →
+`certain` (the note lands on the entry's `review_note`); conflict → `unresolved` (both candidates
+kept); a fresh note on an already-known entry updates it in place (`notes_updated`). Writes a fresh
+snapshot, never mutates the live file. ⚠ In production `db/rulebooks/` must be on the persistent disk or learned snapshots reset
 on redeploy.
 
 **Next:** analytics page (future)

@@ -45,20 +45,21 @@ def apply_approved(approved, rulebook, source=""):
     latest = {}
     for a in approved:
         desc, cat = (a.get("description") or "").strip(), (a.get("category") or "").strip()
+        note = (a.get("review_note") or "").strip() or None
         key = normalize_lookup_key(desc)
         if key and cat:
-            latest[key] = (desc, cat)
+            latest[key] = (desc, cat, note)
 
-    summary = {"added": 0, "promoted": 0, "reinforced": 0, "conflicted": 0,
+    summary = {"added": 0, "promoted": 0, "reinforced": 0, "conflicted": 0, "notes_updated": 0,
                "skipped_contextual": 0, "conflicts": [], "added_list": [], "promoted_list": []}
-    for key, (desc, cat) in latest.items():
+    for key, (desc, cat, note) in latest.items():
         state, current = _resolve(key, rulebook)
         if state == "contextual":
             summary["skipped_contextual"] += 1
         elif state in ("absent", "unresolved"):
             rulebook["unresolved"].pop(key, None)                       # promote if it was unresolved
             rulebook["certain"][key] = {"row_description": desc, "mapping": cat,
-                                        "review_note": None, **prov}
+                                        "review_note": note, **prov}
             if state == "unresolved":                                   # moved out of review → certain
                 summary["promoted"] += 1
                 summary["promoted_list"].append([desc, cat])
@@ -66,6 +67,11 @@ def apply_approved(approved, rulebook, source=""):
                 summary["added"] += 1
                 summary["added_list"].append([desc, cat])
         elif current == cat:
+            if note is not None:                                       # let a fresh note update the entry
+                entry = rulebook["certain"].get(key) or rulebook["no_conflict"].get(key)
+                if entry is not None and entry.get("review_note") != note:
+                    entry["review_note"] = note
+                    summary["notes_updated"] += 1
             summary["reinforced"] += 1
         else:  # conflict — never silently overwrite; flag for review
             rulebook["certain"].pop(key, None)
@@ -96,6 +102,7 @@ def learn_from_approved(approved, source=""):
     anything actually changed). Returns the summary with `snapshot` set to the new path or None."""
     rulebook = load_latest_rulebook()
     summary = apply_approved(approved, rulebook, source=source)
-    changed = summary["added"] or summary["promoted"] or summary["conflicted"]
+    changed = (summary["added"] or summary["promoted"] or summary["conflicted"]
+               or summary["notes_updated"])
     summary["snapshot"] = str(write_snapshot(rulebook)) if changed else None
     return summary
