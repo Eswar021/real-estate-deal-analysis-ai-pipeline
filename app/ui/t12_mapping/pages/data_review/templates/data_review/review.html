@@ -130,12 +130,12 @@
           <th style="min-width:200px;">T12 Row Description</th>
           <th style="min-width:200px;">Mapped Category</th>
           <th style="width:80px;" class="text-center">Flip Sign</th>
-          <th style="min-width:160px;">Note</th>
           {% for col in summary.column_headers %}
             <th class="text-end" style="min-width:90px;">{{ col }}</th>
           {% endfor %}
           <th class="text-end table-info" style="min-width:90px;" title="Total of the last 3 months">Last 3 Mo</th>
           <th class="text-end table-info" style="min-width:90px;" title="Total of the last 6 months">Last 6 Mo</th>
+          <th style="min-width:160px;">Note</th>
         </tr>
       </thead>
       <tbody>
@@ -182,16 +182,6 @@
               <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td>
-            {% if row.is_data %}
-              <input type="text" class="form-control form-control-sm row-note" name="note"
-                     form="form-row-{{ row.row }}" data-row="{{ row.row }}"
-                     value="{{ row.note }}" placeholder="add a note…"
-                     title="A note on this mapping — saved to the rulebook when you click ✓ Add to rulebook">
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
           {% for v in row.values %}
             <td class="text-end font-monospace {% if not row.is_data %}fw-semibold{% endif %}">
               {% if v == None or v == "" %}
@@ -207,6 +197,16 @@
           <td class="text-end font-monospace table-info-subtle {% if not row.is_data %}fw-semibold{% endif %}">
             {% if row.trailing_6 == None %}<span class="text-muted">—</span>{% else %}{{ row.trailing_6|floatformat:0|intcomma }}{% endif %}
           </td>
+          <td>
+            {% if row.is_data %}
+              <input type="text" class="form-control form-control-sm row-note" name="note"
+                     form="form-row-{{ row.row }}" data-row="{{ row.row }}"
+                     value="{{ row.note }}" placeholder="add a note…"
+                     title="A note on this mapping — saved to the rulebook when you click ✓ Add to rulebook">
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% empty %}
         <tr><td colspan="100" class="text-center text-muted py-3">No rows.</td></tr>
@@ -215,23 +215,25 @@
 
       <tfoot class="table-light">
         <tr class="fw-bold">
-          <td colspan="6" class="text-end">Net Rental Income (Revenue)</td>
+          <td colspan="5" class="text-end">Net Rental Income (Revenue)</td>
           {% for v in summary.net_rental_income %}
             <td class="text-end font-monospace">{{ v|floatformat:0|intcomma }}</td>
           {% endfor %}
           <td class="text-end font-monospace">{% if summary.net_rental_income_t3 == None %}—{% else %}{{ summary.net_rental_income_t3|floatformat:0|intcomma }}{% endif %}</td>
           <td class="text-end font-monospace">{% if summary.net_rental_income_t6 == None %}—{% else %}{{ summary.net_rental_income_t6|floatformat:0|intcomma }}{% endif %}</td>
+          <td></td>
         </tr>
         <tr class="fw-bold table-success">
-          <td colspan="6" class="text-end">Calculated NOI</td>
+          <td colspan="5" class="text-end">Calculated NOI</td>
           {% for v in summary.calculated_noi %}
             <td class="text-end font-monospace">{{ v|floatformat:0|intcomma }}</td>
           {% endfor %}
           <td class="text-end font-monospace">{% if summary.calculated_noi_t3 == None %}—{% else %}{{ summary.calculated_noi_t3|floatformat:0|intcomma }}{% endif %}</td>
           <td class="text-end font-monospace">{% if summary.calculated_noi_t6 == None %}—{% else %}{{ summary.calculated_noi_t6|floatformat:0|intcomma }}{% endif %}</td>
+          <td></td>
         </tr>
         <tr class="fw-bold table-info">
-          <td colspan="6" class="text-end">Original NOI (vendor-reported)</td>
+          <td colspan="5" class="text-end">Original NOI (vendor-reported)</td>
           {% for v in summary.original_noi %}
             <td class="text-end font-monospace">
               {% if v == None %}<span class="text-muted">—</span>{% else %}{{ v|floatformat:0|intcomma }}{% endif %}
@@ -239,9 +241,10 @@
           {% endfor %}
           <td class="text-end font-monospace">{% if summary.original_noi_t3 == None %}—{% else %}{{ summary.original_noi_t3|floatformat:0|intcomma }}{% endif %}</td>
           <td class="text-end font-monospace">{% if summary.original_noi_t6 == None %}—{% else %}{{ summary.original_noi_t6|floatformat:0|intcomma }}{% endif %}</td>
+          <td></td>
         </tr>
         <tr class="fw-bold">
-          <td colspan="6" class="text-end">NOI Difference</td>
+          <td colspan="5" class="text-end">NOI Difference</td>
           {% for d in summary.noi_difference %}
             <td class="text-end font-monospace">
               {% if d.value == None %}
@@ -255,6 +258,7 @@
           {% endfor %}
           <td class="text-end font-monospace">{% if summary.noi_difference_t3 == None %}—{% else %}{{ summary.noi_difference_t3|floatformat:0|intcomma }}{% endif %}</td>
           <td class="text-end font-monospace">{% if summary.noi_difference_t6 == None %}—{% else %}{{ summary.noi_difference_t6|floatformat:0|intcomma }}{% endif %}</td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
